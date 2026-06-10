@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE gui SYSTEM "kpartgui.dtd">
+<gui name="dolphin" version="48">
+  <!--
+    Keep Dolphin on standard GUI tab semantics.
+    Terminal tab bindings live in Ghostty and intentionally differ only where
+    shell editing would otherwise be broken.
+  -->
+  <ActionProperties scheme="Default">
+    <Action name="new_tab" shortcut="Ctrl+T" />
+    <Action name="file_close" shortcut="Ctrl+W" />
+    <Action name="undo_close_tab" shortcut="Ctrl+Shift+T" />
+    <Action name="activate_next_tab" shortcut="Ctrl+PgDown; Ctrl+Tab" />
+    <Action name="activate_prev_tab" shortcut="Ctrl+PgUp; Ctrl+Shift+Tab" />
+  </ActionProperties>
+</gui>

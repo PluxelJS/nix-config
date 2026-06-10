@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (($# == 0)); then
+  echo "usage: $0 <cmd> [args...] [# comment...]" >&2
+  exit 2
+fi
+
+cmd=()
+for arg in "$@"; do
+  if [[ "$arg" == "#" ]]; then
+    break
+  fi
+  cmd+=("$arg")
+done
+
+if ((${#cmd[@]} == 0)); then
+  echo "error: no command provided (only comment?)" >&2
+  exit 2
+fi
+
+exec "${cmd[@]}"

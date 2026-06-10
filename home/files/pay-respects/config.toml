@@ -1,0 +1,3 @@
+[package_manager]
+package_manager = "pacman"
+install_method = "System"

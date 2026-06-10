@@ -1,0 +1,50 @@
+# GitHub Auth Notes
+
+This file records the preferred `git` / `gh` / `GitButler` auth shape without
+adding more runtime complexity to the Home Manager config today.
+
+## Current Practice
+
+- Let Home Manager own package installation and normal config for `git` and
+  `gh`.
+- Keep `ragenix` installed as a future-facing encryption helper, but do not
+  wire it into `gh` auth yet.
+- Let local runtime auth stay local:
+  `gh` should use the desktop credential store when available.
+- Prefer SSH for Git transport and `gh` as the GitHub credential helper.
+
+Recommended day-to-day login:
+
+```bash
+gh auth login --web --git-protocol ssh
+gh auth status
+```
+
+On KDE, this should normally store the live credential in the system
+credential store instead of trying to keep a repo-managed secret in sync.
+
+## Why Not Sync It Yet
+
+- Browser/device auth produces local runtime state, usually in the desktop
+  keyring.
+- That state is convenient for daily use but is a poor fit for declarative Nix
+  management.
+- Syncing `~/.config/gh/hosts.yml` is possible, but it is a runtime artifact and
+  less stable than syncing a token on purpose.
+
+## Future Option
+
+If cross-machine recovery becomes worth the extra complexity later:
+
+1. Keep daily auth in the local keyring.
+2. Export a recovery token from `gh auth token`.
+3. Encrypt that token with `ragenix` or another age-based secret workflow.
+4. Use the encrypted token only as a backup/bootstrap source for new machines.
+
+This keeps local UX simple while still leaving a path to future recovery.
+
+## GitButler
+
+- Install `GitButler` from official `nixpkgs` when needed.
+- Prefer letting it reuse the system Git executable and existing SSH /
+  credential flow instead of introducing a second auth stack first.

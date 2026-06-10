@@ -1,0 +1,4 @@
+{ ... }:
+{
+  ahdg.profile = "shell";
+}

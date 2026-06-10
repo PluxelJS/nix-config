@@ -2,21 +2,23 @@
 let
   catppuccinFcitx5Dir = "${pkgs.catppuccin-fcitx5}/share/fcitx5/themes";
   plasmaThemeDir = ../../files/fcitx5/themes/plasma;
+  wanxiangRelease = "v15.13.0";
+  wanxiangBase = pkgs.fetchurl {
+    url = "https://github.com/amzxyz/rime-wanxiang/releases/download/${wanxiangRelease}/rime-wanxiang-base.zip";
+    hash = "sha256-qCQupP57D66XPSbEWYhHjhw+d8b9LhtiXMZerQKTGqg=";
+  };
+  wanxiangGrammar = pkgs.fetchurl {
+    url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
+    hash = "sha256-CqOGQiFUAR+9r6+0xVWuwChhn3gLTfd3VVeSDUazATY=";
+  };
 
   rimeStaticPayload = pkgs.runCommandLocal "ahdg-rime-static-payload" {
     nativeBuildInputs = [ pkgs.unzip ];
   } ''
     mkdir -p "$out"
 
-    unzip -q ${pkgs.fetchurl {
-      url = "https://github.com/amzxyz/rime_wanxiang/releases/download/v15.3.11/rime-wanxiang-base.zip";
-      hash = "sha256-sZJY+Q2Le8gOIWR4PHmPK/bF5GtxfywXFk4ZMYgPVrk=";
-    }} -d "$out"
-
-    mkdir -p "$out/dicts"
-    unzip -qo ${../../assets/fcitx5/base-dicts.zip} -d "$out/dicts"
-
-    cp ${../../assets/fcitx5/wanxiang-lts-zh-hans.gram} "$out/wanxiang-lts-zh-hans.gram"
+    unzip -q ${wanxiangBase} -d "$out"
+    cp ${wanxiangGrammar} "$out/wanxiang-lts-zh-hans.gram"
 
     cp ${../../files/fcitx5/rime/default.yaml} "$out/default.yaml"
     cp ${../../files/fcitx5/rime/custom_phrase.txt} "$out/custom_phrase.txt"

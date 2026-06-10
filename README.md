@@ -15,7 +15,7 @@ reproducible in Home Manager:
 - `fastfetch`
 - `ghostty`
 - `mango` config and helper scripts
-- `fcitx5` config, themes, and Rime payloads
+- `fcitx5` config, themes, and externally fetched Rime payloads
 - `fontconfig`
 - `gtk-2.0`
 - GTK and Plasma theme assets
@@ -47,8 +47,8 @@ This flake is now the canonical owner of:
   `Catppuccin-Macchiato`, `Papirus`, `Bibata-Modern-Ice`, `breeze`,
   `Darkly`, Plasma color scheme and look-and-feel assets
 - input method static policy:
-  `fcitx5` config, fcitx themes, Wanxiang baseline, Rime patch files, Flatpak
-  IM env propagation
+  `fcitx5` config, fcitx themes, upstream-fetched Wanxiang baseline and grammar
+  model, local Rime patch files, Flatpak IM env propagation
 - desktop integration:
   XDG terminal registration, MIME defaults, XDG user dirs, portal policy,
   Flatpak global override
@@ -145,8 +145,8 @@ Shell package-repair policy:
   graphics glue.
 - `home/modules/ghostty.nix`, `fastfetch.nix`, `starship.nix`, `git.nix`,
   `gh.nix`, `xdg.nix`, `themes.nix`: tool-specific modules.
-- `home/files/`: canonical config sources and binary assets that should remain
-  in native file formats.
+- `home/files/`: canonical config sources that should remain in native file
+  formats.
 - `docs/`: local policy notes such as shortcut and auth guidance.
 - `scripts/verify-shell-migration.sh`: post-switch verification.
 - `scripts/cleanup-pacman-duplicates.sh`: pacman/AUR duplicate cleanup helper.
@@ -192,6 +192,8 @@ longer exposed as separate everyday flake outputs.
 - Shell orchestration belongs in Nix because multiple tools need ordered init.
 - App-native config files stay in native formats under `home/files/`.
 - Static resources should come from nixpkgs when possible, not copied forks.
+- Large upstream language-model payloads should be fetched by Nix and pinned by
+  hash, not committed into the repo.
 - Mutable theme outputs should stay writable when another tool owns them at
   runtime. `ghostty/config-dankcolors` is the main example.
 - Flatpak-facing theme and font files should be materialized as regular files or
@@ -220,11 +222,8 @@ come from nixpkgs wherever an official package exists:
 - `pkgs.kdePackages.breeze-icons`
 - `pkgs.catppuccin-fcitx5`
 - font packages from nixpkgs
-- official `amzxyz/rime_wanxiang` release archives for the Wanxiang base scheme
-  payload
-- pinned Wanxiang auxiliary assets copied under `home/assets/fcitx5/` when the
-  upstream moving release channels (`dict-nightly`, `LTS`) need an exact local
-  snapshot
+- official `amzxyz/rime-wanxiang` and `amzxyz/RIME-LMDG` release assets fetched
+  by Nix and pinned by hash for the Wanxiang base payload and grammar model
 
 Local files in `home/files/` are kept only for:
 

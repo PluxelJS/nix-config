@@ -1,2 +1,0 @@
-home/assets/fcitx5/*.gram filter=lfs diff=lfs merge=lfs -text
-home/assets/fcitx5/*.zip filter=lfs diff=lfs merge=lfs -text

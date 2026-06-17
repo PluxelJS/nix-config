@@ -1,8 +1,10 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
+  runtime = config.ahdg.theme.runtime;
   mangoTarget = "${config.xdg.configHome}/mango";
   mangoSource = ../../files/mango;
   writableRuntimeFiles = [
+    "${mangoTarget}/env.conf"
     "${mangoTarget}/dms/colors.conf"
     "${mangoTarget}/dms/cursor.conf"
     "${mangoTarget}/dms/layout.conf"
@@ -31,6 +33,21 @@ lib.mkIf config.ahdg.features.gui {
         install -Dm644 "$resolved" "$target"
       fi
     done
+
+    if [[ -f "${mangoTarget}/env.conf" ]]; then
+      sed -i \
+        -e 's/^env=GTK_THEME,.*/env=GTK_THEME,${runtime.gtk.themeSpec}/' \
+        -e 's/^env=XCURSOR_THEME,.*/env=XCURSOR_THEME,${runtime.cursor.name}/' \
+        -e 's/^env=XCURSOR_SIZE,.*/env=XCURSOR_SIZE,${toString runtime.cursor.size}/' \
+        "${mangoTarget}/env.conf"
+    fi
+
+    if [[ -f "${mangoTarget}/dms/cursor.conf" ]]; then
+      sed -i \
+        -e 's/^cursor_size=.*/cursor_size=${toString runtime.cursor.size}/' \
+        -e 's/^cursor_theme=.*/cursor_theme=${runtime.cursor.name}/' \
+        "${mangoTarget}/dms/cursor.conf"
+    fi
   '';
 
   xdg.configFile."mango" = {

@@ -1,6 +1,8 @@
 { ... }:
 {
   imports = [
+    ./theme-policy.nix
+    ./theme-runtime.nix
     ./assets.nix
     ./dolphin.nix
     ./flatpak.nix

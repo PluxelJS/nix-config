@@ -1,13 +1,13 @@
 { config, lib, pkgs, ... }:
 let
-  catppuccinKde = pkgs.catppuccin-kde.override {
-    flavour = [ "macchiato" ];
-    accents = [ "lavender" ];
-    winDecStyles = [ "modern" ];
-  };
-  colorSchemeName = "CatppuccinMacchiatoLavender";
-  lookAndFeelName = "Catppuccin-Macchiato-Lavender";
-  auroraeThemeName = "CatppuccinMacchiato-Modern";
+  theme = config.ahdg.theme;
+  runtime = theme.runtime;
+  python3 = "${pkgs.python3}/bin/python3";
+  colorSchemeName = runtime.kde.colorSchemeName;
+  lookAndFeelName = runtime.kde.lookAndFeelName;
+  auroraeThemeName = runtime.kde.auroraeThemeName;
+  kdeFontValue = runtime.kde.fontValue;
+  kdeFixedFontValue = runtime.kde.fixedFontValue;
 in
 lib.mkIf config.ahdg.features.gui {
   home.activation.removeLegacyPlasmaThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
@@ -67,33 +67,293 @@ lib.mkIf config.ahdg.features.gui {
   home.activation.alignKdeglobalsThemeStack = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     kdeglobals="${config.xdg.configHome}/kdeglobals"
     if [[ -f "$kdeglobals" ]]; then
+      if ! rg -q '^\[General\]$' "$kdeglobals"; then
+        printf '\n[General]\n' >> "$kdeglobals"
+      fi
+      if ! rg -q '^\[Icons\]$' "$kdeglobals"; then
+        printf '\n[Icons]\n' >> "$kdeglobals"
+      fi
+      if ! rg -q '^\[KDE\]$' "$kdeglobals"; then
+        printf '\n[KDE]\n' >> "$kdeglobals"
+      fi
+      if ! rg -q '^\[WM\]$' "$kdeglobals"; then
+        printf '\n[WM]\n' >> "$kdeglobals"
+      fi
       sed -i \
         -e '/^\[General\]/,/^\[/{s/^ColorScheme=.*/ColorScheme='"${colorSchemeName}"'/;}' \
         -e '/^\[General\]/,/^\[/{s#^TerminalApplication=.*#TerminalApplication='"${config.home.profileDirectory}"'/bin/ghostty --gtk-single-instance=true#;}' \
-        -e '/^\[Icons\]/,/^\[/{s/^Theme=.*/Theme=Papirus/;}' \
+        -e '/^\[General\]/,/^\[/{s/^XftHintStyle=.*/XftHintStyle='"${theme.xftHintStyle}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^XftSubPixel=.*/XftSubPixel='"${theme.xftSubPixel}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^font=.*/font='"${kdeFontValue}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^menuFont=.*/menuFont='"${kdeFontValue}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^smallestReadableFont=.*/smallestReadableFont='"${kdeFontValue}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^toolBarFont=.*/toolBarFont='"${kdeFontValue}"'/;}' \
+        -e '/^\[General\]/,/^\[/{s/^fixed=.*/fixed='"${kdeFixedFontValue}"'/;}' \
+        -e '/^\[Icons\]/,/^\[/{s/^Theme=.*/Theme='"${runtime.icon.name}"'/;}' \
         -e '/^\[KDE\]/,/^\[/{s/^LookAndFeelPackage=.*/LookAndFeelPackage='"${lookAndFeelName}"'/;}' \
-        -e '/^\[KDE\]/,/^\[/{s/^widgetStyle=.*/widgetStyle=Darkly/;}' \
+        -e '/^\[KDE\]/,/^\[/{s/^widgetStyle=.*/widgetStyle='"${runtime.kde.widgetStyle}"'/;}' \
+        -e '/^\[WM\]/,/^\[/{s/^activeFont=.*/activeFont='"${kdeFontValue}"'/;}' \
         "$kdeglobals"
+
+      "${python3}" - "$kdeglobals" \
+        "${colorSchemeName}" \
+        "${config.home.profileDirectory}/bin/ghostty --gtk-single-instance=true" \
+        "${theme.xftHintStyle}" \
+        "${theme.xftSubPixel}" \
+        "${kdeFontValue}" \
+        "${kdeFixedFontValue}" \
+        "${runtime.icon.name}" \
+        "${lookAndFeelName}" \
+        "${runtime.kde.widgetStyle}" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+
+required = {
+    "[General]": {
+        "ColorScheme": sys.argv[2],
+        "TerminalApplication": sys.argv[3],
+        "XftHintStyle": sys.argv[4],
+        "XftSubPixel": sys.argv[5],
+        "font": sys.argv[6],
+        "menuFont": sys.argv[6],
+        "smallestReadableFont": sys.argv[6],
+        "toolBarFont": sys.argv[6],
+        "fixed": sys.argv[7],
+    },
+    "[Icons]": {
+        "Theme": sys.argv[8],
+    },
+    "[KDE]": {
+        "LookAndFeelPackage": sys.argv[9],
+        "widgetStyle": sys.argv[10],
+    },
+    "[WM]": {
+        "activeFont": sys.argv[6],
+    },
+}
+
+sections = {}
+order = []
+current = None
+for line in text.splitlines():
+    if line.startswith("[") and line.endswith("]"):
+        current = line
+        if current not in sections:
+            sections[current] = []
+            order.append(current)
+    elif current is not None:
+        sections[current].append(line)
+
+for section, section_lines in list(sections.items()):
+    normalized = []
+    seen_nonempty = set()
+    previous_blank = False
+    for line in section_lines:
+        if line == "":
+            if previous_blank:
+                continue
+            normalized.append(line)
+            previous_blank = True
+            continue
+        previous_blank = False
+        if line in seen_nonempty:
+            continue
+        seen_nonempty.add(line)
+        normalized.append(line)
+    sections[section] = normalized
+
+for section, kvs in required.items():
+    if section not in sections:
+        sections[section] = []
+        order.append(section)
+    section_lines = [
+        line
+        for line in sections[section]
+        if "=" not in line or line.startswith("#") or line.split("=", 1)[0] not in kvs
+    ]
+    for key, value in kvs.items():
+        section_lines.append(f"{key}={value}")
+    sections[section] = section_lines
+
+out = []
+for index, section in enumerate(order):
+    if index:
+        out.append("")
+    out.append(section)
+    out.extend(sections[section])
+
+path.write_text("\n".join(out).rstrip() + "\n")
+PY
+
+      "${python3}" - "$kdeglobals" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+sections = {}
+order = []
+current = None
+
+for raw in path.read_text().splitlines():
+    line = raw.rstrip()
+    if line.startswith("[") and line.endswith("]"):
+        current = line
+        if current not in sections:
+            sections[current] = []
+            order.append(current)
+        continue
+    if current is None:
+        continue
+    sections[current].append(line)
+
+dedupe_keys = {
+    "[General]": {
+        "ColorScheme",
+        "TerminalApplication",
+        "XftHintStyle",
+        "XftSubPixel",
+        "font",
+        "menuFont",
+        "smallestReadableFont",
+        "toolBarFont",
+        "fixed",
+    },
+    "[Icons]": { "Theme" },
+    "[KDE]": { "LookAndFeelPackage", "widgetStyle" },
+    "[WM]": { "activeFont" },
+}
+
+for section, keys in dedupe_keys.items():
+    if section not in sections:
+        continue
+    cleaned = []
+    seen = set()
+    for line in reversed(sections[section]):
+        if "=" in line and not line.startswith("#"):
+            key = line.split("=", 1)[0]
+            if key in keys:
+                if key in seen:
+                    continue
+                seen.add(key)
+        cleaned.append(line)
+    sections[section] = list(reversed(cleaned))
+
+out = []
+for section in order:
+    if out:
+        out.append("")
+    out.append(section)
+    lines = sections[section]
+    previous_blank = False
+    for line in lines:
+        if line == "":
+            if previous_blank:
+                continue
+            previous_blank = True
+            out.append(line)
+            continue
+        previous_blank = False
+        out.append(line)
+
+path.write_text("\n".join(out).rstrip() + "\n")
+PY
     fi
+  '';
+
+  home.activation.alignKcminputrcThemeStack = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    kcminputrc="${config.xdg.configHome}/kcminputrc"
+    touch "$kcminputrc"
+    if ! rg -q '^\[Mouse\]$' "$kcminputrc"; then
+      printf '\n[Mouse]\n' >> "$kcminputrc"
+    fi
+      "${python3}" - "$kcminputrc" \
+      "${runtime.cursor.name}" \
+      "${toString runtime.cursor.size}" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+cursor_theme = sys.argv[2]
+cursor_size = sys.argv[3]
+text = path.read_text()
+lines = text.splitlines()
+
+sections = {}
+order = []
+current = None
+for line in lines:
+    if line.startswith("[") and line.endswith("]"):
+        current = line
+        if current not in sections:
+            sections[current] = []
+            order.append(current)
+    elif current is not None:
+        sections[current].append(line)
+
+if "[Mouse]" not in sections:
+    sections["[Mouse]"] = []
+    order.append("[Mouse]")
+mouse = [
+    line
+    for line in sections["[Mouse]"]
+    if "=" not in line or line.startswith("#") or line.split("=", 1)[0] not in {"cursorTheme", "cursorSize"}
+]
+normalized_mouse = []
+seen_mouse_lines = set()
+previous_blank = False
+for line in mouse:
+    if line == "":
+        if previous_blank:
+            continue
+        normalized_mouse.append(line)
+        previous_blank = True
+        continue
+    previous_blank = False
+    if line in seen_mouse_lines:
+        continue
+    seen_mouse_lines.add(line)
+    normalized_mouse.append(line)
+mouse = normalized_mouse
+
+wanted = {
+    "cursorTheme": cursor_theme,
+    "cursorSize": cursor_size,
+}
+for key, value in wanted.items():
+    mouse.append(f"{key}={value}")
+sections["[Mouse]"] = mouse
+
+out = []
+for index, section in enumerate(order):
+    if index:
+        out.append("")
+    out.append(section)
+    out.extend(sections[section])
+
+path.write_text("\n".join(out).rstrip() + "\n")
+PY
   '';
 
   xdg.configFile."color-schemes/${colorSchemeName}.colors" = {
     force = true;
-    source = "${catppuccinKde}/share/color-schemes/${colorSchemeName}.colors";
+    source = "${runtime.kde.package}/share/color-schemes/${colorSchemeName}.colors";
   };
 
   xdg.dataFile = {
     "color-schemes/${colorSchemeName}.colors" = {
       force = true;
-      source = "${catppuccinKde}/share/color-schemes/${colorSchemeName}.colors";
+      source = "${runtime.kde.package}/share/color-schemes/${colorSchemeName}.colors";
     };
     "plasma/look-and-feel/${lookAndFeelName}" = {
       force = true;
-      source = "${catppuccinKde}/share/plasma/look-and-feel/${lookAndFeelName}";
+      source = "${runtime.kde.package}/share/plasma/look-and-feel/${lookAndFeelName}";
     };
     "aurorae/themes/${auroraeThemeName}" = {
       force = true;
-      source = "${catppuccinKde}/share/aurorae/themes/${auroraeThemeName}";
+      source = "${runtime.kde.package}/share/aurorae/themes/${auroraeThemeName}";
     };
   };
 }

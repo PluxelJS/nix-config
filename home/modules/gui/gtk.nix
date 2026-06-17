@@ -1,26 +1,18 @@
 { config, lib, pkgs, ... }:
 let
-  catppuccinGtk = pkgs.catppuccin-gtk.override {
-    variant = "macchiato";
-    accents = [ "lavender" ];
-    size = "standard";
-    tweaks = [ ];
-  };
-  catppuccinGtkThemeDir = "${catppuccinGtk}/share/themes/catppuccin-macchiato-lavender-standard";
-  papirusIconsDir = "${pkgs.papirus-icon-theme}/share/icons/Papirus";
-  breezeIconsDir = "${pkgs.kdePackages.breeze-icons}/share/icons/breeze";
-  bibataCursorDir = "${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Ice";
-  gtkThemeName = "Catppuccin-Macchiato";
-  iconThemeName = "Papirus";
-  cursorThemeName = "Bibata-Modern-Ice";
-  gtkFontName = "System-ui 13";
+  theme = config.ahdg.theme;
+  runtime = theme.runtime;
+  gtkThemeName = runtime.gtk.themeName;
+  iconThemeName = runtime.icon.name;
+  cursorThemeName = runtime.cursor.name;
+  gtkFontName = runtime.gtk.fontName;
   gtk3SettingsText = ''
     [Settings]
     gtk-theme-name=${gtkThemeName}
     gtk-icon-theme-name=${iconThemeName}
     gtk-font-name=${gtkFontName}
     gtk-cursor-theme-name=${cursorThemeName}
-    gtk-cursor-theme-size=24
+    gtk-cursor-theme-size=${toString theme.cursorSize}
     gtk-toolbar-style=GTK_TOOLBAR_ICONS
     gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
     gtk-button-images=0
@@ -29,8 +21,8 @@ let
     gtk-enable-input-feedback-sounds=0
     gtk-xft-antialias=1
     gtk-xft-hinting=1
-    gtk-xft-hintstyle=hintslight
-    gtk-xft-rgba=rgb
+    gtk-xft-hintstyle=${theme.xftHintStyle}
+    gtk-xft-rgba=${theme.xftSubPixel}
     gtk-application-prefer-dark-theme=1
   '';
   gtk2RcText = ''
@@ -38,7 +30,7 @@ let
     gtk-icon-theme-name="${iconThemeName}"
     gtk-font-name="${gtkFontName}"
     gtk-cursor-theme-name="${cursorThemeName}"
-    gtk-cursor-theme-size=24
+    gtk-cursor-theme-size=${toString theme.cursorSize}
     gtk-toolbar-style=GTK_TOOLBAR_ICONS
     gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
     gtk-button-images=0
@@ -47,8 +39,8 @@ let
     gtk-enable-input-feedback-sounds=0
     gtk-xft-antialias=1
     gtk-xft-hinting=1
-    gtk-xft-hintstyle="hintslight"
-    gtk-xft-rgba="rgb"
+    gtk-xft-hintstyle="${theme.xftHintStyle}"
+    gtk-xft-rgba="${theme.xftSubPixel}"
   '';
   xsettingsdText = ''
     Net/ThemeName "${gtkThemeName}"
@@ -58,8 +50,8 @@ let
     EnableInputFeedbackSounds 0
     Xft/Antialias 1
     Xft/Hinting 1
-    Xft/HintStyle "hintslight"
-    Xft/RGBA "rgb"
+    Xft/HintStyle "${theme.xftHintStyle}"
+    Xft/RGBA "${theme.xftSubPixel}"
   '';
 in
 lib.mkIf config.ahdg.features.gui {
@@ -175,7 +167,7 @@ lib.mkIf config.ahdg.features.gui {
     };
     "gtk-4.0" = {
       force = true;
-      source = "${catppuccinGtkThemeDir}/gtk-4.0";
+      source = "${runtime.gtk.themeDir}/gtk-4.0";
     };
     "xsettingsd/xsettingsd.conf" = {
       force = true;
@@ -185,21 +177,21 @@ lib.mkIf config.ahdg.features.gui {
 
   xdg.dataFile."themes/Catppuccin-Macchiato" = {
     force = true;
-    source = catppuccinGtkThemeDir;
+    source = runtime.gtk.themeDir;
   };
 
   xdg.dataFile."icons/Papirus" = {
     force = true;
-    source = papirusIconsDir;
+    source = runtime.icon.papirusDir;
   };
 
   xdg.dataFile."icons/breeze" = {
     force = true;
-    source = breezeIconsDir;
+    source = runtime.icon.breezeDir;
   };
 
   xdg.dataFile."icons/Bibata-Modern-Ice" = {
     force = true;
-    source = bibataCursorDir;
+    source = runtime.cursor.dir;
   };
 }

@@ -3,6 +3,15 @@ let
   githubNoReplyEmail = "36436808+ahdg6@users.noreply.github.com";
 in
 {
+  programs.bat = {
+    enable = true;
+    config = {
+      theme = "Catppuccin Macchiato";
+      style = "plain";
+      paging = "never";
+    };
+  };
+
   home.activation.removeLegacyGitConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
     legacy_gitconfig="${config.home.homeDirectory}/.gitconfig"
     if [[ -f "$legacy_gitconfig" ]] && [[ ! -L "$legacy_gitconfig" ]]; then
@@ -44,5 +53,10 @@ in
   programs.delta = {
     enable = true;
     enableGitIntegration = true;
+    options = {
+      syntax-theme = "Catppuccin Macchiato";
+      navigate = true;
+      side-by-side = true;
+    };
   };
 }

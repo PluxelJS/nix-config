@@ -56,9 +56,14 @@ let
     # old files or hidden muscle memory.
     bindkey '\e\e' sudo-command-line
     bindkey '^[e' quick-insert
+    bindkey '^[s' sudo-command-line
     bindkey '^[a' opencode-tui
     bindkey '^e' end-of-line
     bindkey '^t' transpose-chars
+    bindkey '^p' smart-history-up
+    bindkey '^[[A' smart-history-up
+    bindkey '^[OA' smart-history-up
+    bindkey '^w' backward-kill-word
     [[ -n "''${terminfo[kf1]-}" ]] && bindkey "''${terminfo[kf1]}" term-help
     bindkey '\eOP' term-help
     bindkey '\e[11~' term-help

@@ -10,7 +10,7 @@ setopt HIST_VERIFY
 setopt AUTO_PUSHD
 
 if command -v bat >/dev/null 2>&1; then
-  alias cat='bat --style=plain --paging=never --color auto'
+  alias cat='bat --theme="Catppuccin Macchiato" --style=plain --paging=never --color auto'
   alias -g -- --help='--help 2>&1 | bat --language=help --style=plain --paging=never --color always'
 fi
 
@@ -39,20 +39,27 @@ _term_edit_cheatsheet() {
 \e[1;35m► 我的入口\e[0m          \e[1;33m► 文本编辑\e[0m            \e[1;32m► 系统控制\e[0m
 F1      帮助提示          \e[1;32mCtrl+W  删前单词\e[0m      Ctrl+C  终止命令
 Alt+E   Env / Path 插入   Ctrl+U  删到行首          Ctrl+Z  暂停进程
-Ctrl+R  Atuin 历史        Ctrl+K  删到行尾          Ctrl+D  退出Shell
-Esc Esc sudo 切换         Ctrl+Y  粘贴内容          Ctrl+L  清屏
-Alt+A   Opencode TUI      \e[1;36m► 文本选择\e[0m            bg      后台运行
+Alt+S   sudo 切换         Ctrl+K  删到行尾          Ctrl+D  退出Shell
+Ctrl+R  Atuin 历史        Ctrl+Y  粘贴内容          Ctrl+L  清屏
+Esc Esc sudo 兼容入口     \e[1;36m► 文本选择\e[0m            bg      后台运行
+Alt+A   Opencode TUI      \e[1;34m► 光标导航\e[0m            fg      前台恢复
                          \e[3m双击单词\e[0m → 选择整个单词
                          \e[3m三击行\e[0m → 选择整行
                          Ctrl+Shift+C → 复制选中
                          Ctrl+Shift+V → 粘贴
 
-  \e[1;34m► 光标导航\e[0m          \e[1;36m► Alt+E\e[0m
-Ctrl+A  行首              默认 env；Tab 直进 yazi
-Ctrl+E  行尾              自动替换当前 $变量 / 路径片段
-Ctrl+T  交换字符          Space yazi 内选择项
-Alt+B   后移一词          Enter / o 在 yazi 里确认插入
-Alt+F   前移一词          Esc / q 取消返回
+Ctrl+A  行首              \e[1;36m► Alt+E\e[0m
+Ctrl+E  行尾              默认 env；Tab 直进 yazi
+Ctrl+T  交换字符          自动替换当前 $变量 / 路径片段
+↑/Ctrl+P 历史上翻策略     Space / Enter / o 在 yazi 里确认插入
+Alt+B   后移一词          Esc / q 取消返回
+Alt+F   前移一词
+
+  \e[1;35m► sudo 切换\e[0m
+Alt+S   显式切换 sudo 前缀
+空命令行 先取上一条命令，再加 sudo
+再次触发 去掉 sudo 前缀
+Esc Esc  兼容旧入口
 
   \e[1;35m► 标签页策略\e[0m
 Ghostty  Ctrl+T 新标签 / Ctrl+Shift+W 关标签 / Ctrl+PgUp,PgDn 切换
@@ -64,6 +71,7 @@ Shell    Alt+A 进入 opencode TUI
 Opencode Ctrl+X 为 leader；/help 或 Ctrl+X H 查看内置帮助
 
   \e[1;35m► 命令补充\e[0m
+keys     打开快捷键帮助
 o        打开当前目录或指定路径
 z        按使用频率跳转目录
 f / fix  修正上一条命令
@@ -76,9 +84,10 @@ gst / gl Git 状态 / 简洁日志
 
   local -r tsv=$'我的入口\t\e[33mF1\e[0m\t帮助提示
 我的入口\t\e[33mAlt+E\e[0m\tEnv / Path 插入
+我的入口\t\e[33mAlt+S\e[0m\tsudo 切换
 我的入口\t\e[33mAlt+A\e[0m\tOpencode TUI
 我的入口\t\e[33mCtrl+R\e[0m\tAtuin 历史
-我的入口\t\e[33mEsc Esc\e[0m\tsudo 切换
+我的入口\t\e[33mEsc Esc\e[0m\tsudo 兼容入口
 文本编辑\t\e[32mCtrl+W\e[0m\t删前单词
 文本编辑\t\e[32mCtrl+U\e[0m\t删到行首
 文本编辑\t\e[32mCtrl+K\e[0m\t删到行尾
@@ -91,6 +100,7 @@ gst / gl Git 状态 / 简洁日志
 光标导航\t\e[34mCtrl+A\e[0m\t行首
 光标导航\t\e[34mCtrl+E\e[0m\t行尾
 光标导航\t\e[34mCtrl+T\e[0m\t交换字符
+光标导航\t\e[34m↑ / Ctrl+P\e[0m\t统一历史上翻策略
 光标导航\t\e[34mAlt+B\e[0m\t后移一词
 光标导航\t\e[34mAlt+F\e[0m\t前移一词
 Alt+E\t\e[35m默认\e[0m\t先进入环境变量选择
@@ -99,11 +109,16 @@ Alt+E\t\e[35m替换\e[0m\t自动覆盖当前 $变量 / 路径片段
 Alt+E\t\e[35mSpace\e[0m\tyazi 内选择项
 Alt+E\t\e[35mEnter / o\e[0m\tyazi 内确认插入
 Alt+E\t\e[35mEsc / q\e[0m\t取消 / 返回
+sudo\t\e[35mAlt+S\e[0m\t显式切换 sudo 前缀
+sudo\t\e[35m空行触发\e[0m\t先取上一条命令再切换 sudo
+sudo\t\e[35m再次触发\e[0m\t切回非 sudo 版本
+sudo\t\e[35mEsc Esc\e[0m\t兼容旧入口
 标签页策略\t\e[35mGhostty\e[0m\tCtrl+T 新标签 / Ctrl+Shift+W 关标签 / Ctrl+PgUp,PgDn 切换
 标签页策略\t\e[35mDolphin\e[0m\tCtrl+T 新标签 / Ctrl+W 关标签 / Ctrl+Shift+T 恢复
 标签页策略\t\e[35m原则\e[0m\tCtrl+W 保留给 shell 删前一个单词
 AI\t\e[35mShell\e[0m\tAlt+A 进入 opencode TUI
 AI\t\e[35mOpencode\e[0m\tCtrl+X leader；/help 或 Ctrl+X H 查看帮助
+命令补充\t\e[35mkeys\e[0m\t打开快捷键帮助
 命令补充\t\e[35mo\e[0m\t打开当前目录或指定路径
 命令补充\t\e[35mz\e[0m\t按使用频率跳转目录
 命令补充\t\e[35mf / fix\e[0m\t修正上一条命令
@@ -140,6 +155,10 @@ AI\t\e[35mOpencode\e[0m\tCtrl+X leader；/help 或 Ctrl+X H 查看帮助
 }
 
 zle -N term-help _term_edit_cheatsheet
+
+keys() {
+  _term_edit_cheatsheet
+}
 
 _fzf_env_browser() {
   emulate -L zsh
@@ -281,6 +300,33 @@ _sudo_command_line() {
 }
 
 zle -N sudo-command-line _sudo_command_line
+
+typeset -gi __smart_history_up_count=0
+
+_smart_history_up() {
+  emulate -L zsh
+
+  local threshold="${ZSH_ATUIN_UP_THRESHOLD:-1}"
+  if [[ ! "$threshold" =~ '^[0-9]+$' ]] || (( threshold < 1 )); then
+    threshold=1
+  fi
+
+  if [[ "$LASTWIDGET" == smart-history-up ]]; then
+    (( __smart_history_up_count++ ))
+  else
+    __smart_history_up_count=1
+  fi
+
+  if (( threshold == 1 || __smart_history_up_count >= threshold )); then
+    __smart_history_up_count=0
+    zle atuin-up-search
+    return
+  fi
+
+  zle up-history
+}
+
+zle -N smart-history-up _smart_history_up
 
 _opencode_tui_widget() {
   emulate -L zsh

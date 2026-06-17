@@ -12,8 +12,13 @@ This file is the source of truth for cross-app shortcut decisions.
 ## Shell
 
 - `F1`: show the shell help / shortcut cheatsheet.
+- `keys`: show the same shell shortcut help from a normal command prompt.
+- `Up` / `Ctrl+P`: use one shared history policy. Default to Atuin on the
+  first press, but allow a configurable delay threshold in zsh when direct
+  step-back through the last commands is more useful.
 - `Alt+E`: open the env picker first; press `Tab` there to jump into `yazi`
   path selection, and replace the current env/path fragment when one exists.
+- `Alt+S`: explicit `sudo` toggle for the current command line.
 - `Alt+A`: open `opencode` TUI in the current workspace.
 - `Ctrl+W`: delete the previous word. Do not repurpose this.
 - `Ctrl+E`: end of line.
@@ -53,6 +58,12 @@ This file is the source of truth for cross-app shortcut decisions.
 - `Ctrl+Shift+T`: reopen closed tab.
 - `Ctrl+PgUp` / `Ctrl+PgDn`: previous / next tab.
 - `Ctrl+Shift+Tab` / `Ctrl+Tab`: alternate previous / next tab.
+
+## MangoWC
+
+- `Ctrl+\``: toggle `CopyQ`.
+- `Super+Shift+M`: launch `SongRec` in `gui-norecording` mode first.
+- `Super+Shift+R`: reload the MangoWC config.
 
 ## Intentional Mismatch
 

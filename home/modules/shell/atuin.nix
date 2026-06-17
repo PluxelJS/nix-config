@@ -5,7 +5,9 @@
     enableZshIntegration = true;
     forceOverwriteSettings = true;
     daemon.enable = true;
-    flags = [ "--disable-ai" ];
+    # Keep Ctrl-R on Atuin, but let zsh own the Up key policy so we can make
+    # it consistent with Ctrl-P and tune delayed popup behavior ourselves.
+    flags = [ "--disable-ai" "--disable-up-arrow" ];
 
     settings = {
       auto_sync = false;

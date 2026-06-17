@@ -13,6 +13,7 @@ let
       pkgs.darkly
       pkgs.bibata-cursors
       pkgs.papirus-icon-theme
+      pkgs.notepad-next
     ];
 in
 lib.mkIf (packages != [ ]) {

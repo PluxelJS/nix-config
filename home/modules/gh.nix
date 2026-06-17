@@ -6,7 +6,7 @@
 
     settings = {
       git_protocol = "ssh";
-      editor = "nvim";
+      editor = "NotepadNext";
       prompt = "enabled";
     };
   };

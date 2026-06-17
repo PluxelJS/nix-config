@@ -9,7 +9,7 @@ let
   };
   wanxiangGrammar = pkgs.fetchurl {
     url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
-    hash = "sha256-CqOGQiFUAR+9r6+0xVWuwChhn3gLTfd3VVeSDUazATY=";
+    hash = "sha256-+gTI+YF4JdSBOnnS2oTocG9Da9W1G6+zRL0ziDCTp4U=";
   };
 
   rimeStaticPayload = pkgs.runCommandLocal "ahdg-rime-static-payload" {
@@ -34,6 +34,7 @@ lib.mkIf config.ahdg.features.gui {
   home.sessionVariables = {
     INPUT_METHOD = "fcitx";
     GTK_IM_MODULE = "fcitx";
+    GLFW_IM_MODULE = "ibus";
     QT_IM_MODULE = "fcitx";
     QT_IM_MODULES = "wayland;fcitx";
     SDL_IM_MODULE = "fcitx";

@@ -14,6 +14,7 @@ lib.mkIf config.ahdg.features.portal {
 
     config.common = {
       default = [
+        "kde"
         "gtk"
         "*"
       ];
@@ -42,12 +43,42 @@ lib.mkIf config.ahdg.features.portal {
 
       "org.freedesktop.impl.portal.Settings" = [
         "gtk"
+        "kde"
         "*"
       ];
     };
   };
 
-  home.sessionVariables = {
-    GTK_USE_PORTAL = "1";
+  systemd.user.services = {
+    plasma-xdg-desktop-portal-kde = {
+      Unit = {
+        Description = "Xdg Desktop Portal For KDE";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "dbus";
+        ExecStart = "${pkgs.kdePackages.xdg-desktop-portal-kde}/libexec/xdg-desktop-portal-kde";
+        BusName = "org.freedesktop.impl.portal.desktop.kde";
+        Slice = "session.slice";
+        Restart = "no";
+      };
+    };
+
+    xdg-desktop-portal-wlr = {
+      Unit = {
+        Description = "Portal service (wlroots implementation)";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+        ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
+      };
+      Service = {
+        Type = "dbus";
+        BusName = "org.freedesktop.impl.portal.desktop.wlr";
+        ExecStart = "${pkgs.xdg-desktop-portal-wlr}/libexec/xdg-desktop-portal-wlr";
+        Restart = "on-failure";
+      };
+    };
   };
+
 }

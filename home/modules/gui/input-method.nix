@@ -82,20 +82,21 @@ lib.mkIf config.ahdg.features.gui {
       fi
     }
 
-    materialize_dir() {
-      local target=$1
-      local resolved=
+    sync_dir() {
+      local source=$1
+      local target=$2
 
-      if [[ ! -e "$target" ]]; then
+      if [[ ! -d "$source" ]]; then
         return
       fi
 
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -d "$resolved" ]]; then
+      if [[ -e "$target" ]]; then
+        chmod -R u+w "$target" 2>/dev/null || true
         rm -rf "$target"
-        mkdir -p "$(dirname "$target")"
-        cp -aT "$resolved" "$target"
       fi
+
+      mkdir -p "$(dirname "$target")"
+      cp -aT "$source" "$target"
     }
 
     materialize_file "${config.xdg.configHome}/fcitx5/config"
@@ -108,9 +109,9 @@ lib.mkIf config.ahdg.features.gui {
       done
     fi
 
-    materialize_dir "${config.xdg.dataHome}/fcitx5/themes/plasma"
-    materialize_dir "${config.xdg.dataHome}/fcitx5/themes/catppuccin-macchiato-lavender"
-    materialize_dir "${config.xdg.dataHome}/fcitx5/themes/catppuccin-mocha-lavender"
+    sync_dir "${plasmaThemeDir}" "${config.xdg.dataHome}/fcitx5/themes/plasma"
+    sync_dir "${catppuccinFcitx5Dir}/catppuccin-macchiato-lavender" "${config.xdg.dataHome}/fcitx5/themes/catppuccin-macchiato-lavender"
+    sync_dir "${catppuccinFcitx5Dir}/catppuccin-mocha-lavender" "${config.xdg.dataHome}/fcitx5/themes/catppuccin-mocha-lavender"
   '';
 
   home.activation.syncRimeStaticPayload = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -247,21 +248,6 @@ lib.mkIf config.ahdg.features.gui {
     "fcitx5/conf/waylandim.conf" = {
       force = true;
       source = ../../files/fcitx5/conf/waylandim.conf;
-    };
-  };
-
-  xdg.dataFile = {
-    "fcitx5/themes/plasma" = {
-      force = true;
-      source = plasmaThemeDir;
-    };
-    "fcitx5/themes/catppuccin-macchiato-lavender" = {
-      force = true;
-      source = "${catppuccinFcitx5Dir}/catppuccin-macchiato-lavender";
-    };
-    "fcitx5/themes/catppuccin-mocha-lavender" = {
-      force = true;
-      source = "${catppuccinFcitx5Dir}/catppuccin-mocha-lavender";
     };
   };
 }

@@ -14,6 +14,8 @@ let
       pkgs.bibata-cursors
       pkgs.papirus-icon-theme
       pkgs.notepad-next
+      pkgs.copyq
+      pkgs.songrec
     ];
 in
 lib.mkIf (packages != [ ]) {

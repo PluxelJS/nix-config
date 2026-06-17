@@ -26,6 +26,13 @@
         overlays = [
           (final: prev: {
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
+            songrec = prev.songrec.override {
+              # SongRec opens ALSA through libasound at runtime. The plain
+              # alsa-lib package in nixpkgs does not include the Pulse/PipeWire
+              # compatibility plugins, which causes "snd_pcm_open" failures on
+              # this desktop. Reuse the official merged package instead.
+              alsa-lib = final.alsa-lib-with-plugins;
+            };
           })
         ];
       };

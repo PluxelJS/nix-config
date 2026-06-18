@@ -6,6 +6,7 @@
     ./assets.nix
     ./dolphin.nix
     ./flatpak.nix
+    ./ide-flatpaks.nix
     ./fontconfig.nix
     ./gtk.nix
     ./input-method.nix

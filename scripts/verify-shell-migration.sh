@@ -213,7 +213,7 @@ if has_feature flatpak && [[ -d "$HOME/.local/share/flatpak/overrides" ]]; then
   done < <(find "$HOME/.local/share/flatpak/overrides" -maxdepth 1 -type f | sort)
 
   if [[ $flatpak_app_override_issue -eq 0 ]]; then
-    pass "Flatpak app-specific overrides remain outside Nix control"
+    pass "Flatpak app-specific overrides remain activation-managed and writable"
   fi
 else
   if has_feature flatpak; then
@@ -336,10 +336,44 @@ elif has_feature fonts; then
   fail "monospace no longer resolves to Maple Mono NF CN"
 fi
 
-if has_feature flatpak && flatpak run --command=sh com.visualstudio.code -c 'fc-match "Maple Mono NF CN" 2>/dev/null | grep -q "^MapleMono-NF-CN"' >/dev/null 2>&1; then
-  pass "VSCode Flatpak can resolve the Nix-managed Maple Mono NF CN font"
-elif has_feature flatpak; then
-  fail "VSCode Flatpak is still missing Maple Mono NF CN"
+if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2>&1; then
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'for cmd in zsh mise git gh opencode; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
+    pass "Code Studio terminal resolves the shared host-managed toolchain"
+  else
+    fail "Code Studio terminal is missing part of the shared host-managed toolchain"
+  fi
+
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'test -f /home/ahdg/.config/zsh/.zshrc && test -f /home/ahdg/.config/starship/starship.toml && test -f /home/ahdg/.config/atuin/config.toml && test -f /home/ahdg/.config/opencode/tui.json' >/dev/null 2>&1; then
+    pass "Code Studio can read the host-side shared shell and opencode config"
+  else
+    fail "Code Studio cannot read the shared shell or opencode config"
+  fi
+
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'test -f "$HOME/.codex/config.toml" && test "$(readlink -f "$HOME/.codex/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
+    pass "Code Studio reuses the host Codex config without sharing the whole Codex state dir"
+  else
+    fail "Code Studio is not wired to the host Codex config as expected"
+  fi
+fi
+
+if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
+  if flatpak run --command=sh com.jetbrains.CLion -c 'for cmd in zsh git gh opencode; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
+    pass "CLion terminal resolves the shared host-managed toolchain"
+  else
+    fail "CLion terminal is missing part of the shared host-managed toolchain"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c 'test -f /home/ahdg/.config/zsh/.zshrc && test -f /home/ahdg/.config/starship/starship.toml && test -f /home/ahdg/.config/atuin/config.toml && test -f /home/ahdg/.config/opencode/tui.json' >/dev/null 2>&1; then
+    pass "CLion can read the host-side shared shell and opencode config"
+  else
+    fail "CLion cannot read the shared shell or opencode config"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c 'test -f "$HOME/.codex/config.toml" && test "$(readlink -f "$HOME/.codex/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
+    pass "CLion reuses the host Codex config without sharing the whole Codex state dir"
+  else
+    fail "CLion is not wired to the host Codex config as expected"
+  fi
 fi
 
 if has_feature flatpak && flatpak run --command=sh org.telegram.desktop -c 'fc-match sans-serif 2>/dev/null | grep -q "^Inter"' >/dev/null 2>&1; then
@@ -360,7 +394,10 @@ elif has_feature flatpak; then
   fail "Telegram Flatpak is still missing part of the fcitx or rime stack"
 fi
 
-if has_feature flatpak && flatpak override --user --show 2>/dev/null | rg -q '^sockets=wayland$' && ! flatpak override --user --show 2>/dev/null | rg -q 'qt5ct|qt6ct|/usr/share/icons|/usr/share/themes'; then
+if has_feature flatpak \
+  && [[ -f "$HOME/.local/share/flatpak/overrides/global" ]] \
+  && rg -q '^filesystems=.*xdg-config/qt5ct:ro.*xdg-config/qt6ct:ro' "$HOME/.local/share/flatpak/overrides/global" \
+  && ! rg -q '/usr/share/icons|/usr/share/themes' "$HOME/.local/share/flatpak/overrides/global"; then
   pass "Flatpak global override matches the Nix-managed host integration policy"
 elif has_feature flatpak; then
   fail "Flatpak global override does not match the expected Nix-managed policy"

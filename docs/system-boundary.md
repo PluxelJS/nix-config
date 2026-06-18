@@ -54,6 +54,15 @@ Things that do belong in this repo:
 - user-facing theme assets
 - per-user KDE/GTK settings
 - user-scoped systemd services
+- per-user Flatpak override policy for explicitly managed desktop/dev sandboxes
+
+Flatpak note:
+
+- per-app sandbox policy belongs here
+- shared read-only config should usually stay in the host home and be mounted in
+- sandbox-private mutable state should stay under `~/.var/app/<app-id>/`
+- if a specific app needs a runtime workaround, keep it as a small app-local
+  exception rather than introducing another generic wrapper layer
 
 ## Host Runtime Dependencies
 

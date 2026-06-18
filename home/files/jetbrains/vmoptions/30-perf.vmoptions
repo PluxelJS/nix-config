@@ -1,0 +1,6 @@
+-Dfile.encoding=UTF-8
+-Djava.net.preferIPv4Stack=true
+-XX:ReservedCodeCacheSize=512m
+-XX:+UseStringDeduplication
+-Didea.ProcessCanceledException=disabled
+-Dkotlinx.coroutines.debug=off

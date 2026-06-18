@@ -113,7 +113,8 @@ Some files remain outside strict Nix ownership on purpose:
 - `~/.config/ghostty/config-dankcolors`
   DMS still updates this file at runtime.
 - `~/.local/share/flatpak/overrides/<app-id>`
-  App-specific Flatpak overrides stay manual.
+  App-specific Flatpak overrides are activation-managed regular files so they
+  stay writable outside the Nix store while still following repo policy.
 - `gh` keyring entries or fallback `~/.config/gh/hosts.yml`
   `gh` login remains local runtime state.
 - `~/.local/share/fonts/`
@@ -124,6 +125,73 @@ Some files remain outside strict Nix ownership on purpose:
 - `~/.local/share/fcitx5/rime/user.yaml`
 - `~/.local/share/fcitx5/rime/installation.yaml`
   These are live Rime runtime artifacts and remain writable.
+
+## Flatpak IDE Rule
+
+IDE Flatpaks follow one explicit split:
+
+- host-side canonical source for read-only shared config
+- app-private writable state inside `~/.var/app/<app-id>/`
+
+Shared read-only config for IDE sandboxes should come from the host when it is
+stable policy/config, for example:
+
+- `~/.config/zsh`
+- `~/.config/starship`
+- `~/.config/atuin`
+- `~/.config/opencode`
+- `~/.config/git`
+- `~/.config/gh`
+- `~/.gitconfig`
+- `~/.codex/config.toml`
+- the Home Manager / Nix profile bin dir and `/nix/store`
+
+Do not make a Flatpak app's private home the canonical source for shared config.
+The IDE should read these paths directly from the host-visible home instead of
+copying them into `~/.var/app/<app-id>/home`.
+
+Keep app-private writable state in the sandbox, for example:
+
+- `~/.vscode`, `~/.vscode-shared`
+- `.codex` databases/logs/session state, except the shared `config.toml`
+- `.npm`, `.bun`
+- app-local caches, plugin indexes, and editor-specific mutable state
+
+`mise` is intentionally treated as environment/toolchain state rather than as a
+pure shared config surface. Project-level `mise.toml` remains the canonical
+tool-version declaration, while per-app `mise` runtime/cache/install state may
+remain private when stronger isolation is desired.
+
+## JetBrains Flatpak Rule
+
+Installed `com.jetbrains.*` Flatpaks are managed automatically:
+
+- force `Wayland` only
+- never allow `X11` or `fallback-x11`
+- never expose `ssh-auth` or `gpg-agent`
+- keep shared shell/git/Codex config mounted from the host
+- allow project writes under `~/code`
+- allow sandbox access to `xdg-data/Trash` so IDE file deletes can use the host
+  trash instead of only offering permanent deletion
+- append every snippet from `home/files/jetbrains/vmoptions/` to each discovered
+  `*64.vmoptions`
+- unpack `home/files/jetbrains/inputhelp.zip` into each app's private
+  `config/JetBrains/inputhelp` directory and inject its `-javaagent`
+
+This logic intentionally works by app discovery rather than by a hard-coded IDE
+list. The activation step scans installed `com.jetbrains.*` Flatpaks for real
+JetBrains config directories and only appends to vmoptions files that the IDE
+has already created.
+
+That design keeps ownership boundaries clear:
+
+- JetBrains creates its own product/version directories and base vmoptions files
+- Home Manager applies sandbox policy and performs idempotent append-only
+  customization on top
+
+`GTK_IM_MODULE`, `QT_IM_MODULE`, and `XMODIFIERS` are cleared for these IDE
+sandboxes as an explicit compatibility workaround for the current JetBrains
+Wayland runtimes on this machine.
 
 ## Runtime Expectations
 

@@ -5,19 +5,19 @@ and DMS-generated runtime colors.
 
 ## Current Canonical Theme Stack
 
-- GTK: `Catppuccin-Macchiato:dark`
-- KDE color scheme: `CatppuccinMacchiatoLavender`
-- KDE look-and-feel: `Catppuccin-Macchiato-Lavender`
-- KDE window decoration: `CatppuccinMacchiato-Modern`
-- Qt widget style: `Darkly`
+- Day mode: `Catppuccin Latte + Lavender`
+- Night mode: `Catppuccin Macchiato + Lavender`
+- Default activation baseline: night mode
+- Runtime mode switcher: `darkman`
 - Icons: `Papirus`
 - Cursor: `Bibata-Modern-Ice`
 
 Important:
 
-- The current setup does **not** use `Latte` anywhere in the active desktop
-  stack.
-- The active Catppuccin desktop palette is effectively `Macchiato + Lavender`.
+- The active Catppuccin desktop palette is selected at runtime. Nix installs
+  both `Latte + Lavender` and `Macchiato + Lavender` assets.
+- The runtime source of truth is `darkman`; DMS remains limited to mutable
+  compositor/session overlays.
 
 ## Nix-Owned Theme Assets
 
@@ -70,6 +70,17 @@ This means:
 - Terminal/TUI app themes such as `yazi` do not conflict with DMS and should be
   Nix-managed if we want a pinned reproducible theme.
 
+Portal-specific rule:
+
+- `org.freedesktop.impl.portal.Settings` should prefer `darkman`, so apps that
+  follow the XDG Settings portal can react to system light/dark changes without
+  app-specific theme wiring.
+- `xdg-desktop-portal` backends that need toolkit environment should read
+  `~/.config/ahdg/theme/session.env`.
+- Do not rely on ad-hoc session import timing as the primary mechanism for
+  portal theming, because DBus/systemd user activation can otherwise start the
+  same GUI app under a different theme context.
+
 ## Current Dynamic DMS Scope
 
 At the moment, DMS should be treated as the live owner only for:
@@ -90,6 +101,7 @@ Nix-managed and not DMS-managed:
 
 - GTK theme assets and toolkit settings
 - KDE color scheme, look-and-feel, window decoration, and widget style
+- `darkman` mode switch hooks and the shared `ahdg-theme` apply script
 - icon and cursor assets
 - `fcitx5` Catppuccin theme assets
 - `yazi` Catppuccin flavor
@@ -119,7 +131,9 @@ is system-owned but the user-facing config is still intentionally Nix-owned:
 - `fcitx5`: runtime stays on the host side, but Nix owns the config, theme
   assets, Rime baseline payload, and desktop/session environment policy
 - `dolphin`: runtime may come from the host side, but `dolphinrc` and
-  `dolphinui.rc` are still part of the repo-managed desktop policy
+  `dolphinui.rc` are still part of the repo-managed desktop policy; its DBus
+  `org.freedesktop.FileManager1` daemon must read
+  `~/.config/ahdg/theme/session.env`
 
 These are legacy ownership decisions with a clear policy surface. They are not
 a reason to expand new app theming to unrelated system-installed apps.
@@ -148,13 +162,21 @@ If GTK is migrated away from Catppuccin, the preferred direction is:
 - avoid moving GTK theme generation into DMS unless the whole desktop is meant
   to become wallpaper-reactive
 
-## Future Light/Dark Split
+## Light/Dark Split
 
-If a real light/dark split is wanted later, the intended policy is:
+The active split is:
 
 - light: `Latte`
 - dark: `Macchiato`
 - accent: `Lavender`
 
-That split is not active today and should be introduced explicitly rather than
-implicitly through runtime generators.
+The efficient path is to use system-level mechanisms first:
+
+- apps that support the XDG Settings portal follow `darkman`
+- GTK follows `gtk-3.0/settings.ini`, `gtk-4.0`, `gsettings`, and xsettings
+- KDE/Qt follows `kdeglobals`, KDE color schemes, and the KDE platform theme
+- daemonized services such as Dolphin and portal backends read
+  `~/.config/ahdg/theme/session.env` and are restarted by `ahdg-theme`
+
+Avoid adding app-specific theme hooks unless an app cannot follow one of those
+system surfaces.

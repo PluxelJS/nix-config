@@ -1,4 +1,7 @@
 { config, lib, pkgs, ... }:
+let
+  themeEnvironmentFile = "${config.xdg.configHome}/ahdg/theme/session.env";
+in
 lib.mkIf config.ahdg.features.portal {
   xdg.configFile."xdg-desktop-portal/portals.conf".force = true;
 
@@ -7,6 +10,7 @@ lib.mkIf config.ahdg.features.portal {
     xdgOpenUsePortal = true;
 
     extraPortals = [
+      pkgs.darkman
       pkgs.kdePackages.xdg-desktop-portal-kde
       pkgs.xdg-desktop-portal-gtk
       pkgs.xdg-desktop-portal-wlr
@@ -42,6 +46,7 @@ lib.mkIf config.ahdg.features.portal {
       ];
 
       "org.freedesktop.impl.portal.Settings" = [
+        "darkman"
         "gtk"
         "kde"
         "*"
@@ -61,6 +66,7 @@ lib.mkIf config.ahdg.features.portal {
         ExecStart = "${pkgs.kdePackages.xdg-desktop-portal-kde}/libexec/xdg-desktop-portal-kde";
         BusName = "org.freedesktop.impl.portal.desktop.kde";
         Slice = "session.slice";
+        EnvironmentFile = themeEnvironmentFile;
         Restart = "no";
       };
     };
@@ -76,6 +82,7 @@ lib.mkIf config.ahdg.features.portal {
         Type = "dbus";
         BusName = "org.freedesktop.impl.portal.desktop.wlr";
         ExecStart = "${pkgs.xdg-desktop-portal-wlr}/libexec/xdg-desktop-portal-wlr";
+        EnvironmentFile = themeEnvironmentFile;
         Restart = "on-failure";
       };
     };

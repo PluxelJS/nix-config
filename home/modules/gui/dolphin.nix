@@ -1,4 +1,7 @@
 { config, lib, ... }:
+let
+  themeEnvironmentFile = "${config.xdg.configHome}/ahdg/theme/session.env";
+in
 lib.mkIf config.ahdg.features.gui {
   # Dolphin has two separate config surfaces:
   # - dolphinrc for stable UI/preferences
@@ -11,5 +14,19 @@ lib.mkIf config.ahdg.features.gui {
   xdg.dataFile."kxmlgui5/dolphin/dolphinui.rc" = {
     force = true;
     source = ../../files/dolphin/dolphinui.rc;
+  };
+
+  systemd.user.services.plasma-dolphin = {
+    Unit = {
+      Description = "Dolphin file manager";
+      PartOf = [ "graphical-session.target" ];
+    };
+
+    Service = {
+      ExecStart = "/usr/bin/dolphin --daemon";
+      BusName = "org.freedesktop.FileManager1";
+      Slice = "background.slice";
+      EnvironmentFile = themeEnvironmentFile;
+    };
   };
 }

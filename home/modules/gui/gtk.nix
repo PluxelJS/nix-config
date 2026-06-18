@@ -2,6 +2,7 @@
 let
   theme = config.ahdg.theme;
   runtime = theme.runtime;
+  modes = runtime.modes;
   gtkThemeName = runtime.gtk.themeName;
   iconThemeName = runtime.icon.name;
   cursorThemeName = runtime.cursor.name;
@@ -23,7 +24,7 @@ let
     gtk-xft-hinting=1
     gtk-xft-hintstyle=${theme.xftHintStyle}
     gtk-xft-rgba=${theme.xftSubPixel}
-    gtk-application-prefer-dark-theme=1
+    gtk-application-prefer-dark-theme=${if runtime.gtk.preferDark then "1" else "0"}
   '';
   gtk2RcText = ''
     gtk-theme-name="${gtkThemeName}"
@@ -147,9 +148,12 @@ lib.mkIf config.ahdg.features.gui {
 
     # Flatpak can see these XDG paths, but store-backed symlinks are not
     # reliable inside the sandbox. Materialize the runtime copies after HM links.
+    materialize_file "${config.home.homeDirectory}/.gtkrc-2.0"
     materialize_file "${config.xdg.configHome}/gtk-3.0/settings.ini"
+    materialize_file "${config.xdg.configHome}/xsettingsd/xsettingsd.conf"
     materialize_dir "${config.xdg.configHome}/gtk-4.0"
-    materialize_dir "${config.xdg.dataHome}/themes/Catppuccin-Macchiato"
+    materialize_dir "${config.xdg.dataHome}/themes/${modes.dark.gtk.themeName}"
+    materialize_dir "${config.xdg.dataHome}/themes/${modes.light.gtk.themeName}"
     materialize_dir "${config.xdg.dataHome}/icons/Papirus"
     materialize_dir "${config.xdg.dataHome}/icons/breeze"
     materialize_dir "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
@@ -175,9 +179,16 @@ lib.mkIf config.ahdg.features.gui {
     };
   };
 
-  xdg.dataFile."themes/Catppuccin-Macchiato" = {
-    force = true;
-    source = runtime.gtk.themeDir;
+  xdg.dataFile = {
+    "themes/${modes.dark.gtk.themeName}" = {
+      force = true;
+      source = modes.dark.gtk.themeDir;
+    };
+
+    "themes/${modes.light.gtk.themeName}" = {
+      force = true;
+      source = modes.light.gtk.themeDir;
+    };
   };
 
   xdg.dataFile."icons/Papirus" = {

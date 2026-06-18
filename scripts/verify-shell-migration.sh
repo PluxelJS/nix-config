@@ -91,7 +91,7 @@ if has_feature ghostty; then
 fi
 
 if has_feature gui; then
-  check_symlink "$HOME/.gtkrc-2.0"
+  check_file "$HOME/.gtkrc-2.0"
   check_file "$HOME/.config/fcitx5/config"
   check_file "$HOME/.config/fcitx5/profile"
   check_file "$HOME/.config/fcitx5/conf/classicui.conf"
@@ -103,15 +103,54 @@ if has_feature gui; then
   check_file "$HOME/.local/share/fcitx5/rime/wanxiang-lts-zh-hans.gram"
   check_file "$HOME/.config/gtk-3.0/settings.ini"
   check_file "$HOME/.config/gtk-4.0/gtk.css"
-  check_symlink "$HOME/.config/xsettingsd/xsettingsd.conf"
+  check_file "$HOME/.config/xsettingsd/xsettingsd.conf"
+  check_file "$HOME/.config/ahdg/theme/session.env"
+  check_file "$HOME/.config/ahdg/theme/mode"
   check_file "$HOME/.local/share/themes/Catppuccin-Macchiato/index.theme"
+  check_file "$HOME/.local/share/themes/Catppuccin-Latte/index.theme"
   check_file "$HOME/.local/share/icons/Papirus/index.theme"
   check_file "$HOME/.local/share/icons/breeze/index.theme"
   check_file "$HOME/.local/share/icons/Bibata-Modern-Ice/index.theme"
   check_file "$HOME/.config/color-schemes/CatppuccinMacchiatoLavender.colors"
   check_file "$HOME/.local/share/color-schemes/CatppuccinMacchiatoLavender.colors"
+  check_file "$HOME/.config/color-schemes/CatppuccinLatteLavender.colors"
+  check_file "$HOME/.local/share/color-schemes/CatppuccinLatteLavender.colors"
   check_symlink "$HOME/.local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender"
+  check_symlink "$HOME/.local/share/plasma/look-and-feel/Catppuccin-Latte-Lavender"
   check_symlink "$HOME/.local/share/aurorae/themes/CatppuccinMacchiato-Modern"
+  check_symlink "$HOME/.local/share/aurorae/themes/CatppuccinLatte-Modern"
+
+  current_theme_mode="$(cat "$HOME/.config/ahdg/theme/mode" 2>/dev/null || true)"
+  case "$current_theme_mode" in
+    light)
+      expected_kde_scheme="CatppuccinLatteLavender"
+      expected_kde_view_bg="239, 241, 245"
+      ;;
+    dark)
+      expected_kde_scheme="CatppuccinMacchiatoLavender"
+      expected_kde_view_bg="36, 39, 58"
+      ;;
+    *)
+      expected_kde_scheme=""
+      expected_kde_view_bg=""
+      ;;
+  esac
+
+  actual_kde_view_bg="$(
+    awk -F= '
+      $0 == "[Colors:View]" { in_view = 1; next }
+      /^\[/ { in_view = 0 }
+      in_view && $1 == "BackgroundNormal" { print $2; exit }
+    ' "$HOME/.config/kdeglobals" 2>/dev/null || true
+  )"
+
+  if [[ -n "$expected_kde_scheme" ]] \
+    && rg -q "^ColorScheme=${expected_kde_scheme}$" "$HOME/.config/kdeglobals" \
+    && [[ "$actual_kde_view_bg" == "$expected_kde_view_bg" ]]; then
+    pass "KDE runtime color sections match the active theme mode"
+  else
+    fail "KDE runtime color sections do not match the active theme mode"
+  fi
 fi
 
 if has_feature portal; then
@@ -170,6 +209,7 @@ fi
 
 if has_feature gui; then
   for materialized_path in \
+    "$HOME/.gtkrc-2.0" \
     "$HOME/.config/fcitx5/config" \
     "$HOME/.config/fcitx5/profile" \
     "$HOME/.config/fcitx5/conf/classicui.conf" \
@@ -177,13 +217,17 @@ if has_feature gui; then
     "$HOME/.local/share/fcitx5/themes/catppuccin-macchiato-lavender" \
     "$HOME/.local/share/fcitx5/themes/catppuccin-mocha-lavender" \
     "$HOME/.config/gtk-3.0/settings.ini" \
+    "$HOME/.config/xsettingsd/xsettingsd.conf" \
     "$HOME/.config/gtk-4.0" \
     "$HOME/.local/share/themes/Catppuccin-Macchiato" \
+    "$HOME/.local/share/themes/Catppuccin-Latte" \
     "$HOME/.local/share/icons/Papirus" \
     "$HOME/.local/share/icons/breeze" \
     "$HOME/.local/share/icons/Bibata-Modern-Ice" \
     "$HOME/.config/color-schemes/CatppuccinMacchiatoLavender.colors" \
-    "$HOME/.local/share/color-schemes/CatppuccinMacchiatoLavender.colors"
+    "$HOME/.local/share/color-schemes/CatppuccinMacchiatoLavender.colors" \
+    "$HOME/.config/color-schemes/CatppuccinLatteLavender.colors" \
+    "$HOME/.local/share/color-schemes/CatppuccinLatteLavender.colors"
   do
     if [[ ! -L "$materialized_path" ]]; then
       pass "$materialized_path is materialized for Flatpak"
@@ -239,7 +283,7 @@ elif has_feature gui; then
   fail "legacy Kanagawa icon tree should no longer exist"
 fi
 
-if has_feature gui && [[ ! -e "$HOME/.local/share/themes/Catppuccin-Latte" ]] && [[ ! -e "$HOME/.local/share/themes/Catppuccin-Mocha" ]] && [[ ! -e "$HOME/.local/share/themes/Wallbash-Gtk" ]]; then
+if has_feature gui && [[ ! -e "$HOME/.local/share/themes/Catppuccin-Mocha" ]] && [[ ! -e "$HOME/.local/share/themes/Wallbash-Gtk" ]]; then
   pass "retired GTK theme trees are removed"
 elif has_feature gui; then
   fail "retired GTK theme trees should no longer exist"
@@ -374,6 +418,25 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
   else
     fail "CLion is not wired to the host Codex config as expected"
   fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c 'sed -n "/\\[Context\\]/,/\\[Session Bus Policy\\]/p" /.flatpak-info | rg -q "^sockets=wayland;$"' >/dev/null 2>&1; then
+    pass "CLion stays on Wayland-only sockets without X11 fallback"
+  else
+    fail "CLion should stay on Wayland-only sockets without X11 fallback"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c '
+    env_block="$(sed -n "/\\[Environment\\]/,/^\\[/p" /.flatpak-info)"
+    printf "%s\n" "$env_block" | rg -q "^FLATPAK_IDE_ENV=1$" &&
+    printf "%s\n" "$env_block" | rg -q "^GTK_IM_MODULE=$" &&
+    printf "%s\n" "$env_block" | rg -q "^QT_IM_MODULE=$" &&
+    printf "%s\n" "$env_block" | rg -q "^QT_IM_MODULES=wayland$" &&
+    printf "%s\n" "$env_block" | rg -q "^XMODIFIERS=$"
+  ' >/dev/null 2>&1; then
+    pass "CLion keeps its Wayland-specific input env override instead of inheriting desktop IM settings"
+  else
+    fail "CLion should keep its Wayland-specific input env override"
+  fi
 fi
 
 if has_feature flatpak && flatpak run --command=sh org.telegram.desktop -c 'fc-match sans-serif 2>/dev/null | grep -q "^Inter"' >/dev/null 2>&1; then
@@ -382,7 +445,7 @@ elif has_feature flatpak; then
   fail "Telegram Flatpak is still missing the user fontconfig stack"
 fi
 
-if has_feature flatpak && flatpak run --command=sh org.telegram.desktop -c 'test -f ~/.config/gtk-3.0/settings.ini && test -f ~/.local/share/themes/Catppuccin-Macchiato/index.theme && test -f ~/.local/share/icons/Papirus/index.theme && test -f ~/.local/share/icons/breeze/index.theme && test -f ~/.config/color-schemes/CatppuccinMacchiatoLavender.colors' >/dev/null 2>&1; then
+if has_feature flatpak && flatpak run --command=sh org.telegram.desktop -c 'test -f ~/.config/gtk-3.0/settings.ini && test -f ~/.local/share/themes/Catppuccin-Macchiato/index.theme && test -f ~/.local/share/themes/Catppuccin-Latte/index.theme && test -f ~/.local/share/icons/Papirus/index.theme && test -f ~/.local/share/icons/breeze/index.theme && test -f ~/.config/color-schemes/CatppuccinMacchiatoLavender.colors && test -f ~/.config/color-schemes/CatppuccinLatteLavender.colors' >/dev/null 2>&1; then
   pass "Telegram Flatpak can read the materialized theme stack"
 elif has_feature flatpak; then
   fail "Telegram Flatpak is still missing part of the materialized theme stack"
@@ -465,6 +528,34 @@ if has_feature portal && systemctl --user show-environment | rg -q '^NIX_XDG_DES
   pass "systemd user environment exports the portal directory"
 elif has_feature portal; then
   fail "systemd user environment is missing NIX_XDG_DESKTOP_PORTAL_DIR"
+fi
+
+if has_feature portal; then
+  kde_portal_unit="$(systemctl --user cat plasma-xdg-desktop-portal-kde.service 2>/dev/null || true)"
+
+  if [[ -n "$kde_portal_unit" ]] \
+    && printf '%s\n' "$kde_portal_unit" | rg -q 'EnvironmentFile=.*/\.config/ahdg/theme/session\.env'; then
+    pass "KDE portal backend reads the Nix-managed dynamic theme environment"
+  else
+    fail "KDE portal backend is missing the Nix-managed dynamic theme environment"
+  fi
+
+  if rg -q '^org\.freedesktop\.impl\.portal\.Settings=darkman;gtk;kde;\*$' "$HOME/.config/xdg-desktop-portal/portals.conf"; then
+    pass "portal Settings prefers darkman for system color-scheme"
+  else
+    fail "portal Settings does not prefer darkman"
+  fi
+fi
+
+if has_feature gui; then
+  dolphin_unit="$(systemctl --user cat plasma-dolphin.service 2>/dev/null || true)"
+
+  if [[ -n "$dolphin_unit" ]] \
+    && printf '%s\n' "$dolphin_unit" | rg -q 'EnvironmentFile=.*/\.config/ahdg/theme/session\.env'; then
+    pass "Dolphin FileManager1 daemon reads the Nix-managed dynamic theme environment"
+  else
+    fail "Dolphin FileManager1 daemon is missing the Nix-managed dynamic theme environment"
+  fi
 fi
 
 if has_feature gui && busctl --user status org.fcitx.Fcitx5 2>/dev/null | rg -q '^Exe=/usr/bin/fcitx5$'; then

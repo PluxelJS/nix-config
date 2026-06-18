@@ -3,6 +3,7 @@
   imports = [
     ./theme-policy.nix
     ./theme-runtime.nix
+    ./theme-switching.nix
     ./assets.nix
     ./dolphin.nix
     ./flatpak.nix

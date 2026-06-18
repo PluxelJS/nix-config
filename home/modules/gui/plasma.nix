@@ -2,6 +2,7 @@
 let
   theme = config.ahdg.theme;
   runtime = theme.runtime;
+  modes = runtime.modes;
   python3 = "${pkgs.python3}/bin/python3";
   colorSchemeName = runtime.kde.colorSchemeName;
   lookAndFeelName = runtime.kde.lookAndFeelName;
@@ -49,8 +50,10 @@ lib.mkIf config.ahdg.features.gui {
 
     # Some KDE-aware Flatpaks only get config/data shares, not arbitrary store
     # paths. Keep the color scheme materialized in both locations.
-    materialize_file "${config.xdg.configHome}/color-schemes/${colorSchemeName}.colors"
-    materialize_file "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors"
+    materialize_file "${config.xdg.configHome}/color-schemes/${modes.dark.kde.colorSchemeName}.colors"
+    materialize_file "${config.xdg.dataHome}/color-schemes/${modes.dark.kde.colorSchemeName}.colors"
+    materialize_file "${config.xdg.configHome}/color-schemes/${modes.light.kde.colorSchemeName}.colors"
+    materialize_file "${config.xdg.dataHome}/color-schemes/${modes.light.kde.colorSchemeName}.colors"
   '';
 
   home.activation.removeUnusedQtctConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
@@ -337,23 +340,44 @@ path.write_text("\n".join(out).rstrip() + "\n")
 PY
   '';
 
-  xdg.configFile."color-schemes/${colorSchemeName}.colors" = {
-    force = true;
-    source = "${runtime.kde.package}/share/color-schemes/${colorSchemeName}.colors";
+  xdg.configFile = {
+    "color-schemes/${modes.dark.kde.colorSchemeName}.colors" = {
+      force = true;
+      source = "${modes.dark.kde.package}/share/color-schemes/${modes.dark.kde.colorSchemeName}.colors";
+    };
+
+    "color-schemes/${modes.light.kde.colorSchemeName}.colors" = {
+      force = true;
+      source = "${modes.light.kde.package}/share/color-schemes/${modes.light.kde.colorSchemeName}.colors";
+    };
   };
 
   xdg.dataFile = {
-    "color-schemes/${colorSchemeName}.colors" = {
+    "color-schemes/${modes.dark.kde.colorSchemeName}.colors" = {
       force = true;
-      source = "${runtime.kde.package}/share/color-schemes/${colorSchemeName}.colors";
+      source = "${modes.dark.kde.package}/share/color-schemes/${modes.dark.kde.colorSchemeName}.colors";
     };
-    "plasma/look-and-feel/${lookAndFeelName}" = {
+    "color-schemes/${modes.light.kde.colorSchemeName}.colors" = {
       force = true;
-      source = "${runtime.kde.package}/share/plasma/look-and-feel/${lookAndFeelName}";
+      source = "${modes.light.kde.package}/share/color-schemes/${modes.light.kde.colorSchemeName}.colors";
     };
-    "aurorae/themes/${auroraeThemeName}" = {
+
+    "plasma/look-and-feel/${modes.dark.kde.lookAndFeelName}" = {
       force = true;
-      source = "${runtime.kde.package}/share/aurorae/themes/${auroraeThemeName}";
+      source = "${modes.dark.kde.package}/share/plasma/look-and-feel/${modes.dark.kde.lookAndFeelName}";
+    };
+    "plasma/look-and-feel/${modes.light.kde.lookAndFeelName}" = {
+      force = true;
+      source = "${modes.light.kde.package}/share/plasma/look-and-feel/${modes.light.kde.lookAndFeelName}";
+    };
+
+    "aurorae/themes/${modes.dark.kde.auroraeThemeName}" = {
+      force = true;
+      source = "${modes.dark.kde.package}/share/aurorae/themes/${modes.dark.kde.auroraeThemeName}";
+    };
+    "aurorae/themes/${modes.light.kde.auroraeThemeName}" = {
+      force = true;
+      source = "${modes.light.kde.package}/share/aurorae/themes/${modes.light.kde.auroraeThemeName}";
     };
   };
 }

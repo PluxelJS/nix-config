@@ -3,27 +3,113 @@ let
   types = lib.types;
   theme = config.ahdg.theme;
 
-  catppuccinGtk = pkgs.catppuccin-gtk.override {
-    variant = "macchiato";
-    accents = [ "lavender" ];
-    size = "standard";
-    tweaks = [ ];
-  };
-
-  catppuccinKde = pkgs.catppuccin-kde.override {
-    flavour = [ "macchiato" ];
-    accents = [ "lavender" ];
-    winDecStyles = [ "modern" ];
-  };
-
-  gtkThemeDir = "${catppuccinGtk}/share/themes/catppuccin-macchiato-lavender-standard";
-  gtkThemeSpec = "${theme.catppuccinGtkThemeName}:${theme.catppuccinGtkVariant}";
   gtkFontName = "${theme.gtkFontFamily} ${toString theme.gtkFontSize}";
   kdeFontValue = "${theme.kdeUiFontFamily},${toString theme.kdeUiFontSize},-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
   kdeFixedFontValue = "${theme.kdeFixedFontFamily},${toString theme.kdeFixedFontSize},-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
-  sessionVariables =
+
+  mkCatppuccinGtk =
+    variant:
+    pkgs.catppuccin-gtk.override {
+      inherit variant;
+      accents = [ "lavender" ];
+      size = "standard";
+      tweaks = [ ];
+    };
+
+  mkCatppuccinKde =
+    flavour:
+    pkgs.catppuccin-kde.override {
+      flavour = [ flavour ];
+      accents = [ "lavender" ];
+      winDecStyles = [ "modern" ];
+    };
+
+  mkMode =
     {
-      GTK_THEME = gtkThemeSpec;
+      name,
+      gtkName,
+      gtkVariant,
+      gtkDirName,
+      kdeFlavour,
+      kdeColorScheme,
+      kdeLookAndFeel,
+      kdeAurorae,
+      kdeWidgetStyle,
+      gsettingsColorScheme,
+    }:
+    let
+      gtkPackage = mkCatppuccinGtk gtkVariant;
+      kdePackage = mkCatppuccinKde kdeFlavour;
+      gtkThemeSpec = "${gtkName}:${if name == "dark" then "dark" else "light"}";
+    in
+    {
+      inherit name gsettingsColorScheme;
+
+      gtk = {
+        package = gtkPackage;
+        themeDir = "${gtkPackage}/share/themes/${gtkDirName}";
+        themeName = gtkName;
+        themeSpec = gtkThemeSpec;
+        fontName = gtkFontName;
+        preferDark = name == "dark";
+      };
+
+      kde = {
+        package = kdePackage;
+        colorSchemeName = kdeColorScheme;
+        colorSchemeFile = "${kdePackage}/share/color-schemes/${kdeColorScheme}.colors";
+        lookAndFeelName = kdeLookAndFeel;
+        auroraeThemeName = kdeAurorae;
+        widgetStyle = kdeWidgetStyle;
+        fontValue = kdeFontValue;
+        fixedFontValue = kdeFixedFontValue;
+      };
+
+      sessionVariables =
+        {
+          GTK_THEME = gtkThemeSpec;
+          QT_QPA_PLATFORM = "wayland";
+          QT_QPA_PLATFORMTHEME = "kde";
+          KDE_SESSION_VERSION = "6";
+          KDE_FULL_SESSION = "true";
+          XCURSOR_THEME = theme.cursorThemeName;
+          XCURSOR_SIZE = toString theme.cursorSize;
+        }
+        // lib.optionalAttrs config.ahdg.features.portal {
+          GTK_USE_PORTAL = "1";
+        };
+    };
+
+  modes = {
+    light = mkMode {
+      name = "light";
+      gtkName = "Catppuccin-Latte";
+      gtkVariant = "latte";
+      gtkDirName = "catppuccin-latte-lavender-standard";
+      kdeFlavour = "latte";
+      kdeColorScheme = "CatppuccinLatteLavender";
+      kdeLookAndFeel = "Catppuccin-Latte-Lavender";
+      kdeAurorae = "CatppuccinLatte-Modern";
+      kdeWidgetStyle = "Breeze";
+      gsettingsColorScheme = "prefer-light";
+    };
+
+    dark = mkMode {
+      name = "dark";
+      gtkName = theme.catppuccinGtkThemeName;
+      gtkVariant = "macchiato";
+      gtkDirName = "catppuccin-macchiato-lavender-standard";
+      kdeFlavour = "macchiato";
+      kdeColorScheme = theme.catppuccinKdeColorScheme;
+      kdeLookAndFeel = theme.catppuccinKdeLookAndFeel;
+      kdeAurorae = theme.catppuccinKdeAuroraeTheme;
+      kdeWidgetStyle = theme.kdeWidgetStyle;
+      gsettingsColorScheme = "prefer-dark";
+    };
+  };
+
+  activeMode = modes.dark;
+  baseSessionVariables = {
       QT_QPA_PLATFORM = "wayland";
       QT_QPA_PLATFORMTHEME = "kde";
       KDE_SESSION_VERSION = "6";
@@ -44,23 +130,10 @@ in
 
   config = lib.mkIf config.ahdg.features.gui {
     ahdg.theme.runtime = {
-      gtk = {
-        package = catppuccinGtk;
-        themeDir = gtkThemeDir;
-        themeName = theme.catppuccinGtkThemeName;
-        themeSpec = gtkThemeSpec;
-        fontName = gtkFontName;
-      };
-
-      kde = {
-        package = catppuccinKde;
-        colorSchemeName = theme.catppuccinKdeColorScheme;
-        lookAndFeelName = theme.catppuccinKdeLookAndFeel;
-        auroraeThemeName = theme.catppuccinKdeAuroraeTheme;
-        widgetStyle = theme.kdeWidgetStyle;
-        fontValue = kdeFontValue;
-        fixedFontValue = kdeFixedFontValue;
-      };
+      modes = modes;
+      defaultMode = "dark";
+      gtk = activeMode.gtk;
+      kde = activeMode.kde;
 
       icon = {
         name = theme.iconThemeName;
@@ -75,10 +148,11 @@ in
       };
 
       session = {
-        inherit sessionVariables;
+        sessionVariables = activeMode.sessionVariables;
+        baseSessionVariables = baseSessionVariables;
       };
     };
 
-    home.sessionVariables = sessionVariables;
+    home.sessionVariables = baseSessionVariables;
   };
 }

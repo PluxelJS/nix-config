@@ -60,9 +60,10 @@ let
     bindkey '^[a' opencode-tui
     bindkey '^e' end-of-line
     bindkey '^t' transpose-chars
-    bindkey '^p' smart-history-up
-    bindkey '^[[A' smart-history-up
-    bindkey '^[OA' smart-history-up
+    bindkey '^p' up-line-or-history
+    bindkey '^[[A' history-up-with-search-hint
+    bindkey '^[OA' history-up-with-search-hint
+    bindkey '^[r' atuin-prefix-history-search
     bindkey '^w' backward-kill-word
     [[ -n "''${terminfo[kf1]-}" ]] && bindkey "''${terminfo[kf1]}" term-help
     bindkey '\eOP' term-help

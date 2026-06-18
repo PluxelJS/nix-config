@@ -41,8 +41,9 @@ F1      帮助提示          \e[1;32mCtrl+W  删前单词\e[0m      Ctrl+C  终
 Alt+E   Env / Path 插入   Ctrl+U  删到行首          Ctrl+Z  暂停进程
 Alt+S   sudo 切换         Ctrl+K  删到行尾          Ctrl+D  退出Shell
 Ctrl+R  Atuin 历史        Ctrl+Y  粘贴内容          Ctrl+L  清屏
-Esc Esc sudo 兼容入口     \e[1;36m► 文本选择\e[0m            bg      后台运行
+↑       本地历史上翻      \e[1;36m► 文本选择\e[0m            bg      后台运行
 Alt+A   Opencode TUI      \e[1;34m► 光标导航\e[0m            fg      前台恢复
+Esc Esc sudo 兼容入口
                          \e[3m双击单词\e[0m → 选择整个单词
                          \e[3m三击行\e[0m → 选择整行
                          Ctrl+Shift+C → 复制选中
@@ -51,7 +52,8 @@ Alt+A   Opencode TUI      \e[1;34m► 光标导航\e[0m            fg      前�
 Ctrl+A  行首              \e[1;36m► Alt+E\e[0m
 Ctrl+E  行尾              默认 env；Tab 直进 yazi
 Ctrl+T  交换字符          自动替换当前 $变量 / 路径片段
-↑/Ctrl+P 历史上翻策略     Space / Enter / o 在 yazi 里确认插入
+Ctrl+P  本地历史上翻      Space / Enter / o 在 yazi 里确认插入
+Alt+R   Atuin 前缀搜索
 Alt+B   后移一词          Esc / q 取消返回
 Alt+F   前移一词
 
@@ -87,6 +89,8 @@ gst / gl Git 状态 / 简洁日志
 我的入口\t\e[33mAlt+S\e[0m\tsudo 切换
 我的入口\t\e[33mAlt+A\e[0m\tOpencode TUI
 我的入口\t\e[33mCtrl+R\e[0m\tAtuin 历史
+我的入口\t\e[33m↑\e[0m\t本地历史上翻
+我的入口\t\e[33mAlt+R\e[0m\tAtuin 前缀搜索
 我的入口\t\e[33mEsc Esc\e[0m\tsudo 兼容入口
 文本编辑\t\e[32mCtrl+W\e[0m\t删前单词
 文本编辑\t\e[32mCtrl+U\e[0m\t删到行首
@@ -100,7 +104,7 @@ gst / gl Git 状态 / 简洁日志
 光标导航\t\e[34mCtrl+A\e[0m\t行首
 光标导航\t\e[34mCtrl+E\e[0m\t行尾
 光标导航\t\e[34mCtrl+T\e[0m\t交换字符
-光标导航\t\e[34m↑ / Ctrl+P\e[0m\t统一历史上翻策略
+光标导航\t\e[34mCtrl+P\e[0m\t本地历史上翻
 光标导航\t\e[34mAlt+B\e[0m\t后移一词
 光标导航\t\e[34mAlt+F\e[0m\t前移一词
 Alt+E\t\e[35m默认\e[0m\t先进入环境变量选择
@@ -301,32 +305,37 @@ _sudo_command_line() {
 
 zle -N sudo-command-line _sudo_command_line
 
-typeset -gi __smart_history_up_count=0
+typeset -gi __history_up_hint_count=0
 
-_smart_history_up() {
+_history_up_with_search_hint() {
   emulate -L zsh
 
-  local threshold="${ZSH_ATUIN_UP_THRESHOLD:-1}"
-  if [[ ! "$threshold" =~ '^[0-9]+$' ]] || (( threshold < 1 )); then
-    threshold=1
-  fi
-
-  if [[ "$LASTWIDGET" == smart-history-up ]]; then
-    (( __smart_history_up_count++ ))
+  if [[ "$LASTWIDGET" == history-up-with-search-hint ]]; then
+    (( __history_up_hint_count++ ))
   else
-    __smart_history_up_count=1
+    __history_up_hint_count=1
   fi
 
-  if (( threshold == 1 || __smart_history_up_count >= threshold )); then
-    __smart_history_up_count=0
-    zle atuin-up-search
-    return
-  fi
+  zle up-line-or-history
 
-  zle up-history
+  if (( __history_up_hint_count == 2 )); then
+    zle -M "搜索历史用 Ctrl-R；按当前输入过滤用 Alt-R"
+  fi
 }
 
-zle -N smart-history-up _smart_history_up
+zle -N history-up-with-search-hint _history_up_with_search_hint
+
+_atuin_prefix_history_search() {
+  emulate -L zsh
+
+  if (( ${+widgets[atuin-up-search]} )); then
+    zle atuin-up-search
+  else
+    zle up-line-or-history
+  fi
+}
+
+zle -N atuin-prefix-history-search _atuin_prefix_history_search
 
 _opencode_tui_widget() {
   emulate -L zsh

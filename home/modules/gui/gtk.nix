@@ -3,10 +3,68 @@ let
   theme = config.ahdg.theme;
   runtime = theme.runtime;
   modes = runtime.modes;
+  themeModes = [
+    modes.dark
+    modes.light
+  ];
   gtkThemeName = runtime.gtk.themeName;
   iconThemeName = runtime.icon.name;
   cursorThemeName = runtime.cursor.name;
   gtkFontName = runtime.gtk.fontName;
+  legacyGtkArtifacts = [
+    "${config.home.homeDirectory}/.gtkrc-2.0.mine"
+    "${config.xdg.configHome}/gtkrc"
+    "${config.xdg.configHome}/gtk-3.0/gtk.css"
+    "${config.xdg.configHome}/gtk-3.0/dank-colors.css"
+    "${config.xdg.dataHome}/themes/Abyssal-Wave"
+    "${config.xdg.dataHome}/themes/Catppuccin-Macchiato"
+    "${config.xdg.dataHome}/themes/Catppuccin-Latte"
+    "${config.xdg.dataHome}/themes/Catppuccin-Mocha"
+    "${config.xdg.dataHome}/themes/Decay-Green"
+    "${config.xdg.dataHome}/themes/Edge-Runner"
+    "${config.xdg.dataHome}/themes/Everforest-Dark"
+    "${config.xdg.dataHome}/themes/Frosted-Glass"
+    "${config.xdg.dataHome}/themes/Graphite-Mono"
+    "${config.xdg.dataHome}/themes/Gruvbox-Retro"
+    "${config.xdg.dataHome}/themes/Material-Sakura"
+    "${config.xdg.dataHome}/themes/Nordic-Blue"
+    "${config.xdg.dataHome}/themes/Rose-Pine"
+    "${config.xdg.dataHome}/themes/Synth-Wave"
+    "${config.xdg.dataHome}/themes/Tokyo-Night"
+    "${config.xdg.dataHome}/themes/Wallbash-Gtk"
+    "${config.xdg.dataHome}/icons/BeautyLine"
+    "${config.xdg.dataHome}/icons/Gruvbox-Plus-Dark"
+    "${config.xdg.dataHome}/icons/Gruvbox-Retro"
+    "${config.xdg.dataHome}/icons/Nordzy"
+    "${config.xdg.dataHome}/icons/Papirus"
+    "${config.xdg.dataHome}/icons/Tela-circle-black"
+    "${config.xdg.dataHome}/icons/Tela-circle-blue"
+    "${config.xdg.dataHome}/icons/Tela-circle-dracula"
+    "${config.xdg.dataHome}/icons/Tela-circle-green"
+    "${config.xdg.dataHome}/icons/Tela-circle-grey"
+    "${config.xdg.dataHome}/icons/Tela-circle-pink"
+    "${config.xdg.dataHome}/icons/Tela-circle-purple"
+    "${config.xdg.dataHome}/icons/Tela-circle-yellow"
+    "${config.xdg.dataHome}/icons/breeze"
+    "${config.xdg.dataHome}/icons/Kanagawa"
+    "${config.xdg.dataHome}/icons/Papirus-kanagawa"
+    "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Dark-Cursors"
+    "${config.xdg.dataHome}/icons/Wallbash-Icon"
+    "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
+  ];
+  mkDataDirLink =
+    name: source:
+    lib.nameValuePair name {
+      force = true;
+      inherit source;
+    };
+  managedGtkAssets =
+    map (mode: mkDataDirLink "themes/${mode.gtk.themeName}" mode.gtk.themeDir) themeModes
+    ++ [
+      (mkDataDirLink "icons/Papirus" runtime.icon.papirusDir)
+      (mkDataDirLink "icons/breeze" runtime.icon.breezeDir)
+      (mkDataDirLink "icons/Bibata-Modern-Ice" runtime.cursor.dir)
+    ];
   gtk3SettingsText = ''
     [Settings]
     gtk-theme-name=${gtkThemeName}
@@ -57,56 +115,48 @@ let
 in
 lib.mkIf config.ahdg.features.gui {
   home.activation.removeLegacyGtkThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    for target in \
-      "${config.home.homeDirectory}/.gtkrc-2.0" \
-      "${config.home.homeDirectory}/.gtkrc-2.0.mine" \
-      "${config.xdg.configHome}/gtkrc" \
-      "${config.xdg.configHome}/gtk-3.0/settings.ini" \
-      "${config.xdg.configHome}/gtk-3.0/gtk.css" \
-      "${config.xdg.configHome}/gtk-3.0/dank-colors.css" \
-      "${config.xdg.configHome}/gtk-4.0" \
-      "${config.xdg.configHome}/xsettingsd/xsettingsd.conf" \
-      "${config.xdg.dataHome}/themes/Abyssal-Wave" \
-      "${config.xdg.dataHome}/themes/Catppuccin-Macchiato" \
-      "${config.xdg.dataHome}/themes/Catppuccin-Latte" \
-      "${config.xdg.dataHome}/themes/Catppuccin-Mocha" \
-      "${config.xdg.dataHome}/themes/Decay-Green" \
-      "${config.xdg.dataHome}/themes/Edge-Runner" \
-      "${config.xdg.dataHome}/themes/Everforest-Dark" \
-      "${config.xdg.dataHome}/themes/Frosted-Glass" \
-      "${config.xdg.dataHome}/themes/Graphite-Mono" \
-      "${config.xdg.dataHome}/themes/Gruvbox-Retro" \
-      "${config.xdg.dataHome}/themes/Material-Sakura" \
-      "${config.xdg.dataHome}/themes/Nordic-Blue" \
-      "${config.xdg.dataHome}/themes/Rose-Pine" \
-      "${config.xdg.dataHome}/themes/Synth-Wave" \
-      "${config.xdg.dataHome}/themes/Tokyo-Night" \
-      "${config.xdg.dataHome}/themes/Wallbash-Gtk" \
-      "${config.xdg.dataHome}/icons/BeautyLine" \
-      "${config.xdg.dataHome}/icons/Gruvbox-Plus-Dark" \
-      "${config.xdg.dataHome}/icons/Gruvbox-Retro" \
-      "${config.xdg.dataHome}/icons/Nordzy" \
-      "${config.xdg.dataHome}/icons/Papirus" \
-      "${config.xdg.dataHome}/icons/Tela-circle-black" \
-      "${config.xdg.dataHome}/icons/Tela-circle-blue" \
-      "${config.xdg.dataHome}/icons/Tela-circle-dracula" \
-      "${config.xdg.dataHome}/icons/Tela-circle-green" \
-      "${config.xdg.dataHome}/icons/Tela-circle-grey" \
-      "${config.xdg.dataHome}/icons/Tela-circle-pink" \
-      "${config.xdg.dataHome}/icons/Tela-circle-purple" \
-      "${config.xdg.dataHome}/icons/Tela-circle-yellow" \
-      "${config.xdg.dataHome}/icons/breeze" \
-      "${config.xdg.dataHome}/icons/Kanagawa" \
-      "${config.xdg.dataHome}/icons/Papirus-kanagawa" \
-      "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Dark-Cursors" \
-      "${config.xdg.dataHome}/icons/Wallbash-Icon" \
-      "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
-    do
+    for target in ${lib.escapeShellArgs legacyGtkArtifacts}; do
       if [[ -e "$target" ]] && [[ ! -L "$target" ]]; then
         chmod -R u+w "$target" 2>/dev/null || true
         rm -rf "$target"
       fi
     done
+  '';
+
+  home.activation.initializeGtkThemeDefaults = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    seed_text_file() {
+      local target_path=$1
+      local content=$2
+
+      if [[ -L "$target_path" ]]; then
+        rm -f "$target_path"
+      fi
+
+      if [[ ! -e "$target_path" ]]; then
+        install -dm755 "$(dirname "$target_path")"
+        printf '%s' "$content" > "$target_path"
+      fi
+    }
+
+    seed_dir_copy() {
+      local source_path=$1
+      local target_path=$2
+
+      if [[ -L "$target_path" ]]; then
+        rm -rf "$target_path"
+      fi
+
+      if [[ ! -e "$target_path" ]]; then
+        install -dm755 "$(dirname "$target_path")"
+        cp -aT "$source_path" "$target_path"
+        chmod -R u+w "$target_path" 2>/dev/null || true
+      fi
+    }
+
+    seed_text_file "${config.home.homeDirectory}/.gtkrc-2.0" ${lib.escapeShellArg gtk2RcText}
+    seed_text_file "${config.xdg.configHome}/gtk-3.0/settings.ini" ${lib.escapeShellArg gtk3SettingsText}
+    seed_text_file "${config.xdg.configHome}/xsettingsd/xsettingsd.conf" ${lib.escapeShellArg xsettingsdText}
+    seed_dir_copy "${runtime.gtk.themeDir}/gtk-4.0" "${config.xdg.configHome}/gtk-4.0"
   '';
 
   home.activation.removeDeprecatedGtkIconArtifacts = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -159,50 +209,5 @@ lib.mkIf config.ahdg.features.gui {
     materialize_dir "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
   '';
 
-  home.file.".gtkrc-2.0" = {
-    force = true;
-    text = gtk2RcText;
-  };
-
-  xdg.configFile = {
-    "gtk-3.0/settings.ini" = {
-      force = true;
-      text = gtk3SettingsText;
-    };
-    "gtk-4.0" = {
-      force = true;
-      source = "${runtime.gtk.themeDir}/gtk-4.0";
-    };
-    "xsettingsd/xsettingsd.conf" = {
-      force = true;
-      text = xsettingsdText;
-    };
-  };
-
-  xdg.dataFile = {
-    "themes/${modes.dark.gtk.themeName}" = {
-      force = true;
-      source = modes.dark.gtk.themeDir;
-    };
-
-    "themes/${modes.light.gtk.themeName}" = {
-      force = true;
-      source = modes.light.gtk.themeDir;
-    };
-  };
-
-  xdg.dataFile."icons/Papirus" = {
-    force = true;
-    source = runtime.icon.papirusDir;
-  };
-
-  xdg.dataFile."icons/breeze" = {
-    force = true;
-    source = runtime.icon.breezeDir;
-  };
-
-  xdg.dataFile."icons/Bibata-Modern-Ice" = {
-    force = true;
-    source = runtime.cursor.dir;
-  };
+  xdg.dataFile = lib.listToAttrs managedGtkAssets;
 }

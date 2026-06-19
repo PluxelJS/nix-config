@@ -8,7 +8,7 @@ and DMS-generated runtime colors.
 - Day mode: `Catppuccin Latte + Lavender`
 - Night mode: `Catppuccin Macchiato + Lavender`
 - Default activation baseline: night mode
-- Runtime mode switcher: `darkman`
+- Optional runtime mode switcher: `darkman`
 - Icons: `Papirus`
 - Cursor: `Bibata-Modern-Ice`
 
@@ -16,8 +16,9 @@ Important:
 
 - The active Catppuccin desktop palette is selected at runtime. Nix installs
   both `Latte + Lavender` and `Macchiato + Lavender` assets.
-- The runtime source of truth is `darkman`; DMS remains limited to mutable
-  compositor/session overlays.
+- The default source of truth is the declarative dark baseline plus the shared
+  `ahdg-theme` apply script. `darkman` is only the optional scheduler layer.
+- DMS remains limited to mutable compositor/session overlays.
 
 ## Nix-Owned Theme Assets
 
@@ -58,50 +59,40 @@ Those files may change live and should not become Home Manager symlinks.
 
 The policy is:
 
-- Nix is the source of truth for stable theme selection, theme assets, toolkit
-  settings, font policy, and app themes that should stay reproducible.
+- Nix is the source of truth for theme assets, default toolkit values, font
+  policy, and explicit theme-switch tooling such as `ahdg-theme`.
+- GUI-editable preference files should normally be seeded with defaults once and
+  then remain user-owned unless there is a clear reason to keep enforcing them.
 - DMS is only the source of truth for live runtime color generation and mutable
   compositor/session overlays.
 
 This means:
 
-- GTK, KDE, portal, icons, cursors, and most app themes should prefer Nix.
+- GTK, KDE, portal, icons, cursors, and theme assets should prefer Nix.
 - MangoWC runtime overlay files should continue to prefer DMS.
 - Terminal/TUI app themes such as `yazi` do not conflict with DMS and should be
   Nix-managed if we want a pinned reproducible theme.
 
 Portal-specific rule:
 
-- `org.freedesktop.impl.portal.Settings` should prefer `darkman`, so apps that
-  follow the XDG Settings portal can react to system light/dark changes without
-  app-specific theme wiring.
+- `org.freedesktop.impl.portal.Settings` should prefer `darkman` only when
+  auto-switching is enabled. Otherwise it should fall back to the GTK/KDE
+  backends so the declarative dark baseline remains authoritative.
 - `xdg-desktop-portal` backends that need toolkit environment should read
   `~/.config/ahdg/theme/session.env`.
 - Do not rely on ad-hoc session import timing as the primary mechanism for
   portal theming, because DBus/systemd user activation can otherwise start the
   same GUI app under a different theme context.
 
-## Current Dynamic DMS Scope
-
-At the moment, DMS should be treated as the live owner only for:
-
-- `~/.config/ghostty/config-dankcolors`
-- `~/.config/mango/dms/colors.conf`
-- `~/.config/mango/dms/cursor.conf`
-- `~/.config/mango/dms/layout.conf`
-- `~/.config/mango/dms/outputs.conf`
-
-Everything outside that set should default to Nix ownership unless there is a
-clear reason to keep runtime mutation.
-
-## Current Nix-Managed App Themes
+## Current Nix-Managed Theme Surfaces
 
 The following app-facing theme integrations are already expected to stay
 Nix-managed and not DMS-managed:
 
-- GTK theme assets and toolkit settings
-- KDE color scheme, look-and-feel, window decoration, and widget style
-- `darkman` mode switch hooks and the shared `ahdg-theme` apply script
+- GTK theme assets plus initial toolkit defaults
+- KDE color scheme assets, look-and-feel packages, window decoration, and
+  initial toolkit defaults
+- optional `darkman` mode switch hooks and the shared `ahdg-theme` apply script
 - icon and cursor assets
 - `fcitx5` Catppuccin theme assets
 - `yazi` Catppuccin flavor
@@ -109,16 +100,17 @@ Nix-managed and not DMS-managed:
 
 ## App Theme Admission Rule
 
-New app-specific theme integrations should be added only when the app runtime
-itself is managed by Nix or Home Manager.
+New app-specific theme integrations should still be added only when the app
+runtime itself is managed by Nix or Home Manager.
 
-This keeps the theme stack reproducible and prevents us from writing Nix-owned
-theme policy for random pacman/AUR apps that may disappear, diverge, or keep
-their real state elsewhere.
+When an app exposes its own GUI settings, Nix should normally provide only the
+assets and first-run defaults, then leave the mutable preference files to the
+app.
 
 Practical rule:
 
 - new theme ports: Nix-managed apps only
+- GUI-editable app configs: seed defaults, do not keep forcing them
 - system-installed apps: do not add new theme ports by default
 - if a system app only needs to follow toolkit/session theme settings, let GTK,
   KDE, portal, icon, and cursor policy handle it implicitly
@@ -126,17 +118,17 @@ Practical rule:
 ## Grandfathered Exceptions
 
 There are a small number of existing user-config cases where the runtime binary
-is system-owned but the user-facing config is still intentionally Nix-owned:
+is system-owned but the policy/data layer is still intentionally Nix-owned:
 
 - `fcitx5`: runtime stays on the host side, but Nix owns the config, theme
   assets, Rime baseline payload, and desktop/session environment policy
-- `dolphin`: runtime may come from the host side, but `dolphinrc` and
-  `dolphinui.rc` are still part of the repo-managed desktop policy; its DBus
-  `org.freedesktop.FileManager1` daemon must read
-  `~/.config/ahdg/theme/session.env`
 
-These are legacy ownership decisions with a clear policy surface. They are not
-a reason to expand new app theming to unrelated system-installed apps.
+`dolphin` still reads `~/.config/ahdg/theme/session.env` through its daemon, but
+its GUI preference files are only seeded with defaults and are no longer
+continuously enforced by Home Manager.
+
+These cases are not a reason to expand new app theming to unrelated
+system-installed apps.
 
 ## VSCode Boundary
 
@@ -172,9 +164,12 @@ The active split is:
 
 The efficient path is to use system-level mechanisms first:
 
-- apps that support the XDG Settings portal follow `darkman`
+- apps that support the XDG Settings portal follow `darkman` when auto-switching
+  is enabled, otherwise they follow GTK/KDE state directly
 - GTK follows `gtk-3.0/settings.ini`, `gtk-4.0`, `gsettings`, and xsettings
+  after the initial defaults are seeded
 - KDE/Qt follows `kdeglobals`, KDE color schemes, and the KDE platform theme
+  after the initial defaults are seeded
 - daemonized services such as Dolphin and portal backends read
   `~/.config/ahdg/theme/session.env` and are restarted by `ahdg-theme`
 

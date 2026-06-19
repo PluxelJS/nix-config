@@ -10,12 +10,6 @@ in
       description = "Canonical GTK theme name exposed to toolkit config.";
     };
 
-    catppuccinGtkVariant = lib.mkOption {
-      type = types.str;
-      default = "dark";
-      description = "GTK theme variant exported to session environments.";
-    };
-
     catppuccinKdeColorScheme = lib.mkOption {
       type = types.str;
       default = "CatppuccinMacchiatoLavender";
@@ -105,5 +99,7 @@ in
       default = "rgb";
       description = "Subpixel rendering policy mirrored into toolkit-specific settings.";
     };
+
+    autoSwitch.enable = lib.mkEnableOption "time-based light/dark switching via darkman";
   };
 }

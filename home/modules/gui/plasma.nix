@@ -3,24 +3,62 @@ let
   theme = config.ahdg.theme;
   runtime = theme.runtime;
   modes = runtime.modes;
+  themeModes = [
+    modes.dark
+    modes.light
+  ];
   python3 = "${pkgs.python3}/bin/python3";
   colorSchemeName = runtime.kde.colorSchemeName;
   lookAndFeelName = runtime.kde.lookAndFeelName;
   auroraeThemeName = runtime.kde.auroraeThemeName;
   kdeFontValue = runtime.kde.fontValue;
   kdeFixedFontValue = runtime.kde.fixedFontValue;
+  legacyPlasmaArtifacts = [
+    "${config.xdg.configHome}/color-schemes/${colorSchemeName}.colors"
+    "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors"
+    "${config.xdg.dataHome}/plasma/look-and-feel/${lookAndFeelName}"
+    "${config.xdg.dataHome}/kpackage/generic/${lookAndFeelName}"
+    "${config.xdg.dataHome}/aurorae/themes/${auroraeThemeName}"
+    "${config.xdg.dataHome}/icons/Papirus-kanagawa"
+    "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Lavender-Cursors"
+  ];
+  materializedColorSchemeTargets =
+    lib.concatMap (
+      mode: [
+        "${config.xdg.configHome}/color-schemes/${mode.kde.colorSchemeName}.colors"
+        "${config.xdg.dataHome}/color-schemes/${mode.kde.colorSchemeName}.colors"
+      ]
+    ) themeModes;
+  mkDataFile =
+    name: source:
+    lib.nameValuePair name {
+      force = true;
+      inherit source;
+    };
+  configColorSchemeFiles = map (
+    mode:
+    mkDataFile
+      "color-schemes/${mode.kde.colorSchemeName}.colors"
+      "${mode.kde.package}/share/color-schemes/${mode.kde.colorSchemeName}.colors"
+  ) themeModes;
+  dataThemeFiles =
+    configColorSchemeFiles
+    ++ map (
+      mode:
+      mkDataFile
+        "plasma/look-and-feel/${mode.kde.lookAndFeelName}"
+        "${mode.kde.package}/share/plasma/look-and-feel/${mode.kde.lookAndFeelName}"
+    ) themeModes
+    ++ map (
+      mode:
+      mkDataFile
+        "aurorae/themes/${mode.kde.auroraeThemeName}"
+        "${mode.kde.package}/share/aurorae/themes/${mode.kde.auroraeThemeName}"
+    ) themeModes;
 in
 lib.mkIf config.ahdg.features.gui {
   home.activation.removeLegacyPlasmaThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    for target in \
-      "${config.xdg.configHome}/color-schemes/${colorSchemeName}.colors" \
-      "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors" \
-      "${config.xdg.dataHome}/plasma/look-and-feel/${lookAndFeelName}" \
-      "${config.xdg.dataHome}/kpackage/generic/${lookAndFeelName}" \
-      "${config.xdg.dataHome}/aurorae/themes/${auroraeThemeName}" \
-      "${config.xdg.dataHome}/icons/Papirus-kanagawa" \
-      "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Lavender-Cursors"
-    do
+    for target in ${lib.escapeShellArgs legacyPlasmaArtifacts}; do
       if [[ -e "$target" ]] && [[ ! -L "$target" ]]; then
         rm -rf "$target"
       fi
@@ -50,10 +88,9 @@ lib.mkIf config.ahdg.features.gui {
 
     # Some KDE-aware Flatpaks only get config/data shares, not arbitrary store
     # paths. Keep the color scheme materialized in both locations.
-    materialize_file "${config.xdg.configHome}/color-schemes/${modes.dark.kde.colorSchemeName}.colors"
-    materialize_file "${config.xdg.dataHome}/color-schemes/${modes.dark.kde.colorSchemeName}.colors"
-    materialize_file "${config.xdg.configHome}/color-schemes/${modes.light.kde.colorSchemeName}.colors"
-    materialize_file "${config.xdg.dataHome}/color-schemes/${modes.light.kde.colorSchemeName}.colors"
+    for target in ${lib.escapeShellArgs materializedColorSchemeTargets}; do
+      materialize_file "$target"
+    done
   '';
 
   home.activation.removeUnusedQtctConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
@@ -67,52 +104,30 @@ lib.mkIf config.ahdg.features.gui {
     done
   '';
 
-  home.activation.alignKdeglobalsThemeStack = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  home.activation.initializeKdeglobalsThemeDefaults = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     kdeglobals="${config.xdg.configHome}/kdeglobals"
-    if [[ -f "$kdeglobals" ]]; then
-      if ! rg -q '^\[General\]$' "$kdeglobals"; then
-        printf '\n[General]\n' >> "$kdeglobals"
-      fi
-      if ! rg -q '^\[Icons\]$' "$kdeglobals"; then
-        printf '\n[Icons]\n' >> "$kdeglobals"
-      fi
-      if ! rg -q '^\[KDE\]$' "$kdeglobals"; then
-        printf '\n[KDE]\n' >> "$kdeglobals"
-      fi
-      if ! rg -q '^\[WM\]$' "$kdeglobals"; then
-        printf '\n[WM]\n' >> "$kdeglobals"
-      fi
-      sed -i \
-        -e '/^\[General\]/,/^\[/{s/^ColorScheme=.*/ColorScheme='"${colorSchemeName}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s#^TerminalApplication=.*#TerminalApplication='"${config.home.profileDirectory}"'/bin/ghostty --gtk-single-instance=true#;}' \
-        -e '/^\[General\]/,/^\[/{s/^XftHintStyle=.*/XftHintStyle='"${theme.xftHintStyle}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^XftSubPixel=.*/XftSubPixel='"${theme.xftSubPixel}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^font=.*/font='"${kdeFontValue}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^menuFont=.*/menuFont='"${kdeFontValue}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^smallestReadableFont=.*/smallestReadableFont='"${kdeFontValue}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^toolBarFont=.*/toolBarFont='"${kdeFontValue}"'/;}' \
-        -e '/^\[General\]/,/^\[/{s/^fixed=.*/fixed='"${kdeFixedFontValue}"'/;}' \
-        -e '/^\[Icons\]/,/^\[/{s/^Theme=.*/Theme='"${runtime.icon.name}"'/;}' \
-        -e '/^\[KDE\]/,/^\[/{s/^LookAndFeelPackage=.*/LookAndFeelPackage='"${lookAndFeelName}"'/;}' \
-        -e '/^\[KDE\]/,/^\[/{s/^widgetStyle=.*/widgetStyle='"${runtime.kde.widgetStyle}"'/;}' \
-        -e '/^\[WM\]/,/^\[/{s/^activeFont=.*/activeFont='"${kdeFontValue}"'/;}' \
-        "$kdeglobals"
 
-      "${python3}" - "$kdeglobals" \
-        "${colorSchemeName}" \
-        "${config.home.profileDirectory}/bin/ghostty --gtk-single-instance=true" \
-        "${theme.xftHintStyle}" \
-        "${theme.xftSubPixel}" \
-        "${kdeFontValue}" \
-        "${kdeFixedFontValue}" \
-        "${runtime.icon.name}" \
-        "${lookAndFeelName}" \
-        "${runtime.kde.widgetStyle}" <<'PY'
+    if [[ -L "$kdeglobals" ]]; then
+      rm -f "$kdeglobals"
+    fi
+
+    install -dm755 "$(dirname "$kdeglobals")"
+
+    "${python3}" - "$kdeglobals" \
+      "${colorSchemeName}" \
+      "${config.home.profileDirectory}/bin/ghostty --gtk-single-instance=true" \
+      "${theme.xftHintStyle}" \
+      "${theme.xftSubPixel}" \
+      "${kdeFontValue}" \
+      "${kdeFixedFontValue}" \
+      "${runtime.icon.name}" \
+      "${lookAndFeelName}" \
+      "${runtime.kde.widgetStyle}" <<'PY'
 import pathlib
 import sys
 
 path = pathlib.Path(sys.argv[1])
-text = path.read_text()
+text = path.read_text() if path.exists() else ""
 
 required = {
     "[General]": {
@@ -147,39 +162,22 @@ for line in text.splitlines():
         if current not in sections:
             sections[current] = []
             order.append(current)
-    elif current is not None:
+        continue
+    if current is not None:
         sections[current].append(line)
-
-for section, section_lines in list(sections.items()):
-    normalized = []
-    seen_nonempty = set()
-    previous_blank = False
-    for line in section_lines:
-        if line == "":
-            if previous_blank:
-                continue
-            normalized.append(line)
-            previous_blank = True
-            continue
-        previous_blank = False
-        if line in seen_nonempty:
-            continue
-        seen_nonempty.add(line)
-        normalized.append(line)
-    sections[section] = normalized
 
 for section, kvs in required.items():
     if section not in sections:
         sections[section] = []
         order.append(section)
-    section_lines = [
-        line
+    existing_keys = {
+        line.split("=", 1)[0]
         for line in sections[section]
-        if "=" not in line or line.startswith("#") or line.split("=", 1)[0] not in kvs
-    ]
+        if "=" in line and not line.startswith("#")
+    }
     for key, value in kvs.items():
-        section_lines.append(f"{key}={value}")
-    sections[section] = section_lines
+        if key not in existing_keys:
+            sections[section].append(f"{key}={value}")
 
 out = []
 for index, section in enumerate(order):
@@ -190,89 +188,18 @@ for index, section in enumerate(order):
 
 path.write_text("\n".join(out).rstrip() + "\n")
 PY
-
-      "${python3}" - "$kdeglobals" <<'PY'
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-sections = {}
-order = []
-current = None
-
-for raw in path.read_text().splitlines():
-    line = raw.rstrip()
-    if line.startswith("[") and line.endswith("]"):
-        current = line
-        if current not in sections:
-            sections[current] = []
-            order.append(current)
-        continue
-    if current is None:
-        continue
-    sections[current].append(line)
-
-dedupe_keys = {
-    "[General]": {
-        "ColorScheme",
-        "TerminalApplication",
-        "XftHintStyle",
-        "XftSubPixel",
-        "font",
-        "menuFont",
-        "smallestReadableFont",
-        "toolBarFont",
-        "fixed",
-    },
-    "[Icons]": { "Theme" },
-    "[KDE]": { "LookAndFeelPackage", "widgetStyle" },
-    "[WM]": { "activeFont" },
-}
-
-for section, keys in dedupe_keys.items():
-    if section not in sections:
-        continue
-    cleaned = []
-    seen = set()
-    for line in reversed(sections[section]):
-        if "=" in line and not line.startswith("#"):
-            key = line.split("=", 1)[0]
-            if key in keys:
-                if key in seen:
-                    continue
-                seen.add(key)
-        cleaned.append(line)
-    sections[section] = list(reversed(cleaned))
-
-out = []
-for section in order:
-    if out:
-        out.append("")
-    out.append(section)
-    lines = sections[section]
-    previous_blank = False
-    for line in lines:
-        if line == "":
-            if previous_blank:
-                continue
-            previous_blank = True
-            out.append(line)
-            continue
-        previous_blank = False
-        out.append(line)
-
-path.write_text("\n".join(out).rstrip() + "\n")
-PY
-    fi
   '';
 
-  home.activation.alignKcminputrcThemeStack = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  home.activation.initializeKcminputrcThemeDefaults = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     kcminputrc="${config.xdg.configHome}/kcminputrc"
-    touch "$kcminputrc"
-    if ! rg -q '^\[Mouse\]$' "$kcminputrc"; then
-      printf '\n[Mouse]\n' >> "$kcminputrc"
+
+    if [[ -L "$kcminputrc" ]]; then
+      rm -f "$kcminputrc"
     fi
-      "${python3}" - "$kcminputrc" \
+
+    install -dm755 "$(dirname "$kcminputrc")"
+
+    "${python3}" - "$kcminputrc" \
       "${runtime.cursor.name}" \
       "${toString runtime.cursor.size}" <<'PY'
 import pathlib
@@ -281,53 +208,35 @@ import sys
 path = pathlib.Path(sys.argv[1])
 cursor_theme = sys.argv[2]
 cursor_size = sys.argv[3]
-text = path.read_text()
-lines = text.splitlines()
+text = path.read_text() if path.exists() else ""
 
 sections = {}
 order = []
 current = None
-for line in lines:
+for line in text.splitlines():
     if line.startswith("[") and line.endswith("]"):
         current = line
         if current not in sections:
             sections[current] = []
             order.append(current)
-    elif current is not None:
+        continue
+    if current is not None:
         sections[current].append(line)
 
 if "[Mouse]" not in sections:
     sections["[Mouse]"] = []
     order.append("[Mouse]")
-mouse = [
-    line
-    for line in sections["[Mouse]"]
-    if "=" not in line or line.startswith("#") or line.split("=", 1)[0] not in {"cursorTheme", "cursorSize"}
-]
-normalized_mouse = []
-seen_mouse_lines = set()
-previous_blank = False
-for line in mouse:
-    if line == "":
-        if previous_blank:
-            continue
-        normalized_mouse.append(line)
-        previous_blank = True
-        continue
-    previous_blank = False
-    if line in seen_mouse_lines:
-        continue
-    seen_mouse_lines.add(line)
-    normalized_mouse.append(line)
-mouse = normalized_mouse
 
-wanted = {
-    "cursorTheme": cursor_theme,
-    "cursorSize": cursor_size,
+existing_keys = {
+    line.split("=", 1)[0]
+    for line in sections["[Mouse]"]
+    if "=" in line and not line.startswith("#")
 }
-for key, value in wanted.items():
-    mouse.append(f"{key}={value}")
-sections["[Mouse]"] = mouse
+
+if "cursorTheme" not in existing_keys:
+    sections["[Mouse]"].append(f"cursorTheme={cursor_theme}")
+if "cursorSize" not in existing_keys:
+    sections["[Mouse]"].append(f"cursorSize={cursor_size}")
 
 out = []
 for index, section in enumerate(order):
@@ -340,44 +249,6 @@ path.write_text("\n".join(out).rstrip() + "\n")
 PY
   '';
 
-  xdg.configFile = {
-    "color-schemes/${modes.dark.kde.colorSchemeName}.colors" = {
-      force = true;
-      source = "${modes.dark.kde.package}/share/color-schemes/${modes.dark.kde.colorSchemeName}.colors";
-    };
-
-    "color-schemes/${modes.light.kde.colorSchemeName}.colors" = {
-      force = true;
-      source = "${modes.light.kde.package}/share/color-schemes/${modes.light.kde.colorSchemeName}.colors";
-    };
-  };
-
-  xdg.dataFile = {
-    "color-schemes/${modes.dark.kde.colorSchemeName}.colors" = {
-      force = true;
-      source = "${modes.dark.kde.package}/share/color-schemes/${modes.dark.kde.colorSchemeName}.colors";
-    };
-    "color-schemes/${modes.light.kde.colorSchemeName}.colors" = {
-      force = true;
-      source = "${modes.light.kde.package}/share/color-schemes/${modes.light.kde.colorSchemeName}.colors";
-    };
-
-    "plasma/look-and-feel/${modes.dark.kde.lookAndFeelName}" = {
-      force = true;
-      source = "${modes.dark.kde.package}/share/plasma/look-and-feel/${modes.dark.kde.lookAndFeelName}";
-    };
-    "plasma/look-and-feel/${modes.light.kde.lookAndFeelName}" = {
-      force = true;
-      source = "${modes.light.kde.package}/share/plasma/look-and-feel/${modes.light.kde.lookAndFeelName}";
-    };
-
-    "aurorae/themes/${modes.dark.kde.auroraeThemeName}" = {
-      force = true;
-      source = "${modes.dark.kde.package}/share/aurorae/themes/${modes.dark.kde.auroraeThemeName}";
-    };
-    "aurorae/themes/${modes.light.kde.auroraeThemeName}" = {
-      force = true;
-      source = "${modes.light.kde.package}/share/aurorae/themes/${modes.light.kde.auroraeThemeName}";
-    };
-  };
+  xdg.configFile = lib.listToAttrs configColorSchemeFiles;
+  xdg.dataFile = lib.listToAttrs dataThemeFiles;
 }

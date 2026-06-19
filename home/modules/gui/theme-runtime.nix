@@ -2,6 +2,7 @@
 let
   types = lib.types;
   theme = config.ahdg.theme;
+  defaultMode = "dark";
 
   gtkFontName = "${theme.gtkFontFamily} ${toString theme.gtkFontSize}";
   kdeFontValue = "${theme.kdeUiFontFamily},${toString theme.kdeUiFontSize},-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
@@ -108,7 +109,7 @@ let
     };
   };
 
-  activeMode = modes.dark;
+  activeMode = modes.${defaultMode};
   baseSessionVariables = {
       QT_QPA_PLATFORM = "wayland";
       QT_QPA_PLATFORMTHEME = "kde";
@@ -131,7 +132,7 @@ in
   config = lib.mkIf config.ahdg.features.gui {
     ahdg.theme.runtime = {
       modes = modes;
-      defaultMode = "dark";
+      defaultMode = defaultMode;
       gtk = activeMode.gtk;
       kde = activeMode.kde;
 

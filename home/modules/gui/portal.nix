@@ -1,20 +1,24 @@
 { config, lib, pkgs, ... }:
 let
+  autoSwitchEnabled = config.ahdg.theme.autoSwitch.enable;
   themeEnvironmentFile = "${config.xdg.configHome}/ahdg/theme/session.env";
 in
 lib.mkIf config.ahdg.features.portal {
   xdg.configFile."xdg-desktop-portal/portals.conf".force = true;
+  dbus.packages = [ pkgs.kdePackages.kwallet ];
 
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;
 
-    extraPortals = [
-      pkgs.darkman
-      pkgs.kdePackages.xdg-desktop-portal-kde
-      pkgs.xdg-desktop-portal-gtk
-      pkgs.xdg-desktop-portal-wlr
-    ];
+    extraPortals =
+      lib.optional autoSwitchEnabled pkgs.darkman
+      ++ [
+        pkgs.kdePackages.kwallet
+        pkgs.kdePackages.xdg-desktop-portal-kde
+        pkgs.xdg-desktop-portal-gtk
+        pkgs.xdg-desktop-portal-wlr
+      ];
 
     config.common = {
       default = [
@@ -45,16 +49,38 @@ lib.mkIf config.ahdg.features.portal {
         "*"
       ];
 
-      "org.freedesktop.impl.portal.Settings" = [
-        "darkman"
-        "gtk"
-        "kde"
+      "org.freedesktop.impl.portal.Settings" =
+        lib.optionals autoSwitchEnabled [ "darkman" ]
+        ++ [
+          "gtk"
+          "kde"
+          "*"
+        ];
+
+      "org.freedesktop.impl.portal.Secret" = [
+        "kwallet"
         "*"
       ];
     };
   };
 
   systemd.user.services = {
+    kwalletd6 = {
+      Unit = {
+        Description = "KDE Wallet Daemon";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "dbus";
+        ExecStart = "${pkgs.kdePackages.kwallet}/bin/kwalletd6";
+        BusName = "org.kde.kwalletd6";
+        Slice = "session.slice";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
     plasma-xdg-desktop-portal-kde = {
       Unit = {
         Description = "Xdg Desktop Portal For KDE";

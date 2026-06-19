@@ -398,6 +398,17 @@ if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2
   else
     fail "Code Studio is not wired to the host Codex config as expected"
   fi
+
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c '
+    policy_block="$(sed -n "/\\[Session Bus Policy\\]/,/^\\[/p" /.flatpak-info)"
+    printf "%s\n" "$policy_block" | rg -q "^org.freedesktop.secrets=talk$" &&
+    printf "%s\n" "$policy_block" | rg -q "^org.kde.kwalletd6=talk$" &&
+    printf "%s\n" "$policy_block" | rg -q "^org.kde.secretservicecompat=talk$"
+  ' >/dev/null 2>&1; then
+    pass "Code Studio can reach the host secret service and KWallet session bus names"
+  else
+    fail "Code Studio is missing the host secret service or KWallet session bus policy"
+  fi
 fi
 
 if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
@@ -423,6 +434,17 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     pass "CLion stays on Wayland-only sockets without X11 fallback"
   else
     fail "CLion should stay on Wayland-only sockets without X11 fallback"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c '
+    policy_block="$(sed -n "/\\[Session Bus Policy\\]/,/^\\[/p" /.flatpak-info)"
+    printf "%s\n" "$policy_block" | rg -q "^org.freedesktop.secrets=talk$" &&
+    printf "%s\n" "$policy_block" | rg -q "^org.kde.kwalletd6=talk$" &&
+    printf "%s\n" "$policy_block" | rg -q "^org.kde.secretservicecompat=talk$"
+  ' >/dev/null 2>&1; then
+    pass "CLion can reach the host secret service and KWallet session bus names"
+  else
+    fail "CLion is missing the host secret service or KWallet session bus policy"
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c '
@@ -532,6 +554,7 @@ fi
 
 if has_feature portal; then
   kde_portal_unit="$(systemctl --user cat plasma-xdg-desktop-portal-kde.service 2>/dev/null || true)"
+  kwallet_unit="$(systemctl --user cat kwalletd6.service 2>/dev/null || true)"
 
   if [[ -n "$kde_portal_unit" ]] \
     && printf '%s\n' "$kde_portal_unit" | rg -q 'EnvironmentFile=.*/\.config/ahdg/theme/session\.env'; then
@@ -542,8 +565,29 @@ if has_feature portal; then
 
   if rg -q '^org\.freedesktop\.impl\.portal\.Settings=darkman;gtk;kde;\*$' "$HOME/.config/xdg-desktop-portal/portals.conf"; then
     pass "portal Settings prefers darkman for system color-scheme"
+  elif rg -q '^org\.freedesktop\.impl\.portal\.Settings=gtk;kde;\*$' "$HOME/.config/xdg-desktop-portal/portals.conf"; then
+    pass "portal Settings falls back to GTK/KDE when darkman auto-switching is disabled"
   else
-    fail "portal Settings does not prefer darkman"
+    fail "portal Settings backend order is unexpected"
+  fi
+
+  if rg -q '^org\.freedesktop\.impl\.portal\.Secret=kwallet;\*$' "$HOME/.config/xdg-desktop-portal/portals.conf"; then
+    pass "portal Secret prefers KWallet"
+  else
+    fail "portal Secret does not prefer KWallet"
+  fi
+
+  if [[ -n "$kwallet_unit" ]] \
+    && printf '%s\n' "$kwallet_unit" | rg -q 'ExecStart=.*/kwalletd6'; then
+    pass "kwalletd6 user unit is installed"
+  else
+    fail "kwalletd6 user unit is missing"
+  fi
+
+  if gdbus introspect --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop 2>/dev/null | rg -q 'interface org\.freedesktop\.portal\.Secret'; then
+    pass "xdg-desktop-portal exposes the Secret interface"
+  else
+    fail "xdg-desktop-portal is missing the Secret interface"
   fi
 fi
 

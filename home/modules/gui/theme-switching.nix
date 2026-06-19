@@ -1,8 +1,12 @@
 { config, lib, pkgs, ... }:
 let
+  autoSwitchEnabled = config.ahdg.theme.autoSwitch.enable;
   runtime = config.ahdg.theme.runtime;
   modes = runtime.modes;
+  defaultMode = runtime.defaultMode;
+  defaultModeConfig = modes.${defaultMode};
   themeEnvFile = "${config.xdg.configHome}/ahdg/theme/session.env";
+  sessionVariableNames = lib.attrNames defaultModeConfig.sessionVariables;
 
   envText =
     mode:
@@ -10,6 +14,25 @@ let
       lib.mapAttrsToList (name: value: "${name}=${toString value}") mode.sessionVariables
     )
     + "\n";
+
+  modeCase =
+    name: mode:
+    ''
+      ${name})
+        gtk_theme_name=${lib.escapeShellArg mode.gtk.themeName}
+        gtk_theme_spec=${lib.escapeShellArg mode.gtk.themeSpec}
+        gtk_theme_dir=${lib.escapeShellArg mode.gtk.themeDir}
+        gtk_prefer_dark=${if mode.gtk.preferDark then "1" else "0"}
+        gsettings_color_scheme=${lib.escapeShellArg mode.gsettingsColorScheme}
+        kde_color_scheme=${lib.escapeShellArg mode.kde.colorSchemeName}
+        kde_color_scheme_file=${lib.escapeShellArg mode.kde.colorSchemeFile}
+        kde_look_and_feel=${lib.escapeShellArg mode.kde.lookAndFeelName}
+        kde_widget_style=${lib.escapeShellArg mode.kde.widgetStyle}
+        session_env=${lib.escapeShellArg (envText mode)}
+        ;;
+    '';
+
+  modeCases = lib.concatStringsSep "\n" (lib.mapAttrsToList modeCase modes);
 
   applyTheme = pkgs.writeShellApplication {
     name = "ahdg-theme";
@@ -35,30 +58,7 @@ let
 
       mode=$2
       case "$mode" in
-        light)
-          gtk_theme_name="${modes.light.gtk.themeName}"
-          gtk_theme_spec="${modes.light.gtk.themeSpec}"
-          gtk_theme_dir="${modes.light.gtk.themeDir}"
-          gtk_prefer_dark=0
-          gsettings_color_scheme="${modes.light.gsettingsColorScheme}"
-          kde_color_scheme="${modes.light.kde.colorSchemeName}"
-          kde_color_scheme_file="${modes.light.kde.colorSchemeFile}"
-          kde_look_and_feel="${modes.light.kde.lookAndFeelName}"
-          kde_widget_style="${modes.light.kde.widgetStyle}"
-          session_env='${envText modes.light}'
-          ;;
-        dark)
-          gtk_theme_name="${modes.dark.gtk.themeName}"
-          gtk_theme_spec="${modes.dark.gtk.themeSpec}"
-          gtk_theme_dir="${modes.dark.gtk.themeDir}"
-          gtk_prefer_dark=1
-          gsettings_color_scheme="${modes.dark.gsettingsColorScheme}"
-          kde_color_scheme="${modes.dark.kde.colorSchemeName}"
-          kde_color_scheme_file="${modes.dark.kde.colorSchemeFile}"
-          kde_look_and_feel="${modes.dark.kde.lookAndFeelName}"
-          kde_widget_style="${modes.dark.kde.widgetStyle}"
-          session_env='${envText modes.dark}'
-          ;;
+      ${modeCases}
         *)
           usage
           exit 2
@@ -220,21 +220,15 @@ let
           "$config_home/mango/env.conf"
       fi
 
-      export GTK_THEME="$gtk_theme_spec"
-      export QT_QPA_PLATFORM=wayland
-      export QT_QPA_PLATFORMTHEME=kde
-      export KDE_SESSION_VERSION=6
-      export KDE_FULL_SESSION=true
-      export XCURSOR_THEME="${runtime.cursor.name}"
-      export XCURSOR_SIZE="${toString runtime.cursor.size}"
-      export GTK_USE_PORTAL=1
+      set -a
+      # shellcheck source=/dev/null
+      . "${themeEnvFile}"
+      set +a
 
       systemctl --user import-environment \
-        GTK_THEME QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME KDE_SESSION_VERSION KDE_FULL_SESSION \
-        XCURSOR_THEME XCURSOR_SIZE GTK_USE_PORTAL 2>/dev/null || true
+        ${lib.escapeShellArgs sessionVariableNames} 2>/dev/null || true
       dbus-update-activation-environment --systemd \
-        GTK_THEME QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME KDE_SESSION_VERSION KDE_FULL_SESSION \
-        XCURSOR_THEME XCURSOR_SIZE GTK_USE_PORTAL 2>/dev/null || true
+        ${lib.escapeShellArgs sessionVariableNames} 2>/dev/null || true
 
       systemctl --user try-restart --no-block \
         plasma-dolphin.service \
@@ -259,16 +253,16 @@ lib.mkIf config.ahdg.features.gui {
     install -dm755 "${config.xdg.configHome}/ahdg/theme"
 
     if [[ ! -e "${themeEnvFile}" ]]; then
-      printf '%s' ${lib.escapeShellArg (envText modes.dark)} > "${themeEnvFile}"
+      printf '%s' ${lib.escapeShellArg (envText defaultModeConfig)} > "${themeEnvFile}"
     fi
 
     if [[ ! -e "${config.xdg.configHome}/ahdg/theme/mode" ]]; then
-      printf 'dark\n' > "${config.xdg.configHome}/ahdg/theme/mode"
+      printf '${defaultMode}\n' > "${config.xdg.configHome}/ahdg/theme/mode"
     fi
   '';
 
   services.darkman = {
-    enable = true;
+    enable = autoSwitchEnabled;
     settings = {
       # Avoid depending on a host geoclue agent; these coordinates are enough
       # for sunrise/sunset scheduling and keep the setup self-contained.

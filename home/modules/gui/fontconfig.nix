@@ -94,6 +94,7 @@ let
         <family>ui-monospace</family>
         <prefer>
           <family>Maple Mono NF CN</family>
+          <family>Source Han Sans SC</family>
         </prefer>
       </alias>
 
@@ -124,6 +125,7 @@ let
           <string>Inter</string>
         </edit>
       </match>
+
     </fontconfig>
   '';
 in
@@ -159,40 +161,18 @@ lib.mkIf config.ahdg.features.fonts {
     cp -aT "$custom_font_source" "$custom_font_dir"
   '';
 
-  home.activation.materializeFontconfigForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    fontconfig_dir="${config.xdg.configHome}/fontconfig"
-    managed_font_dir="${config.xdg.dataHome}/fonts/nix"
+  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    rm -rf "${config.xdg.cacheHome}/fontconfig"
 
-    if [[ -f "$fontconfig_dir/fonts.conf" ]]; then
-      resolved="$(readlink -f "$fontconfig_dir/fonts.conf" || true)"
-      if [[ -n "$resolved" && -f "$resolved" ]]; then
-        rm -f "$fontconfig_dir/fonts.conf"
-        install -Dm644 "$resolved" "$fontconfig_dir/fonts.conf"
-      fi
+    if [[ -d "${config.home.homeDirectory}/.var/app" ]]; then
+      find "${config.home.homeDirectory}/.var/app" \
+        -mindepth 2 \
+        -maxdepth 3 \
+        -path '*/cache/fontconfig' \
+        -exec rm -rf {} + 2>/dev/null || true
     fi
 
-    if [[ -d "$fontconfig_dir/conf.d" ]]; then
-      for target in "$fontconfig_dir"/conf.d/*.conf; do
-        [[ -e "$target" ]] || continue
-        resolved="$(readlink -f "$target" || true)"
-        if [[ -n "$resolved" && -f "$resolved" ]]; then
-          rm -f "$target"
-          install -Dm644 "$resolved" "$target"
-        fi
-      done
-    fi
-
-    if [[ -d "$managed_font_dir" ]]; then
-      for target in "$managed_font_dir"/*; do
-        [[ -e "$target" ]] || continue
-        resolved="$(readlink -f "$target" || true)"
-        if [[ -n "$resolved" && "$resolved" != "$target" && -d "$resolved" ]]; then
-          rm -rf "$target"
-          mkdir -p "$(dirname "$target")"
-          cp -aT "$resolved" "$target"
-        fi
-      done
-    fi
+    ${pkgs.fontconfig}/bin/fc-cache -r -f >/dev/null 2>&1 || true
   '';
 
   xdg.configFile."fontconfig/fonts.conf" = {
@@ -243,7 +223,10 @@ lib.mkIf config.ahdg.features.fonts {
         "TsangerJinKai01"
         "Source Han Serif SC"
       ];
-      monospace = [ "Maple Mono NF CN" ];
+      monospace = [
+        "Maple Mono NF CN"
+        "Source Han Sans SC"
+      ];
       emoji = [
         "Twitter Color Emoji"
         "Noto Color Emoji"

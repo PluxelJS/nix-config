@@ -77,6 +77,12 @@ let
     ".vscode-shared"
   ];
 
+  sharedSecretTalkNames = [
+    "org.freedesktop.secrets"
+    "org.kde.kwalletd6"
+    "org.kde.secretservicecompat"
+  ];
+
   renderFlatpakArgs = args:
     lib.concatStringsSep " \\\n      " (map shellQuote args);
 
@@ -86,25 +92,25 @@ let
   mkEnvArgs = env:
     lib.mapAttrsToList (name: value: "--env=${name}=${value}") env;
 
-  mkOverrideCommand =
+  mkOverrideArgs =
     {
-      appId,
       sockets ? [ ],
       noSockets ? [ ],
+      talkNames ? [ ],
       filesystems ? [ ],
       noFilesystems ? [ ],
       persists ? [ ],
       env ? { },
     }:
-    let
-      args =
-        (map (value: "--socket=${value}") sockets)
-        ++ (map (value: "--nosocket=${value}") noSockets)
-        ++ (map (value: "--nofilesystem=${value}") noFilesystems)
-        ++ (map (value: "--filesystem=${value}") filesystems)
-        ++ (map (value: "--persist=${value}") persists)
-        ++ mkEnvArgs env;
-    in
+    (map (value: "--socket=${value}") sockets)
+    ++ (map (value: "--nosocket=${value}") noSockets)
+    ++ (map (value: "--talk-name=${value}") talkNames)
+    ++ (map (value: "--nofilesystem=${value}") noFilesystems)
+    ++ (map (value: "--filesystem=${value}") filesystems)
+    ++ (map (value: "--persist=${value}") persists)
+    ++ mkEnvArgs env;
+
+  mkOverrideCommand = appId: args:
     ''
       flatpak override --user --reset ${shellQuote appId}
       flatpak override --user \
@@ -112,41 +118,33 @@ let
         ${shellQuote appId}
     '';
 
-  jetbrainsOverrideArgs =
-    (map (value: "--socket=${value}") [ "wayland" ])
-    ++ (map
-      (value: "--nosocket=${value}")
-      [
-        "x11"
-        "fallback-x11"
-        "ssh-auth"
-        "gpg-agent"
-      ]
-    )
-    ++ (map
-      (value: "--nofilesystem=${value}")
-      [
-        "host:reset"
-        "host"
-      ]
-    )
-    ++ (map (value: "--filesystem=${value}") sharedFilesystems)
-    ++ (map (value: "--persist=${value}") jetbrainsPersistDirs)
-    ++ mkEnvArgs jetbrainsEnv;
+  jetbrainsOverrideArgs = mkOverrideArgs {
+    sockets = [ "wayland" ];
+    talkNames = sharedSecretTalkNames;
+    noSockets = [
+      "x11"
+      "fallback-x11"
+      "ssh-auth"
+      "gpg-agent"
+    ];
+    noFilesystems = [ "host" ];
+    filesystems = sharedFilesystems;
+    persists = jetbrainsPersistDirs;
+    env = jetbrainsEnv;
+  };
 
-  codeStudioOverride =
-    mkOverrideCommand {
-      appId = codeStudioAppId;
-      noSockets = [
-        "x11"
-        "fallback-x11"
-      ];
-      filesystems = sharedFilesystems;
-      persists = codeStudioPersistDirs;
-      env = {
-        PATH = codeStudioPath;
-      };
+  codeStudioOverride = mkOverrideCommand codeStudioAppId (mkOverrideArgs {
+    noSockets = [
+      "x11"
+      "fallback-x11"
+    ];
+    talkNames = sharedSecretTalkNames;
+    filesystems = sharedFilesystems;
+    persists = codeStudioPersistDirs;
+    env = {
+      PATH = codeStudioPath;
     };
+  });
 in
 lib.mkIf config.ahdg.features.flatpak {
   home.activation.manageFlatpakIdeOverrides = lib.hm.dag.entryAfter [ "linkGeneration" ] ''

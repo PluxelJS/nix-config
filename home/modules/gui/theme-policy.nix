@@ -60,8 +60,8 @@ in
 
     gtkFontFamily = lib.mkOption {
       type = types.str;
-      default = "System-ui";
-      description = "GTK-facing UI font family alias.";
+      default = "Inter";
+      description = "GTK-facing UI font family.";
     };
 
     gtkFontSize = lib.mkOption {
@@ -72,8 +72,8 @@ in
 
     kdeUiFontFamily = lib.mkOption {
       type = types.str;
-      default = "Sans Serif";
-      description = "KDE UI font family alias.";
+      default = "Inter";
+      description = "KDE UI font family.";
     };
 
     kdeUiFontSize = lib.mkOption {

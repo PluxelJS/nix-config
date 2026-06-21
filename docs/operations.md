@@ -189,8 +189,9 @@ copying them into `~/.var/app/<app-id>/home`.
 Keep app-private writable state in the sandbox, for example:
 
 - `~/.vscode`, `~/.vscode-shared`
-- `.codex` databases/logs/session state, except the shared writable
-  `config.toml`
+- Codex databases/logs/session state under app-private
+  `$HOME/.local/share/codex`; `CODEX_HOME/config.toml` is a symlink to the
+  shared host `~/.codex/config.toml`
 - `.npm`, `.bun`
 - app-local caches, plugin indexes, and editor-specific mutable state
 

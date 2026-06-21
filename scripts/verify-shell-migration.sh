@@ -405,10 +405,16 @@ if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2
     fail "Code Studio cannot read the shared shell or opencode config"
   fi
 
-  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'test -f "$HOME/.codex/config.toml" && test "$(readlink -f "$HOME/.codex/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'test "$CODEX_HOME" = "/home/ahdg/.local/share/codex" && test -f "$CODEX_HOME/config.toml" && test "$(readlink -f "$CODEX_HOME/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
     pass "Code Studio reuses the host Codex config without sharing the whole Codex state dir"
   else
     fail "Code Studio is not wired to the host Codex config as expected"
+  fi
+
+  if ! flatpak override --user --show io.github.trumank.CodeStudio 2>/dev/null | rg -q '^persistent=(.*;)?\.codex(;|$)'; then
+    pass "Code Studio does not persist the legacy ~/.codex mount"
+  else
+    fail "Code Studio should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex"
   fi
 
   if flatpak run --command=sh io.github.trumank.CodeStudio -c '
@@ -436,10 +442,16 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     fail "CLion cannot read the shared shell or opencode config"
   fi
 
-  if flatpak run --command=sh com.jetbrains.CLion -c 'test -f "$HOME/.codex/config.toml" && test "$(readlink -f "$HOME/.codex/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
+  if flatpak run --command=sh com.jetbrains.CLion -c 'test "$CODEX_HOME" = "/home/ahdg/.local/share/codex" && test -f "$CODEX_HOME/config.toml" && test "$(readlink -f "$CODEX_HOME/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
     pass "CLion reuses the host Codex config without sharing the whole Codex state dir"
   else
     fail "CLion is not wired to the host Codex config as expected"
+  fi
+
+  if ! flatpak override --user --show com.jetbrains.CLion 2>/dev/null | rg -q '^persistent=(.*;)?\.codex(;|$)'; then
+    pass "CLion does not persist the legacy ~/.codex mount"
+  else
+    fail "CLion should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex"
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c 'test -d "$XDG_CONFIG_HOME/JetBrains" && test -d "$XDG_DATA_HOME/JetBrains" && test -d "$XDG_CACHE_HOME/JetBrains"' >/dev/null 2>&1; then
@@ -484,7 +496,8 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     test -n "$options_dir" &&
     rg -q "FONT_FAMILY\" value=\"Maple Mono NF CN\"" "$options_dir/editor-font.xml" &&
     rg -q "FONT_FAMILY\" value=\"Maple Mono NF CN\"" "$options_dir/terminal-font.xml" &&
-    rg -q "myShellPath\" value=\"/home/ahdg/.local/state/nix/profiles/profile/bin/zsh\"" "$options_dir/terminal.xml" &&
+    (rg -Fq "myShellPath\" value=\"/home/ahdg/.local/state/nix/profiles/profile/bin/zsh" "$options_dir/terminal.xml" ||
+      rg -Fq "myShellPath\" value=\"\$USER_HOME\$/.local/state/nix/profiles/profile/bin/zsh" "$options_dir/terminal.xml") &&
     rg -q "terminalEngine\" value=\"CLASSIC\"" "$options_dir/terminal.xml" &&
     rg -q "terminalEngineInRemDev\" value=\"CLASSIC\"" "$options_dir/terminal.xml" &&
     rg -q "selectedLocale\" value=\"zh-CN\"" "$options_dir/ide.general.xml"

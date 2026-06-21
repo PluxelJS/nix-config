@@ -23,7 +23,7 @@ let
 
   sharedWritableFilesystems = [
     "${homeDir}/.claude:create"
-    "${homeDir}/.codex/config.toml"
+    "${homeDir}/.codex:create"
     "${homeDir}/.config/gh:create"
     "${homeDir}/.config/opencode:create"
     "${homeDir}/.continue:create"

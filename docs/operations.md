@@ -173,7 +173,9 @@ stable policy/config, for example:
 Shared writable config/login state for IDE sandboxes should also come from the
 host when the tools are expected to edit it interactively, for example:
 
-- `~/.codex/config.toml`
+- `~/.codex` for Codex config writes. Codex persists `config.toml` with a
+  temporary file and atomic rename, so a single-file Flatpak bind mount is not
+  sufficient.
 - `~/.config/opencode`
 - `~/.config/gh`
 - `~/.claude`

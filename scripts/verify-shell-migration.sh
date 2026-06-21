@@ -406,7 +406,7 @@ if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2
   fi
 
   if flatpak run --command=sh io.github.trumank.CodeStudio -c 'test "$CODEX_HOME" = "/home/ahdg/.local/share/codex" && test -f "$CODEX_HOME/config.toml" && test "$(readlink -f "$CODEX_HOME/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
-    pass "Code Studio reuses the host Codex config without sharing the whole Codex state dir"
+    pass "Code Studio uses app-private CODEX_HOME state with the host Codex config"
   else
     fail "Code Studio is not wired to the host Codex config as expected"
   fi
@@ -415,6 +415,12 @@ if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2
     pass "Code Studio does not persist the legacy ~/.codex mount"
   else
     fail "Code Studio should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex"
+  fi
+
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c '! grep -q " /home/ahdg/.codex/config.toml /home/ahdg/.codex/config.toml " /proc/self/mountinfo' >/dev/null 2>&1; then
+    pass "Code Studio exposes Codex config through a directory mount for atomic writes"
+  else
+    fail "Code Studio should not expose Codex config as a single-file mount"
   fi
 
   if flatpak run --command=sh io.github.trumank.CodeStudio -c '
@@ -443,7 +449,7 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c 'test "$CODEX_HOME" = "/home/ahdg/.local/share/codex" && test -f "$CODEX_HOME/config.toml" && test "$(readlink -f "$CODEX_HOME/config.toml")" = "/home/ahdg/.codex/config.toml"' >/dev/null 2>&1; then
-    pass "CLion reuses the host Codex config without sharing the whole Codex state dir"
+    pass "CLion uses app-private CODEX_HOME state with the host Codex config"
   else
     fail "CLion is not wired to the host Codex config as expected"
   fi
@@ -452,6 +458,12 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     pass "CLion does not persist the legacy ~/.codex mount"
   else
     fail "CLion should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c '! grep -q " /home/ahdg/.codex/config.toml /home/ahdg/.codex/config.toml " /proc/self/mountinfo' >/dev/null 2>&1; then
+    pass "CLion exposes Codex config through a directory mount for atomic writes"
+  else
+    fail "CLion should not expose Codex config as a single-file mount"
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c 'test -d "$XDG_CONFIG_HOME/JetBrains" && test -d "$XDG_DATA_HOME/JetBrains" && test -d "$XDG_CACHE_HOME/JetBrains"' >/dev/null 2>&1; then

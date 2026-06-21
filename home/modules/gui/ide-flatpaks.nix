@@ -5,23 +5,29 @@ let
   shellQuote = lib.escapeShellArg;
 
   codeStudioAppId = "io.github.trumank.CodeStudio";
+  codeStudioHomeDir = "${homeDir}/.var/app/${codeStudioAppId}/home";
   jetbrainsFilesDir = ../../files/jetbrains;
   inputhelp = ../../files/jetbrains/inputhelp.zip;
 
   sharedReadOnlyFilesystems = [
     "${homeDir}/.config/atuin:ro"
-    "${homeDir}/.config/gh:ro"
     "${homeDir}/.config/git:ro"
-    "${homeDir}/.config/opencode:ro"
     "${homeDir}/.config/starship:ro"
     "${homeDir}/.config/zsh:ro"
     "${homeDir}/.gitconfig:ro"
     "${homeDir}/.local/state/nix/profiles:ro"
     "/nix/store:ro"
-    "${homeDir}/.codex/config.toml:ro"
   ];
 
   sharedWritableFilesystems = [
+    "${homeDir}/.claude:create"
+    "${homeDir}/.codex/config.toml"
+    "${homeDir}/.config/gh:create"
+    "${homeDir}/.config/opencode:create"
+    "${homeDir}/.continue:create"
+    "${homeDir}/.gemini:create"
+    "${homeDir}/.hapi:create"
+    "${homeDir}/.opencode:create"
     "${homeDir}/code:create"
     "xdg-data/Trash:create"
   ];
@@ -30,7 +36,7 @@ let
   jetbrainsPersistDirs = [
     ".cache"
     ".codex"
-    ".config/JetBrains"
+    ".java"
     ".local"
   ];
 
@@ -46,12 +52,12 @@ let
   # CodeStudio needs extra PATH entries
   codeStudioPath =
     lib.concatStringsSep ":" [
+      "${codeStudioHomeDir}/.local/share/mise/shims"
       profileBinDir
       "${homeDir}/.local/bin"
       "${homeDir}/.bun/bin"
       "/app/bin"
       "/usr/bin"
-      "${homeDir}/.local/share/pnpm"
       "${homeDir}/.var/app/${codeStudioAppId}/data/node_modules/bin"
     ];
 
@@ -66,11 +72,7 @@ let
 
   codeStudioPersistDirs = [
     ".bun"
-    ".claude"
     ".codex"
-    ".continue"
-    ".gemini"
-    ".hapi"
     ".local"
     ".npm"
     ".vscode"
@@ -152,6 +154,9 @@ lib.mkIf config.ahdg.features.flatpak {
       exit 0
     fi
 
+    mkdir -p '${homeDir}/.codex'
+    touch '${homeDir}/.codex/config.toml'
+
     apply_jetbrains_override() {
       local app_id="$1"
       local override_args=(
@@ -190,6 +195,35 @@ ${renderShellArrayItems jetbrainsOverrideArgs}
         done < <(find "$jetbrains_vmoptions_dir" -maxdepth 1 -type f -name '*.vmoptions' | sort)
       done < <(find "${homeDir}/.var/app" -path '*/config/JetBrains/*/*64.vmoptions' -type f 2>/dev/null | sort)
     fi
+  '';
+
+  home.activation.seedJetbrainsJavaPrefs = lib.hm.dag.entryAfter [ "manageFlatpakIdeOverrides" ] ''
+    seed_region_pref() {
+      local prefs_file="$1"
+
+      if [[ -f "$prefs_file" ]] && grep -Fq 'key="code"' "$prefs_file"; then
+        return
+      fi
+
+      mkdir -p "$(dirname "$prefs_file")"
+      if [[ -f "$prefs_file" ]]; then
+        sed -i '/<\/map>/i\  <entry key="code" value="apac"/>' "$prefs_file"
+        return
+      fi
+
+      cat > "$prefs_file" <<'EOF'
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE map SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<map MAP_XML_VERSION="1.0">
+  <entry key="code" value="apac"/>
+</map>
+EOF
+    }
+
+    while IFS= read -r app_dir; do
+      [[ -n "$app_dir" ]] || continue
+      seed_region_pref "$app_dir/.java/.userPrefs/jetbrains/region/prefs.xml"
+    done < <(find "${homeDir}/.var/app" -maxdepth 1 -mindepth 1 -type d -name 'com.jetbrains.*' 2>/dev/null | sort)
   '';
 
   home.activation.installInputhelp = lib.hm.dag.entryAfter [ "installJetbrainsVmOptions" ] ''

@@ -131,6 +131,7 @@ Some files remain outside strict Nix ownership on purpose:
 IDE Flatpaks follow one explicit split:
 
 - host-side canonical source for read-only shared config
+- host-side canonical source for CLI config that IDE terminals may edit
 - app-private writable state inside `~/.var/app/<app-id>/`
 
 Shared read-only config for IDE sandboxes should come from the host when it is
@@ -139,12 +140,21 @@ stable policy/config, for example:
 - `~/.config/zsh`
 - `~/.config/starship`
 - `~/.config/atuin`
-- `~/.config/opencode`
 - `~/.config/git`
-- `~/.config/gh`
 - `~/.gitconfig`
-- `~/.codex/config.toml`
 - the Home Manager / Nix profile bin dir and `/nix/store`
+
+Shared writable config/login state for IDE sandboxes should also come from the
+host when the tools are expected to edit it interactively, for example:
+
+- `~/.codex/config.toml`
+- `~/.config/opencode`
+- `~/.config/gh`
+- `~/.claude`
+- `~/.continue`
+- `~/.gemini`
+- `~/.hapi`
+- `~/.opencode`
 
 Do not make a Flatpak app's private home the canonical source for shared config.
 The IDE should read these paths directly from the host-visible home instead of
@@ -153,7 +163,8 @@ copying them into `~/.var/app/<app-id>/home`.
 Keep app-private writable state in the sandbox, for example:
 
 - `~/.vscode`, `~/.vscode-shared`
-- `.codex` databases/logs/session state, except the shared `config.toml`
+- `.codex` databases/logs/session state, except the shared writable
+  `config.toml`
 - `.npm`, `.bun`
 - app-local caches, plugin indexes, and editor-specific mutable state
 
@@ -173,8 +184,12 @@ Installed `com.jetbrains.*` Flatpaks are managed automatically:
 - allow project writes under `~/code`
 - allow sandbox access to `xdg-data/Trash` so IDE file deletes can use the host
   trash instead of only offering permanent deletion
+- persist Java Preferences under the app-private `$HOME/.java`, which JetBrains
+  uses for region and other `Prefs` state
 - append every snippet from `home/files/jetbrains/vmoptions/` to each discovered
   `*64.vmoptions`
+- seed the JetBrains region preference to `apac` when the app-private Java
+  Preferences store has not created it yet
 - unpack `home/files/jetbrains/inputhelp.zip` into each app's private
   `config/JetBrains/inputhelp` directory and inject its `-javaagent`
 
@@ -186,6 +201,8 @@ has already created.
 That design keeps ownership boundaries clear:
 
 - JetBrains creates its own product/version directories and base vmoptions files
+  under the Flatpak-managed XDG directories, for example
+  `~/.var/app/com.jetbrains.CLion/config/JetBrains`
 - Home Manager applies sandbox policy and performs idempotent append-only
   customization on top
 

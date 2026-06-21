@@ -261,6 +261,25 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
+  home.activation.applyCurrentThemeRuntimeState = lib.hm.dag.entryAfter [
+    "initializeThemeRuntimeState"
+    "initializeKdeglobalsThemeDefaults"
+    "materializeGtkThemeForFlatpak"
+    "materializePlasmaThemeForFlatpak"
+  ] ''
+    mode="$(cat "${config.xdg.configHome}/ahdg/theme/mode" 2>/dev/null || true)"
+
+    case "$mode" in
+      light|dark)
+        ;;
+      *)
+        mode="${defaultMode}"
+        ;;
+    esac
+
+    ${applyTheme}/bin/ahdg-theme apply "$mode"
+  '';
+
   services.darkman = {
     enable = autoSwitchEnabled;
     settings = {

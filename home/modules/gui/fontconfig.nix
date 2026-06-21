@@ -161,7 +161,17 @@ lib.mkIf config.ahdg.features.fonts {
     cp -aT "$custom_font_source" "$custom_font_dir"
   '';
 
-  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+  home.activation.materializeFontconfigForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    target="${config.xdg.configHome}/fontconfig/fonts.conf"
+    resolved="$(readlink -f "$target" || true)"
+
+    if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
+      rm -f "$target"
+      install -Dm644 "$resolved" "$target"
+    fi
+  '';
+
+  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [ "materializeFontconfigForFlatpak" ] ''
     rm -rf "${config.xdg.cacheHome}/fontconfig"
 
     if [[ -d "${config.home.homeDirectory}/.var/app" ]]; then

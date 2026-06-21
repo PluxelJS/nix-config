@@ -430,6 +430,12 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     fail "CLion is not wired to the host Codex config as expected"
   fi
 
+  if flatpak run --command=sh com.jetbrains.CLion -c 'test -d "$XDG_CONFIG_HOME/JetBrains" && test -d "$XDG_DATA_HOME/JetBrains" && test -d "$XDG_CACHE_HOME/JetBrains"' >/dev/null 2>&1; then
+    pass "CLion keeps JetBrains config, data, and cache in app-private XDG state"
+  else
+    fail "CLion is missing one of the app-private JetBrains XDG state directories"
+  fi
+
   if flatpak run --command=sh com.jetbrains.CLion -c 'sed -n "/\\[Context\\]/,/\\[Session Bus Policy\\]/p" /.flatpak-info | rg -q "^sockets=wayland;$"' >/dev/null 2>&1; then
     pass "CLion stays on Wayland-only sockets without X11 fallback"
   else
@@ -458,6 +464,12 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     pass "CLion keeps its Wayland-specific input env override instead of inheriting desktop IM settings"
   else
     fail "CLion should keep its Wayland-specific input env override"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c 'test -f "$HOME/.java/.userPrefs/jetbrains/region/prefs.xml" && rg -q "key=\"code\" value=\"apac\"" "$HOME/.java/.userPrefs/jetbrains/region/prefs.xml"' >/dev/null 2>&1; then
+    pass "CLion persists JetBrains Java Preferences with a fixed region code"
+  else
+    fail "CLion is missing the persisted JetBrains Java Preferences region code"
   fi
 fi
 

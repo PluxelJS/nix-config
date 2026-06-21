@@ -52,6 +52,12 @@ let
     "${config.xdg.dataHome}/icons/Wallbash-Icon"
     "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
   ];
+  legacyGtkHomeArtifacts = [
+    "${config.home.homeDirectory}/.themes/Catppuccin-Latte"
+    "${config.home.homeDirectory}/.themes/Catppuccin-Mocha"
+    "${config.home.homeDirectory}/.themes/Rose-Pine"
+    "${config.home.homeDirectory}/.themes/Wallbash-Gtk"
+  ];
   mkDataDirLink =
     name: source:
     lib.nameValuePair name {
@@ -117,6 +123,13 @@ lib.mkIf config.ahdg.features.gui {
   home.activation.removeLegacyGtkThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
     for target in ${lib.escapeShellArgs legacyGtkArtifacts}; do
       if [[ -e "$target" ]] && [[ ! -L "$target" ]]; then
+        chmod -R u+w "$target" 2>/dev/null || true
+        rm -rf "$target"
+      fi
+    done
+
+    for target in ${lib.escapeShellArgs legacyGtkHomeArtifacts}; do
+      if [[ -e "$target" ]] || [[ -L "$target" ]]; then
         chmod -R u+w "$target" 2>/dev/null || true
         rm -rf "$target"
       fi

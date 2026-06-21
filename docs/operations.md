@@ -70,6 +70,32 @@ Stable policy-style desktop config is generated directly in Nix modules for:
 - Flatpak global override
 - `xdg-terminals.list`
 
+## Flatpak Materialization Rule
+
+Flatpak global overrides expose selected host XDG paths to sandboxed apps. A
+path being exposed is not enough by itself: desktop libraries inside Flatpak can
+silently miss store-backed symlinks even when `/nix/store` is also mounted.
+
+For any path that a sandboxed toolkit or desktop library scans directly, keep
+the runtime copy as a regular file or directory after `home-manager switch`.
+This includes:
+
+- fontconfig entrypoints and snippets under `~/.config/fontconfig/`
+- GTK settings and GTK 4 theme files
+- fcitx config, themes, and static Rime payloads
+- icon, cursor, GTK theme, and Plasma color-scheme assets used by Flatpaks
+
+Store symlinks are still acceptable for explicit toolchain/config mounts where
+the app is expected to read exact paths and `/nix/store` is deliberately exposed,
+for example IDE terminal access to shell config and Nix profile binaries. Large
+font package directories under `~/.local/share/fonts/nix/` also stay store-backed
+because fontconfig resolves them through the mounted store and the real Flatpak
+font check covers that behavior.
+
+When adding a new path to `home/modules/gui/flatpak.nix`, decide whether it is a
+scanned runtime asset or an explicit config/toolchain path. Scanned assets need
+an activation materialization step and a verification check.
+
 ## Managed Runtime Paths
 
 These runtime paths are owned by Home Manager or by activation steps driven
@@ -190,6 +216,9 @@ Installed `com.jetbrains.*` Flatpaks are managed automatically:
   `*64.vmoptions`
 - seed the JetBrains region preference to `apac` when the app-private Java
   Preferences store has not created it yet
+- seed app-level JetBrains defaults for existing product config directories:
+  Maple Mono editor/console/terminal fonts, zh-CN locale, new UI, classic
+  terminal engine, and the Nix profile zsh as terminal shell
 - unpack `home/files/jetbrains/inputhelp.zip` into each app's private
   `config/JetBrains/inputhelp` directory and inject its `-javaagent`
 
@@ -205,6 +234,8 @@ That design keeps ownership boundaries clear:
   `~/.var/app/com.jetbrains.CLion/config/JetBrains`
 - Home Manager applies sandbox policy and performs idempotent append-only
   customization on top
+- Default seeding edits only app-level `options/*.xml` component fields. It does
+  not copy project, workspace, or recent-project state between IDEs.
 
 `GTK_IM_MODULE`, `QT_IM_MODULE`, and `XMODIFIERS` are cleared for these IDE
 sandboxes as an explicit compatibility workaround for the current JetBrains
@@ -220,8 +251,10 @@ After a successful switch:
 - `~/.config/ghostty/config-dankcolors` is a writable regular file when DMS
   runtime support is enabled
 - `~/.config/fcitx5/config`, `profile`, and `conf/*.conf` are regular files
-- `~/.gtkrc-2.0` is a Home Manager symlink
+- `~/.gtkrc-2.0` is a regular file for Flatpak compatibility
 - `~/.config/fontconfig/fonts.conf` is a regular file, not a store symlink
+- `~/.config/fontconfig/conf.d/*.conf` snippets are regular files, not store
+  symlinks
 - `~/.local/share/fonts/custom/` is a regular directory copied from the repo
 - GTK themes, fcitx themes, icon themes, and Flatpak-facing Plasma/GTK assets
   are materialized as regular files or directories

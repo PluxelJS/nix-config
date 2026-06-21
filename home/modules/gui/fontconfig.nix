@@ -162,13 +162,27 @@ lib.mkIf config.ahdg.features.fonts {
   '';
 
   home.activation.materializeFontconfigForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    target="${config.xdg.configHome}/fontconfig/fonts.conf"
-    resolved="$(readlink -f "$target" || true)"
+    materialize_file() {
+      local target=$1
+      local resolved=
 
-    if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-      rm -f "$target"
-      install -Dm644 "$resolved" "$target"
-    fi
+      if [[ ! -e "$target" ]]; then
+        return
+      fi
+
+      resolved="$(readlink -f "$target" || true)"
+      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
+        rm -f "$target"
+        install -Dm644 "$resolved" "$target"
+      fi
+    }
+
+    materialize_file "${config.xdg.configHome}/fontconfig/fonts.conf"
+
+    while IFS= read -r target; do
+      [[ -n "$target" ]] || continue
+      materialize_file "$target"
+    done < <(find "${config.xdg.configHome}/fontconfig/conf.d" -maxdepth 1 -type l -name '*.conf' 2>/dev/null | sort)
   '';
 
   home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [ "materializeFontconfigForFlatpak" ] ''

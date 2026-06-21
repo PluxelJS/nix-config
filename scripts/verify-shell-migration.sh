@@ -205,6 +205,12 @@ if has_feature fonts; then
   else
     fail "$HOME/.config/fontconfig/fonts.conf should be a regular file for Flatpak compatibility"
   fi
+
+  if ! find "$HOME/.config/fontconfig/conf.d" -maxdepth 1 -type l -name '*.conf' 2>/dev/null | rg -q .; then
+    pass "$HOME/.config/fontconfig/conf.d snippets are materialized for Flatpak"
+  else
+    fail "$HOME/.config/fontconfig/conf.d snippets should not be store symlinks for Flatpak compatibility"
+  fi
 fi
 
 if has_feature gui; then
@@ -317,6 +323,12 @@ if has_feature gui && [[ ! -e "$HOME/.local/share/icons/Catppuccin-Macchiato-Lav
   pass "unused Catppuccin cursor tree is removed"
 elif has_feature gui; then
   fail "unused Catppuccin cursor tree should no longer exist"
+fi
+
+if has_feature gui && [[ ! -e "$HOME/.themes/Catppuccin-Latte" ]] && [[ ! -e "$HOME/.themes/Catppuccin-Mocha" ]] && [[ ! -e "$HOME/.themes/Rose-Pine" ]] && [[ ! -e "$HOME/.themes/Wallbash-Gtk" ]]; then
+  pass "legacy ~/.themes compatibility symlinks are removed"
+elif has_feature gui; then
+  fail "legacy ~/.themes compatibility symlinks should no longer exist"
 fi
 
 if has_feature themeRuntime && [[ -f "$HOME/.config/ghostty/config-dankcolors" ]] && [[ ! -L "$HOME/.config/ghostty/config-dankcolors" ]] && [[ -w "$HOME/.config/ghostty/config-dankcolors" ]]; then
@@ -456,6 +468,7 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
   if flatpak run --command=sh com.jetbrains.CLion -c '
     env_block="$(sed -n "/\\[Environment\\]/,/^\\[/p" /.flatpak-info)"
     printf "%s\n" "$env_block" | rg -q "^FLATPAK_IDE_ENV=1$" &&
+    printf "%s\n" "$env_block" | rg -q "^SHELL=/home/ahdg/.local/state/nix/profiles/profile/bin/zsh$" &&
     printf "%s\n" "$env_block" | rg -q "^GTK_IM_MODULE=$" &&
     printf "%s\n" "$env_block" | rg -q "^QT_IM_MODULE=$" &&
     printf "%s\n" "$env_block" | rg -q "^QT_IM_MODULES=wayland$" &&
@@ -464,6 +477,21 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     pass "CLion keeps its Wayland-specific input env override instead of inheriting desktop IM settings"
   else
     fail "CLion should keep its Wayland-specific input env override"
+  fi
+
+  if flatpak run --command=sh com.jetbrains.CLion -c '
+    options_dir="$(find "$XDG_CONFIG_HOME/JetBrains" -maxdepth 2 -mindepth 2 -type d -name options | sort | head -n1)"
+    test -n "$options_dir" &&
+    rg -q "FONT_FAMILY\" value=\"Maple Mono NF CN\"" "$options_dir/editor-font.xml" &&
+    rg -q "FONT_FAMILY\" value=\"Maple Mono NF CN\"" "$options_dir/terminal-font.xml" &&
+    rg -q "myShellPath\" value=\"/home/ahdg/.local/state/nix/profiles/profile/bin/zsh\"" "$options_dir/terminal.xml" &&
+    rg -q "terminalEngine\" value=\"CLASSIC\"" "$options_dir/terminal.xml" &&
+    rg -q "terminalEngineInRemDev\" value=\"CLASSIC\"" "$options_dir/terminal.xml" &&
+    rg -q "selectedLocale\" value=\"zh-CN\"" "$options_dir/ide.general.xml"
+  ' >/dev/null 2>&1; then
+    pass "CLion has JetBrains-wide seeded defaults for font, classic terminal shell, and locale"
+  else
+    fail "CLion is missing one of the JetBrains-wide seeded IDE defaults"
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c 'test -f "$HOME/.java/.userPrefs/jetbrains/region/prefs.xml" && rg -q "key=\"code\" value=\"apac\"" "$HOME/.java/.userPrefs/jetbrains/region/prefs.xml"' >/dev/null 2>&1; then

@@ -170,6 +170,11 @@ stable policy/config, for example:
 - `~/.gitconfig`
 - the Home Manager / Nix profile bin dir and `/nix/store`
 
+Shared IDE tool runtimes that are referenced by config must also be available
+from that Home Manager / Nix profile. For example, Codex MCP servers in
+`~/.codex/config.toml` use `npx`, so `node`, `npm`, and `npx` must resolve in
+every managed IDE sandbox instead of only in one editor's private shim tree.
+
 Shared writable config/login state for IDE sandboxes should also come from the
 host when the tools are expected to edit it interactively, for example:
 
@@ -239,6 +244,13 @@ That design keeps ownership boundaries clear:
   customization on top
 - Default seeding edits only app-level `options/*.xml` component fields. It does
   not copy project, workspace, or recent-project state between IDEs.
+
+JetBrains uses Flatpak-managed XDG directories rather than the Code Studio-style
+`~/.var/app/<app-id>/home` tree as the real storage boundary. For host-side
+discoverability, activation creates a compatibility view under
+`~/.var/app/<app-id>/home` with symlinks to the real app-private `config`,
+`data`, `cache`, `.java`, `.local/state`, and Codex state paths. That view is
+for inspection and tooling convenience; it is not the canonical storage layer.
 
 `GTK_IM_MODULE`, `QT_IM_MODULE`, and `XMODIFIERS` are cleared for these IDE
 sandboxes as an explicit compatibility workaround for the current JetBrains

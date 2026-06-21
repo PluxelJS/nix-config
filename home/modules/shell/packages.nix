@@ -30,6 +30,7 @@ in {
       eza
       fd
       mise
+      nodejs
       ripgrep
       yazi
       zsh-autopair

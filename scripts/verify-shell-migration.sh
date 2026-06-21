@@ -393,7 +393,7 @@ elif has_feature fonts; then
 fi
 
 if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2>&1; then
-  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'for cmd in zsh mise git gh opencode; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
+  if flatpak run --command=sh io.github.trumank.CodeStudio -c 'for cmd in zsh mise git gh opencode node npm npx; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
     pass "Code Studio terminal resolves the shared host-managed toolchain"
   else
     fail "Code Studio terminal is missing part of the shared host-managed toolchain"
@@ -436,7 +436,7 @@ if has_feature flatpak && flatpak info io.github.trumank.CodeStudio >/dev/null 2
 fi
 
 if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
-  if flatpak run --command=sh com.jetbrains.CLion -c 'for cmd in zsh git gh opencode; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
+  if flatpak run --command=sh com.jetbrains.CLion -c 'for cmd in zsh git gh opencode node npm npx; do command -v "$cmd" >/dev/null 2>&1 || exit 1; done' >/dev/null 2>&1; then
     pass "CLion terminal resolves the shared host-managed toolchain"
   else
     fail "CLion terminal is missing part of the shared host-managed toolchain"
@@ -470,6 +470,15 @@ if has_feature flatpak && flatpak info com.jetbrains.CLion >/dev/null 2>&1; then
     pass "CLion keeps JetBrains config, data, and cache in app-private XDG state"
   else
     fail "CLion is missing one of the app-private JetBrains XDG state directories"
+  fi
+
+  if [[ -d "$HOME/.var/app/com.jetbrains.CLion/home/.config/JetBrains" ]] \
+    && [[ -d "$HOME/.var/app/com.jetbrains.CLion/home/.local/share/JetBrains" ]] \
+    && [[ -d "$HOME/.var/app/com.jetbrains.CLion/home/.cache/JetBrains" ]] \
+    && [[ "$(readlink -f "$HOME/.var/app/com.jetbrains.CLion/home/.codex/config.toml" 2>/dev/null || true)" == "$HOME/.codex/config.toml" ]]; then
+    pass "CLion exposes a host-side home view for app-private XDG and Codex state"
+  else
+    fail "CLion host-side home view is missing an expected compatibility path"
   fi
 
   if flatpak run --command=sh com.jetbrains.CLion -c 'sed -n "/\\[Context\\]/,/\\[Session Bus Policy\\]/p" /.flatpak-info | rg -q "^sockets=wayland;$"' >/dev/null 2>&1; then

@@ -7,7 +7,7 @@
     ./assets.nix
     ./dolphin.nix
     ./flatpak.nix
-    ./ide-flatpaks.nix
+    ./ide-flatpaks
     ./fontconfig.nix
     ./gtk.nix
     ./input-method.nix

@@ -1,30 +1,22 @@
 # CachyOS Bootstrap
 
-This is the fresh-machine path for recreating the current user environment on a
-new CachyOS/Arch install.
+Fresh-machine path for recreating this environment on CachyOS/Arch.
 
-## Ownership Model
+## Layers
 
-Home Manager owns the reproducible user layer:
+Bootstrap prepares three layers:
 
-- shell tools and config
-- Mango/DMS user config and helper scripts
-- fonts, GTK, Plasma assets, portals, input method policy
-- Flatpak integration and IDE sandbox policy
-- user Podman quadlets such as Verdaccio
+- **Host packages:** compositor/session runtimes and system integration from
+  pacman/AUR.
+- **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
+  policy, and user services.
+- **Recommended Flatpaks:** apps used by current keybinds, MIME defaults, and
+  sandbox verification.
 
-The host still owns compositor/session runtimes and system integration:
-
-- `mangowc` / `mangowm-git`
-- `dms-shell`
-- `fcitx5` runtime and addons
-- portal runtimes
-- graphics, seat, login, display-manager, and polkit system pieces
-
-This keeps migration fast without forcing fragile compositor and graphics-stack
+This keeps migration fast without forcing MangoWC, DMS, or graphics/session
 integration through Nix on a non-NixOS host.
 
-## Fresh Install Flow
+## Fresh Install
 
 Install Git and clone this repo:
 
@@ -47,14 +39,14 @@ Apply the full desktop bootstrap:
 
 What it does:
 
-- installs Nix through pacman when `nix` is missing
-- enables `nix-daemon.service`
-- installs `paru` when missing, using the repo package if available or
+- installs Nix through pacman and enables `nix-daemon.service`
+- installs `paru` when missing, using a repo package if available or
   `paru-bin` from AUR as a fallback
-- installs required pacman packages for the selected profile
-- installs required AUR packages such as `mangowc` and `dms-shell`
-- runs the matching Home Manager flake output
-- runs the verification script after switch
+- installs required pacman/AUR packages for the selected profile
+- with `--with-recommended`, installs desktop helper packages and recommended
+  Flatpaks such as Mission Center, Eye of GNOME, and Telegram
+- switches the matching Home Manager flake output
+- runs verification after switch
 
 Useful variants:
 
@@ -71,7 +63,7 @@ After the first bootstrap, log out and back in if the script added the user to
 ~/.config/nix/scripts/verify-shell-migration.sh desktop
 ```
 
-## Runtime Dependency Check
+## Dependency Repair
 
 For an already prepared host, use the lower-level dependency checker:
 

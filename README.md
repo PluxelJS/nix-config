@@ -1,51 +1,26 @@
-# Nix Home Manager Layout
+# Home Manager Config
 
-This repo is the user-layer Home Manager flake for `ahdg` on `CachyOS/Arch`.
-It owns reproducible user-space config, packages, and desktop-adjacent policy.
-It does not try to be a full host-management repo.
+User-layer Home Manager flake for `ahdg` on `CachyOS/Arch`.
 
-## Scope
+It makes shell, desktop config, themes, Flatpak integration, and selected user
+services reproducible. It intentionally does not manage the whole host.
 
-Primary areas owned here:
+## Model
 
-- shell tooling and interactive behavior
-- CLI package set installed by Home Manager
-- Ghostty, MangoWC user config, and helper scripts
-- fonts, GTK, Plasma theme assets, and portal policy
-- `fcitx5` config, themes, and pinned Rime payloads
-- XDG defaults, MIME policy, and Flatpak host integration
-- user-scoped Podman quadlets for explicitly managed local services
+Home Manager owns:
 
-System-layer pieces such as the login manager, system desktop session, PAM,
-and other root-owned services stay outside this repo.
+- shell tools and interactive behavior
+- GUI config under `$HOME`, including Ghostty, Mango, XDG defaults, and portals
+- fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
+- `fcitx5` config/theme/Rime data, while the runtime stays on the host
+- user-scoped services such as the Verdaccio Podman quadlet
 
-For the detailed host/user split, read
-[docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md).
+The host package manager owns:
 
-## Ownership Summary
-
-Canonical Nix-owned areas:
-
-- shell behavior: `zsh`, `atuin`, `fzf`, `mise`, `starship`, `pay-respects`
-- CLI tools: `git`, `gh`, `bat`, `delta`, `eza`, `fd`, `ripgrep`, `zoxide`
-- desktop user config: `ghostty`, `mango`, XDG defaults, portal policy
-- theme stack: GTK, Plasma assets, icons, cursors, font policy
-- input method policy: `fcitx5` config, themes, Rime baseline payloads
-- Flatpak-facing user integration: global override plus exposed theme/font data
-- local user services: managed Podman quadlets such as Verdaccio
-
-Intentionally not owned here:
-
-- `/etc` and other root-owned paths
-- systemd system units
-- display managers such as `sddm` or `plasma-login-manager`
-- the host-side Plasma/Mango session runtime itself
-- mutable runtime overlays generated live by DMS
-- unmanaged app-specific Flatpak overrides outside the explicit IDE policy
-- local credential-store secrets and similar runtime auth state
-
-For theme ownership details, read
-[docs/theme-stack.md](/home/ahdg/.config/nix/docs/theme-stack.md).
+- `/etc`, PAM, display managers, login/session plumbing, and systemd system units
+- compositor/session runtimes such as MangoWC and DMS
+- graphics, seat, portal runtime, input-method runtime, and polkit system pieces
+- local credentials and app runtime state
 
 ## Quick Start
 
@@ -77,11 +52,6 @@ Build activation package only:
 ```bash
 nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 ```
-
-Operational details, cleanup flow, and validation live in
-[docs/operations.md](/home/ahdg/.config/nix/docs/operations.md).
-Fresh-machine bootstrap details live in
-[docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md).
 
 ## Structure
 
@@ -119,25 +89,13 @@ Exported configurations:
 Activation writes resolved profile metadata to `~/.config/ahdg/`, which the
 verification script uses for post-switch checks.
 
-## Design Rules
-
-- Keep system-layer ownership out of this repo.
-- Keep app-native config in native formats under `home/files/` when that is
-  materially easier to edit.
-- Prefer official nixpkgs assets over vendored theme/icon/font payloads.
-- Keep mutable runtime outputs writable when another tool owns them live.
-- Prefer Nix ownership for stable theme selection and DMS ownership only for
-  live runtime overlays.
-- Prefer Nix-managed app themes only for apps whose runtime is also
-  Nix-managed, with explicitly documented exceptions.
-
 ## Docs
 
-- [docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md):
-  host vs Home Manager ownership, required root/system rationale, host runtime
-  dependencies
 - [docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md):
-  fresh CachyOS install flow, Nix/paru bootstrap, and host runtime setup
+  fresh install flow, Nix/paru bootstrap, host packages, and recommended
+  Flatpak canaries
+- [docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md):
+  host vs Home Manager ownership
 - [docs/theme-stack.md](/home/ahdg/.config/nix/docs/theme-stack.md):
   theme ownership between Nix and DMS
 - [docs/operations.md](/home/ahdg/.config/nix/docs/operations.md):

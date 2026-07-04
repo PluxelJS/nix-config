@@ -67,54 +67,38 @@ Flatpak note:
 
 ## Host Runtime Dependencies
 
-The current setup still expects a small system-side base outside Nix.
+The authoritative install/check path is:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh
+~/.config/nix/scripts/install-arch-runtime-deps.sh
+```
+
+The conceptual host package set is:
 
 Needed from Arch repositories:
 
-- `zsh`
-  The login shell still resolves to `/usr/bin/zsh`.
-- `fcitx5`
-  The runtime itself intentionally stays system-owned.
-- `fcitx5-gtk`
-  GTK input method modules for non-Nix desktop apps.
-- `fcitx5-qt`
-  Qt input method plugins for non-Nix desktop apps.
-- `fcitx5-rime`
-  The Rime addon binary remains on the system side.
-- `flatpak`
-  Nix only manages the global override file.
-- `podman`
-  Needed for Home Manager-managed user quadlets such as Verdaccio.
-- `xdg-desktop-portal-kde`
-  The portal runtime itself is still host-managed.
+- baseline: `zsh`, `pkgfile`
+- desktop runtime: `fcitx5`, `fcitx5-gtk`, `fcitx5-qt`, `fcitx5-rime`
+- integration: `flatpak`, `podman`, `xdg-desktop-portal`,
+  `xdg-desktop-portal-kde`, `dbus`
+- Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
+  `plasma-workspace`
+- recommended desktop apps/helpers: `baloo`, `copyq`, `dolphin`
+
+AUR packages used by the desktop profile:
+
 - `mangowc` or `mangowm-git`
-  The compositor/session binary still lives on the host side.
 - `dms-shell`
-  DMS runtime still lives on the host side.
-- `wlr-randr`
-  Used directly by the Mango config.
-- `kservice`
-  Provides `kbuildsycoca6` for the DMS startup path.
-- `polkit-kde-agent`
-  Still launched from the DMS startup path.
-- `plasma-workspace`
-  Provides `xembedsniproxy` for legacy tray bridge behavior.
-- `pkgfile`
-  Recommended for fast `pay-respects` package lookup on Arch.
+- `zen-browser-bin` if the default browser hotkey should work unchanged
 
-Optional AUR packages:
+Home Manager supplies the user tools and assets listed in `home/modules/`.
+Host packages are still used when a binary is launched by the compositor,
+display/session plumbing, or a root/system-owned service before the Nix profile
+can be assumed.
 
-- `paru` or `yay`
-  Optional helper tools for AUR management.
-- `zen-browser-bin`
-  Optional if the current Mango browser hotkey target should stay unchanged.
-
-Not required from pacman/AUR when Home Manager already provides them:
-
-- `git`
-- `fd`
-- `ripgrep`
-- old font/theme/icon packages that no host package still depends on
+Recommended Flatpaks are handled by `bootstrap/cachyos.sh --with-recommended`
+when they are part of the current workflow or validation canaries.
 
 ## Package-Repair Rule
 

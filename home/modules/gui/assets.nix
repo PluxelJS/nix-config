@@ -15,7 +15,10 @@ let
       pkgs.papirus-icon-theme
       pkgs.notepad-next
       pkgs.copyq
+      pkgs.file
+      pkgs.libnotify
       pkgs.songrec
+      pkgs.wl-clipboard
     ];
 in
 lib.mkIf (packages != [ ]) {

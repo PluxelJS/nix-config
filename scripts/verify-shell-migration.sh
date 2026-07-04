@@ -348,6 +348,9 @@ fi
 if has_feature ghostty; then
   expected_tools+=(ghostty)
 fi
+if has_feature gui; then
+  expected_tools+=(copyq file mark-shot notify-send songrec wl-paste)
+fi
 expected_tools_check="command -v ${expected_tools[*]} >/dev/null"
 
 if zsh -i -c "$expected_tools_check"; then

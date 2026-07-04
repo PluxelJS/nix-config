@@ -11,6 +11,12 @@ install_nix=1
 install_paru=1
 switch_after=1
 
+recommended_desktop_flatpaks=(
+  io.missioncenter.MissionCenter
+  org.gnome.eog
+  org.telegram.desktop
+)
+
 usage() {
   cat <<EOF
 Usage: $0 [--apply] [--profile desktop|shell|container] [--with-recommended]
@@ -23,7 +29,7 @@ Options:
   --apply              install missing prerequisites and run Home Manager
   --profile NAME       deployment profile; default: desktop
   --flake ATTR         flake output; default follows profile
-  --with-recommended   include recommended desktop packages
+  --with-recommended   include recommended desktop packages and Flatpak apps
   --no-install-nix     skip Nix installation/daemon setup
   --no-install-paru    skip paru installation
   --no-switch          do not run Home Manager switch
@@ -203,6 +209,54 @@ run_runtime_dependencies() {
   "$repo_dir/scripts/install-arch-runtime-deps.sh" "${args[@]}"
 }
 
+flatpak_app_installed() {
+  flatpak info "$1" >/dev/null 2>&1
+}
+
+ensure_flathub() {
+  if flatpak remotes --columns=name 2>/dev/null | grep -qx flathub; then
+    pass "Flatpak remote \`flathub\` configured"
+    return
+  fi
+
+  fail "Flatpak remote \`flathub\` missing"
+  if [[ "$mode" == "apply" ]]; then
+    run flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  fi
+}
+
+ensure_flatpak_apps() {
+  local app
+  local missing=()
+
+  [[ "$profile" == "desktop" ]] || return
+
+  if ((!include_recommended)); then
+    warn "recommended Flatpak apps skipped; pass --with-recommended to install desktop canaries and bound apps"
+    return
+  fi
+
+  if ! command -v flatpak >/dev/null 2>&1; then
+    warn "flatpak command missing; runtime dependency step must install it before recommended Flatpaks can be applied"
+    return
+  fi
+
+  ensure_flathub
+
+  for app in "${recommended_desktop_flatpaks[@]}"; do
+    if flatpak_app_installed "$app"; then
+      pass "Flatpak app \`$app\` installed"
+    else
+      fail "Flatpak app \`$app\` missing"
+      missing+=("$app")
+    fi
+  done
+
+  if [[ "$mode" == "apply" ]] && ((${#missing[@]} > 0)); then
+    run flatpak install -y --or-update flathub "${missing[@]}"
+  fi
+}
+
 run_home_manager() {
   local flake_ref="$repo_dir#$flake_attr"
 
@@ -239,6 +293,7 @@ ensure_paru
 
 echo
 run_runtime_dependencies
+ensure_flatpak_apps
 
 if ((switch_after)); then
   run_home_manager

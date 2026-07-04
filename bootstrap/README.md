@@ -12,3 +12,6 @@ Current entrypoint:
 ~/.config/nix/bootstrap/cachyos.sh
 ~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
 ```
+
+`--with-recommended` includes desktop helper packages and Flatpak apps used by
+current keybinds, MIME defaults, and validation canaries.

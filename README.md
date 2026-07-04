@@ -49,6 +49,15 @@ For theme ownership details, read
 
 ## Quick Start
 
+Fresh CachyOS machine:
+
+```bash
+sudo pacman -S --needed git
+git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
+~/.config/nix/scripts/bootstrap-cachyos.sh
+~/.config/nix/scripts/bootstrap-cachyos.sh --apply --with-recommended
+```
+
 Switch configurations:
 
 ```bash
@@ -71,6 +80,8 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 
 Operational details, cleanup flow, and validation live in
 [docs/operations.md](/home/ahdg/.config/nix/docs/operations.md).
+Fresh-machine bootstrap details live in
+[docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md).
 
 ## Structure
 
@@ -124,6 +135,8 @@ verification script uses for post-switch checks.
 - [docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md):
   host vs Home Manager ownership, required root/system rationale, host runtime
   dependencies
+- [docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md):
+  fresh CachyOS install flow, Nix/paru bootstrap, and host runtime setup
 - [docs/theme-stack.md](/home/ahdg/.config/nix/docs/theme-stack.md):
   theme ownership between Nix and DMS
 - [docs/operations.md](/home/ahdg/.config/nix/docs/operations.md):

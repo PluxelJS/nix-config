@@ -5,6 +5,20 @@ validation, and runtime-state expectations.
 
 ## Switch Commands
 
+Fresh CachyOS bootstrap:
+
+```bash
+~/.config/nix/scripts/bootstrap-cachyos.sh
+~/.config/nix/scripts/bootstrap-cachyos.sh --apply --with-recommended
+```
+
+The bootstrap path installs or checks Nix, `paru`, host runtime dependencies,
+and then runs the matching Home Manager switch. See
+[docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md)
+for the full fresh-machine flow.
+
+Routine Home Manager switches:
+
 ```bash
 home-manager switch --flake ~/.config/nix#ahdg
 home-manager switch --flake ~/.config/nix#ahdg-shell
@@ -23,7 +37,7 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 ```
 
-Bootstrap the Arch-side runtime base:
+Check or repair only the Arch-side runtime base:
 
 ```bash
 ~/.config/nix/scripts/install-arch-runtime-deps.sh

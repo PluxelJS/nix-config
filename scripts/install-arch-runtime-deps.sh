@@ -2,6 +2,7 @@
 set -euo pipefail
 
 profile=""
+profile_explicit=0
 mode="check"
 include_recommended=0
 enabled_features_file="$HOME/.config/ahdg/enabled-features"
@@ -17,9 +18,11 @@ while (($# > 0)); do
     --profile)
       shift
       profile="${1:-}"
+      profile_explicit=1
       ;;
     desktop|shell|container|shell-minimal|container-fonts|desktop-custom|shell-custom|container-custom)
       profile="$1"
+      profile_explicit=1
       ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -37,6 +40,7 @@ profile="${profile:-desktop}"
 
 failures=0
 repo_missing=()
+aur_missing=()
 recommended_repo_missing=()
 notes=()
 
@@ -56,7 +60,7 @@ fail() {
 has_feature() {
   local feature=$1
 
-  if [[ -f "$enabled_features_file" ]]; then
+  if [[ "$profile_explicit" == "0" && -f "$enabled_features_file" ]]; then
     rg -qx -- "$feature" "$enabled_features_file"
     return $?
   fi
@@ -151,6 +155,12 @@ if has_feature flatpak; then
   ensure_repo_package flatpak "Flatpak runtime stays on the host side"
 fi
 
+case "$profile" in
+  desktop|desktop-custom)
+    ensure_repo_package podman "user quadlets such as Verdaccio run through Podman"
+    ;;
+esac
+
 if has_feature portal; then
   ensure_repo_package xdg-desktop-portal "portal broker service"
   ensure_repo_package xdg-desktop-portal-kde "preferred KDE portal backend"
@@ -162,13 +172,16 @@ if has_feature gui; then
   ensure_any_command "DMS shell" "desktop shell invoked from Mango config" dms
 
   if ! command_available mango; then
-    repo_missing+=("mangowc")
-    append_note "No \`mango\` binary found. Preferred repo package: \`mangowc\`. If you intentionally track the git build, install \`mangowm-git\` instead."
+    aur_missing+=("mangowc")
+    append_note "No \`mango\` binary found. Preferred AUR package: \`mangowc\`. If you intentionally track the git build, install \`mangowm-git\` instead."
+  elif ! command_available mmsg; then
+    aur_missing+=("mangowc")
+    append_note "No \`mmsg\` binary found. Reinstall the Mango package that provides both \`mango\` and \`mmsg\`."
   fi
 
   if ! command_available dms; then
-    repo_missing+=("dms-shell")
-    append_note "No \`dms\` binary found. Preferred repo package: \`dms-shell\`."
+    aur_missing+=("dms-shell")
+    append_note "No \`dms\` binary found. Preferred AUR package: \`dms-shell\`."
   fi
 
   ensure_repo_package wlr-randr "monitor command used in Mango config"
@@ -221,12 +234,27 @@ if [[ "$mode" == "apply" ]]; then
     echo "Re-run with --with-recommended if you want them installed too."
   fi
 
+  if ((${#aur_missing[@]} > 0)); then
+    mapfile -t aur_missing < <(printf '%s\n' "${aur_missing[@]}" | sed '/^$/d' | sort -u)
+    echo
+    if command -v paru >/dev/null 2>&1; then
+      echo "Installing missing required AUR packages..."
+      paru -S --needed "${aur_missing[@]}"
+    else
+      echo "Missing required AUR packages and no \`paru\` command is available:" >&2
+      printf '  %s\n' "${aur_missing[@]}" >&2
+      echo "Install paru first, or run scripts/bootstrap-cachyos.sh --apply." >&2
+      exit 1
+    fi
+  fi
+
   exit 0
 fi
 
 cat <<EOF
 Summary:
   Required repo packages missing: ${#repo_missing[@]}
+  Required AUR packages missing: ${#aur_missing[@]}
   Recommended repo packages missing: ${#recommended_repo_missing[@]}
 
 Apply required packages:
@@ -240,6 +268,12 @@ if ((${#repo_missing[@]} > 0)); then
   echo
   echo "Required repo packages to install:"
   printf '  %s\n' "${repo_missing[@]}" | sed '/^$/d' | sort -u
+fi
+
+if ((${#aur_missing[@]} > 0)); then
+  echo
+  echo "Required AUR packages to install:"
+  printf '  %s\n' "${aur_missing[@]}" | sed '/^$/d' | sort -u
 fi
 
 if ((${#recommended_repo_missing[@]} > 0)); then

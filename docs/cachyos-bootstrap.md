@@ -36,13 +36,13 @@ git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
 Dry-run the bootstrap:
 
 ```bash
-~/.config/nix/scripts/bootstrap-cachyos.sh
+~/.config/nix/bootstrap/cachyos.sh
 ```
 
 Apply the full desktop bootstrap:
 
 ```bash
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
 ```
 
 What it does:
@@ -59,9 +59,9 @@ What it does:
 Useful variants:
 
 ```bash
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --profile shell
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --profile container
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --no-switch
+~/.config/nix/bootstrap/cachyos.sh --apply --profile shell
+~/.config/nix/bootstrap/cachyos.sh --apply --profile container
+~/.config/nix/bootstrap/cachyos.sh --apply --no-switch
 ```
 
 After the first bootstrap, log out and back in if the script added the user to

@@ -8,8 +8,8 @@ validation, and runtime-state expectations.
 Fresh CachyOS bootstrap:
 
 ```bash
-~/.config/nix/scripts/bootstrap-cachyos.sh
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh
+~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
 ```
 
 The bootstrap path installs or checks Nix, `paru`, host runtime dependencies,

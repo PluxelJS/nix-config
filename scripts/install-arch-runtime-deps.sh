@@ -243,7 +243,7 @@ if [[ "$mode" == "apply" ]]; then
     else
       echo "Missing required AUR packages and no \`paru\` command is available:" >&2
       printf '  %s\n' "${aur_missing[@]}" >&2
-      echo "Install paru first, or run scripts/bootstrap-cachyos.sh --apply." >&2
+      echo "Install paru first, or run bootstrap/cachyos.sh --apply." >&2
       exit 1
     fi
   fi

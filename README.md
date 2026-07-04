@@ -54,8 +54,8 @@ Fresh CachyOS machine:
 ```bash
 sudo pacman -S --needed git
 git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
-~/.config/nix/scripts/bootstrap-cachyos.sh
-~/.config/nix/scripts/bootstrap-cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh
+~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
 ```
 
 Switch configurations:
@@ -92,6 +92,7 @@ Fresh-machine bootstrap details live in
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak
 - `home/modules/podman/`: user-scoped container quadlets
 - `home/files/`: native-format config sources and small runtime seeds
+- `bootstrap/`: fresh-machine bootstrap entrypoints
 - `docs/`: policy and operator docs
 - `scripts/`: verification and host-side helper scripts
 

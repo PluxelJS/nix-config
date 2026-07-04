@@ -1,5 +1,6 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 let
+  guiLib = import ./lib.nix { inherit lib; };
   runtime = config.ahdg.theme.runtime;
   mangoTarget = "${config.xdg.configHome}/mango";
   mangoSource = ../../files/mango;
@@ -22,17 +23,7 @@ lib.mkIf config.ahdg.features.gui {
   home.activation.materializeWritableMangoRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     rm -f "${mangoTarget}"/config.conf.backup*
 
-    for target in ${lib.escapeShellArgs writableRuntimeFiles}; do
-      if [[ ! -e "$target" ]]; then
-        continue
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-        rm -f "$target"
-        install -Dm644 "$resolved" "$target"
-      fi
-    done
+    ${guiLib.materializeRuntimePaths { files = writableRuntimeFiles; }}
 
     if [[ -f "${mangoTarget}/env.conf" ]]; then
       sed -i \

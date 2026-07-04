@@ -54,6 +54,7 @@ Things that do belong in this repo:
 - user-facing theme assets
 - per-user KDE/GTK settings
 - user-scoped systemd services
+- user-scoped Podman quadlets
 - per-user Flatpak override policy for explicitly managed desktop/dev sandboxes
 
 Flatpak note:
@@ -82,6 +83,8 @@ Needed from Arch repositories:
   The Rime addon binary remains on the system side.
 - `flatpak`
   Nix only manages the global override file.
+- `podman`
+  Needed for Home Manager-managed user quadlets such as Verdaccio.
 - `xdg-desktop-portal-kde`
   The portal runtime itself is still host-managed.
 - `mangowc` or `mangowm-git`

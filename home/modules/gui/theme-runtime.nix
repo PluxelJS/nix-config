@@ -7,6 +7,18 @@ let
   gtkFontName = "${theme.gtkFontFamily} ${toString theme.gtkFontSize}";
   kdeFontValue = "${theme.kdeUiFontFamily},${toString theme.kdeUiFontSize},-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
   kdeFixedFontValue = "${theme.kdeFixedFontFamily},${toString theme.kdeFixedFontSize},-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
+  baseSessionVariables =
+    {
+      QT_QPA_PLATFORM = "wayland";
+      QT_QPA_PLATFORMTHEME = "kde";
+      KDE_SESSION_VERSION = "6";
+      KDE_FULL_SESSION = "true";
+      XCURSOR_THEME = theme.cursorThemeName;
+      XCURSOR_SIZE = toString theme.cursorSize;
+    }
+    // lib.optionalAttrs config.ahdg.features.portal {
+      GTK_USE_PORTAL = "1";
+    };
 
   mkCatppuccinGtk =
     variant:
@@ -66,19 +78,7 @@ let
         fixedFontValue = kdeFixedFontValue;
       };
 
-      sessionVariables =
-        {
-          GTK_THEME = gtkThemeSpec;
-          QT_QPA_PLATFORM = "wayland";
-          QT_QPA_PLATFORMTHEME = "kde";
-          KDE_SESSION_VERSION = "6";
-          KDE_FULL_SESSION = "true";
-          XCURSOR_THEME = theme.cursorThemeName;
-          XCURSOR_SIZE = toString theme.cursorSize;
-        }
-        // lib.optionalAttrs config.ahdg.features.portal {
-          GTK_USE_PORTAL = "1";
-        };
+      sessionVariables = { GTK_THEME = gtkThemeSpec; } // baseSessionVariables;
     };
 
   modes = {
@@ -110,17 +110,6 @@ let
   };
 
   activeMode = modes.${defaultMode};
-  baseSessionVariables = {
-      QT_QPA_PLATFORM = "wayland";
-      QT_QPA_PLATFORMTHEME = "kde";
-      KDE_SESSION_VERSION = "6";
-      KDE_FULL_SESSION = "true";
-      XCURSOR_THEME = theme.cursorThemeName;
-      XCURSOR_SIZE = toString theme.cursorSize;
-    }
-    // lib.optionalAttrs config.ahdg.features.portal {
-      GTK_USE_PORTAL = "1";
-    };
 in
 {
   options.ahdg.theme.runtime = lib.mkOption {

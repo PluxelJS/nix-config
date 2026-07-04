@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 let
+  guiLib = import ./lib.nix { inherit lib; };
   theme = config.ahdg.theme;
   runtime = theme.runtime;
   modes = runtime.modes;
@@ -71,26 +72,9 @@ lib.mkIf config.ahdg.features.gui {
   '';
 
   home.activation.materializePlasmaThemeForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    materialize_file() {
-      local target=$1
-      local resolved=
-
-      if [[ ! -e "$target" ]]; then
-        return
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-        rm -f "$target"
-        install -Dm644 "$resolved" "$target"
-      fi
-    }
-
     # Some KDE-aware Flatpaks only get config/data shares, not arbitrary store
     # paths. Keep the color scheme materialized in both locations.
-    for target in ${lib.escapeShellArgs materializedColorSchemeTargets}; do
-      materialize_file "$target"
-    done
+    ${guiLib.materializeRuntimePaths { files = materializedColorSchemeTargets; }}
   '';
 
   home.activation.removeUnusedQtctConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''

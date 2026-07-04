@@ -53,6 +53,7 @@ Canonical source files live here:
 - `~/.config/nix/home/modules/gui/fontconfig.nix`
 - `~/.config/nix/home/modules/gui/gtk.nix`
 - `~/.config/nix/home/modules/gui/flatpak.nix`
+- `~/.config/nix/home/modules/podman/`
 - `~/.config/nix/home/modules/xdg.nix`
 - `~/.config/nix/home/modules/profile.nix`
 - `~/.config/nix/docs/shortcut-policy.md`
@@ -111,6 +112,7 @@ from this flake:
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
 - `~/.config/mimeapps.list`
+- `~/.config/containers/systemd/verdaccio.container`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
 - `~/.config/user-dirs.locale`
@@ -255,6 +257,24 @@ for inspection and tooling convenience; it is not the canonical storage layer.
 `GTK_IM_MODULE`, `QT_IM_MODULE`, and `XMODIFIERS` are cleared for these IDE
 sandboxes as an explicit compatibility workaround for the current JetBrains
 Wayland runtimes on this machine.
+
+## Local Verdaccio Registry
+
+The desktop profile enables `ahdg.podman.verdaccio` by default. The module
+writes a user quadlet at `~/.config/containers/systemd/verdaccio.container`,
+reloads user systemd, and enables `verdaccio.service` when Podman is available.
+
+Useful commands:
+
+```bash
+systemctl --user status verdaccio.service
+systemctl --user restart verdaccio.service
+podman volume inspect verdaccio-storage
+```
+
+The registry binds to `127.0.0.1:4873`. Storage is the Podman named volume
+`verdaccio-storage`, so package data is runtime state rather than Nix store
+content.
 
 ## Runtime Expectations
 

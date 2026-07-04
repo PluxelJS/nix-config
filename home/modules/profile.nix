@@ -15,26 +15,13 @@ let
   ];
 
   profileFeaturePresets = {
-    desktop = [
-      "fastfetch"
-      "ghostty"
-      "desktopXdg"
-      "fonts"
-      "gui"
-      "portal"
-      "flatpak"
-      "graphics"
-      "themeRuntime"
-    ];
+    desktop = featureNames;
     shell = [ "fonts" ];
     container = [ ];
   };
 
-  hasPresetFeature =
-    profile: feature:
-    builtins.elem feature (profileFeaturePresets.${profile} or [ ]);
-
   featureOptionType = types.enum featureNames;
+  presetFeatures = profileFeaturePresets.${cfg.profile};
 
   enabledFeatures = builtins.filter (feature: cfg.features.${feature}) featureNames;
 
@@ -108,19 +95,17 @@ in
   };
 
   config = {
-    ahdg =
-      {
-        deploymentName = deploymentName;
-      }
-      // {
-        features = lib.genAttrs featureNames (
-          feature:
-          lib.mkDefault (
-            (hasPresetFeature cfg.profile feature || builtins.elem feature cfg.extraFeatures)
-            && !(builtins.elem feature cfg.disabledFeatures)
-          )
-        );
-      };
+    ahdg = {
+      inherit deploymentName;
+
+      features = lib.genAttrs featureNames (
+        feature:
+        lib.mkDefault (
+          (builtins.elem feature presetFeatures || builtins.elem feature cfg.extraFeatures)
+          && !(builtins.elem feature cfg.disabledFeatures)
+        )
+      );
+    };
 
     assertions = [
       {

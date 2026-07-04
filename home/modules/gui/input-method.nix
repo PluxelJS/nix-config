@@ -1,7 +1,19 @@
 { config, lib, pkgs, ... }:
 let
+  guiLib = import ./lib.nix { inherit lib; };
   catppuccinFcitx5Dir = "${pkgs.catppuccin-fcitx5}/share/fcitx5/themes";
   plasmaThemeDir = ../../files/fcitx5/themes/plasma;
+  fcitxConfigFiles = [
+    "config"
+    "profile"
+    "conf/classicui.conf"
+    "conf/clipboard.conf"
+    "conf/imselector.conf"
+    "conf/notifications.conf"
+    "conf/quickphrase.conf"
+    "conf/wayland.conf"
+    "conf/waylandim.conf"
+  ];
   wanxiangRelease = "v15.13.0";
   wanxiangBase = pkgs.fetchurl {
     url = "https://github.com/amzxyz/rime-wanxiang/releases/download/${wanxiangRelease}/rime-wanxiang-base.zip";
@@ -67,20 +79,12 @@ lib.mkIf config.ahdg.features.gui {
   '';
 
   home.activation.materializeInputMethodForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    materialize_file() {
-      local target=$1
-      local resolved=
-
-      if [[ ! -e "$target" ]]; then
-        return
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-        rm -f "$target"
-        install -Dm644 "$resolved" "$target"
-      fi
-    }
+    ${guiLib.materializeRuntimePaths {
+      files = [
+        "${config.xdg.configHome}/fcitx5/config"
+        "${config.xdg.configHome}/fcitx5/profile"
+      ];
+    }}
 
     sync_dir() {
       local source=$1
@@ -98,9 +102,6 @@ lib.mkIf config.ahdg.features.gui {
       mkdir -p "$(dirname "$target")"
       cp -aT "$source" "$target"
     }
-
-    materialize_file "${config.xdg.configHome}/fcitx5/config"
-    materialize_file "${config.xdg.configHome}/fcitx5/profile"
 
     if [[ -d "${config.xdg.configHome}/fcitx5/conf" ]]; then
       for target in "${config.xdg.configHome}"/fcitx5/conf/*.conf; do
@@ -212,42 +213,12 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
-  xdg.configFile = {
-    "fcitx5/config" = {
-      force = true;
-      source = ../../files/fcitx5/config;
-    };
-    "fcitx5/profile" = {
-      force = true;
-      source = ../../files/fcitx5/profile;
-    };
-    "fcitx5/conf/classicui.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/classicui.conf;
-    };
-    "fcitx5/conf/clipboard.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/clipboard.conf;
-    };
-    "fcitx5/conf/imselector.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/imselector.conf;
-    };
-    "fcitx5/conf/notifications.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/notifications.conf;
-    };
-    "fcitx5/conf/quickphrase.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/quickphrase.conf;
-    };
-    "fcitx5/conf/wayland.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/wayland.conf;
-    };
-    "fcitx5/conf/waylandim.conf" = {
-      force = true;
-      source = ../../files/fcitx5/conf/waylandim.conf;
-    };
-  };
+  xdg.configFile = lib.listToAttrs (
+    map (relPath:
+      lib.nameValuePair "fcitx5/${relPath}" {
+        force = true;
+        source = ../../files/fcitx5 + "/${relPath}";
+      }
+    ) fcitxConfigFiles
+  );
 }

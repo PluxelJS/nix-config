@@ -13,6 +13,7 @@
     ./modules/gh.nix
     ./modules/git.nix
     ./modules/shell
+    ./modules/podman
     ./modules/themes.nix
     ./modules/starship.nix
     ./modules/ghostty.nix

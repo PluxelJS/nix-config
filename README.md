@@ -14,6 +14,7 @@ Primary areas owned here:
 - fonts, GTK, Plasma theme assets, and portal policy
 - `fcitx5` config, themes, and pinned Rime payloads
 - XDG defaults, MIME policy, and Flatpak host integration
+- user-scoped Podman quadlets for explicitly managed local services
 
 System-layer pieces such as the login manager, system desktop session, PAM,
 and other root-owned services stay outside this repo.
@@ -31,6 +32,7 @@ Canonical Nix-owned areas:
 - theme stack: GTK, Plasma assets, icons, cursors, font policy
 - input method policy: `fcitx5` config, themes, Rime baseline payloads
 - Flatpak-facing user integration: global override plus exposed theme/font data
+- local user services: managed Podman quadlets such as Verdaccio
 
 Intentionally not owned here:
 
@@ -39,7 +41,7 @@ Intentionally not owned here:
 - display managers such as `sddm` or `plasma-login-manager`
 - the host-side Plasma/Mango session runtime itself
 - mutable runtime overlays generated live by DMS
-- app-specific Flatpak overrides
+- unmanaged app-specific Flatpak overrides outside the explicit IDE policy
 - local credential-store secrets and similar runtime auth state
 
 For theme ownership details, read
@@ -77,6 +79,7 @@ Operational details, cleanup flow, and validation live in
 - `home/modules/profile.nix`: base profiles plus feature overrides
 - `home/modules/shell/`: shell behavior and CLI tooling
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak
+- `home/modules/podman/`: user-scoped container quadlets
 - `home/files/`: native-format config sources and small runtime seeds
 - `docs/`: policy and operator docs
 - `scripts/`: verification and host-side helper scripts

@@ -1,5 +1,6 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 let
+  guiLib = import ./lib.nix { inherit lib; };
   theme = config.ahdg.theme;
   runtime = theme.runtime;
   modes = runtime.modes;
@@ -71,6 +72,19 @@ let
       (mkDataDirLink "icons/breeze" runtime.icon.breezeDir)
       (mkDataDirLink "icons/Bibata-Modern-Ice" runtime.cursor.dir)
     ];
+  flatpakMaterializedFiles = [
+    "${config.home.homeDirectory}/.gtkrc-2.0"
+    "${config.xdg.configHome}/gtk-3.0/settings.ini"
+    "${config.xdg.configHome}/xsettingsd/xsettingsd.conf"
+  ];
+  flatpakMaterializedDirs = [
+    "${config.xdg.configHome}/gtk-4.0"
+    "${config.xdg.dataHome}/themes/${modes.dark.gtk.themeName}"
+    "${config.xdg.dataHome}/themes/${modes.light.gtk.themeName}"
+    "${config.xdg.dataHome}/icons/Papirus"
+    "${config.xdg.dataHome}/icons/breeze"
+    "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
+  ];
   gtk3SettingsText = ''
     [Settings]
     gtk-theme-name=${gtkThemeName}
@@ -178,48 +192,12 @@ lib.mkIf config.ahdg.features.gui {
   '';
 
   home.activation.materializeGtkThemeForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    materialize_file() {
-      local target=$1
-      local resolved=
-
-      if [[ ! -e "$target" ]]; then
-        return
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-        rm -f "$target"
-        install -Dm644 "$resolved" "$target"
-      fi
-    }
-
-    materialize_dir() {
-      local target=$1
-      local resolved=
-
-      if [[ ! -e "$target" ]]; then
-        return
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -d "$resolved" ]]; then
-        rm -rf "$target"
-        mkdir -p "$(dirname "$target")"
-        cp -aT "$resolved" "$target"
-      fi
-    }
-
     # Flatpak can see these XDG paths, but store-backed symlinks are not
     # reliable inside the sandbox. Materialize the runtime copies after HM links.
-    materialize_file "${config.home.homeDirectory}/.gtkrc-2.0"
-    materialize_file "${config.xdg.configHome}/gtk-3.0/settings.ini"
-    materialize_file "${config.xdg.configHome}/xsettingsd/xsettingsd.conf"
-    materialize_dir "${config.xdg.configHome}/gtk-4.0"
-    materialize_dir "${config.xdg.dataHome}/themes/${modes.dark.gtk.themeName}"
-    materialize_dir "${config.xdg.dataHome}/themes/${modes.light.gtk.themeName}"
-    materialize_dir "${config.xdg.dataHome}/icons/Papirus"
-    materialize_dir "${config.xdg.dataHome}/icons/breeze"
-    materialize_dir "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
+    ${guiLib.materializeRuntimePaths {
+      files = flatpakMaterializedFiles;
+      dirs = flatpakMaterializedDirs;
+    }}
   '';
 
   xdg.dataFile = lib.listToAttrs managedGtkAssets;

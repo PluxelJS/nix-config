@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 let
+  guiLib = import ./lib.nix { inherit lib; };
   customFontSourceDir = ../../assets/fonts/custom;
   fontconfigEntrypointText = ''
     <?xml version='1.0' encoding='UTF-8'?>
@@ -162,22 +163,9 @@ lib.mkIf config.ahdg.features.fonts {
   '';
 
   home.activation.materializeFontconfigForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    materialize_file() {
-      local target=$1
-      local resolved=
-
-      if [[ ! -e "$target" ]]; then
-        return
-      fi
-
-      resolved="$(readlink -f "$target" || true)"
-      if [[ -n "$resolved" && "$resolved" != "$target" && -f "$resolved" ]]; then
-        rm -f "$target"
-        install -Dm644 "$resolved" "$target"
-      fi
-    }
-
-    materialize_file "${config.xdg.configHome}/fontconfig/fonts.conf"
+    ${guiLib.materializeRuntimePaths {
+      files = [ "${config.xdg.configHome}/fontconfig/fonts.conf" ];
+    }}
 
     while IFS= read -r target; do
       [[ -n "$target" ]] || continue

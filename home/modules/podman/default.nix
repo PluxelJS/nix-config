@@ -1,0 +1,6 @@
+{ ... }:
+{
+  imports = [
+    ./verdaccio.nix
+  ];
+}

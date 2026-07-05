@@ -1,0 +1,450 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+type depOptions struct {
+	apply           bool
+	minimal         bool
+	profile         string
+	profileExplicit bool
+}
+
+type depResult struct {
+	repoMissing      []string
+	aurMissing       []string
+	extrasMissing    []string
+	extrasApplicable bool
+	notes            []string
+}
+
+func (a app) runBootstrap(opts bootstrapOptions) error {
+	profile, ok := a.cfg.Profiles[opts.profile]
+	if !ok {
+		return fmt.Errorf("unsupported profile: %s", opts.profile)
+	}
+	if opts.flake == "" {
+		opts.flake = profile.Flake
+	}
+
+	if !commandExists("pacman") {
+		return errors.New("this bootstrap expects a pacman-based CachyOS/Arch host")
+	}
+
+	fmt.Printf("Bootstrap target:\n  repo:    %s\n  profile: %s\n  flake:   %s\n  mode:    %s\n\n",
+		a.repo, opts.profile, opts.flake, modeName(opts.apply))
+
+	if err := a.ensureNix(opts); err != nil {
+		return err
+	}
+	if err := a.ensureParu(opts); err != nil {
+		return err
+	}
+
+	fmt.Println()
+	if _, err := a.checkDeps(depOptions{
+		apply:           opts.apply,
+		minimal:         opts.minimal,
+		profile:         opts.profile,
+		profileExplicit: true,
+	}); err != nil {
+		return err
+	}
+
+	if err := a.ensureFlatpakApps(opts); err != nil {
+		return err
+	}
+
+	if opts.switchAfter {
+		if err := a.runHomeManager(opts); err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("\nNext checks after reboot/login:\n  %s %s\n",
+		shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify"}), opts.profile)
+	return nil
+}
+
+func (a app) fillDefaultDepProfile(opts *depOptions) {
+	if opts.profile != "" {
+		opts.profileExplicit = true
+	}
+	if opts.profile == "" {
+		if data, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".config", "ahdg", "profile")); err == nil {
+			opts.profile = strings.TrimSpace(string(data))
+		}
+	}
+	if opts.profile == "" {
+		opts.profile = "desktop"
+	}
+}
+
+func (a app) checkDeps(opts depOptions) (depResult, error) {
+	var result depResult
+	features, err := a.featuresFor(opts.profile, opts.profileExplicit)
+	if err != nil {
+		return result, err
+	}
+
+	fmt.Printf("Profile: %s\nMode: %s\n", opts.profile, modeName(opts.apply))
+	result.extrasApplicable = hasFeatureExtras(a.cfg.RepoPackages.FeatureExtras, features)
+	if result.extrasApplicable {
+		if opts.minimal {
+			fmt.Println("Desktop extras: skip")
+		} else {
+			fmt.Println("Desktop extras: include")
+		}
+	}
+	fmt.Println()
+
+	for _, pkg := range a.cfg.RepoPackages.Base {
+		result.ensureRepo(pkg, opts.apply)
+	}
+
+	featureNames := sortedKeys(features)
+	for _, feature := range featureNames {
+		for _, pkg := range a.cfg.RepoPackages.Features[feature] {
+			result.ensureRepo(pkg, opts.apply)
+		}
+	}
+
+	for _, pkg := range a.cfg.RepoPackages.Profiles[opts.profile] {
+		result.ensureRepo(pkg, opts.apply)
+	}
+
+	if features["gui"] {
+		for _, check := range a.cfg.DesktopCommands {
+			if commandAnyExists(check.Commands) {
+				pass("%s available via: %s (%s)", check.Label, existingCommands(check.Commands), check.Reason)
+			} else {
+				fail("%s missing; expected one of: %s (%s)", check.Label, strings.Join(check.Commands, " "), check.Reason)
+				if check.AURPackage != "" {
+					result.aurMissing = append(result.aurMissing, check.AURPackage)
+				}
+				if check.Note != "" {
+					result.notes = append(result.notes, check.Note)
+				}
+			}
+		}
+
+		if a.cfg.Browser.Command != "" {
+			if commandExists(a.cfg.Browser.Command) {
+				pass("browser command `%s` available (%s)", a.cfg.Browser.Command, a.cfg.Browser.Reason)
+			} else {
+				warn("browser command `%s` missing (%s)", a.cfg.Browser.Command, a.cfg.Browser.Reason)
+				if a.cfg.Browser.Note != "" {
+					result.notes = append(result.notes, a.cfg.Browser.Note)
+				}
+			}
+		}
+	}
+
+	if !opts.minimal {
+		for _, feature := range featureNames {
+			for _, pkg := range a.cfg.RepoPackages.FeatureExtras[feature] {
+				result.ensureExtra(pkg)
+			}
+		}
+	}
+
+	result.notes = uniqueSorted(result.notes)
+	if len(result.notes) > 0 {
+		fmt.Println()
+		fmt.Println("Notes:")
+		for _, note := range result.notes {
+			fmt.Printf("  - %s\n", note)
+		}
+	}
+
+	if opts.apply {
+		if err := result.applyPackages(!opts.minimal); err != nil {
+			return result, err
+		}
+	} else {
+		result.printSummary(a.depApplyCommand(opts))
+	}
+
+	return result, nil
+}
+
+func (a app) depApplyCommand(opts depOptions) string {
+	args := []string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "deps"}
+	if opts.profileExplicit {
+		args = append(args, "--profile", opts.profile)
+	}
+	return shellJoin(args)
+}
+
+func (a app) featuresFor(profile string, explicit bool) (map[string]bool, error) {
+	if !explicit {
+		path := filepath.Join(os.Getenv("HOME"), ".config", "ahdg", "enabled-features")
+		if data, err := os.ReadFile(path); err == nil {
+			return linesAsSet(string(data)), nil
+		}
+	}
+
+	profileCfg, ok := a.cfg.Profiles[profile]
+	if !ok {
+		return nil, fmt.Errorf("unsupported profile: %s", profile)
+	}
+	features := make(map[string]bool)
+	for _, feature := range profileCfg.Features {
+		features[feature] = true
+	}
+	return features, nil
+}
+
+func hasFeatureExtras(extras map[string][]pkgSpec, features map[string]bool) bool {
+	for feature, enabled := range features {
+		if enabled && len(extras[feature]) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *depResult) ensureRepo(pkg pkgSpec, apply bool) {
+	if pacmanPackageInstalled(pkg.Name) {
+		pass("repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
+		return
+	}
+	fail("repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
+	r.repoMissing = append(r.repoMissing, pkg.Name)
+}
+
+func (r *depResult) ensureExtra(pkg pkgSpec) {
+	if pacmanPackageInstalled(pkg.Name) {
+		pass("desktop extra repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
+		return
+	}
+	warn("desktop extra repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
+	r.extrasMissing = append(r.extrasMissing, pkg.Name)
+}
+
+func (r depResult) applyPackages(includeExtras bool) error {
+	repoMissing := uniqueSorted(r.repoMissing)
+	extrasMissing := uniqueSorted(r.extrasMissing)
+	aurMissing := uniqueSorted(r.aurMissing)
+
+	if len(repoMissing) > 0 {
+		fmt.Println("Installing missing required repo packages...")
+		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, repoMissing...)...); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("No required repo packages missing.")
+	}
+
+	if includeExtras && len(extrasMissing) > 0 {
+		fmt.Println()
+		fmt.Println("Installing missing desktop extra repo packages...")
+		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, extrasMissing...)...); err != nil {
+			return err
+		}
+	} else if len(extrasMissing) > 0 {
+		fmt.Println()
+		fmt.Println("Desktop extra repo packages left untouched:")
+		for _, pkg := range extrasMissing {
+			fmt.Printf("  %s\n", pkg)
+		}
+		fmt.Println("Re-run without --minimal if you want them installed too.")
+	}
+
+	if len(aurMissing) > 0 {
+		fmt.Println()
+		if !commandExists("paru") {
+			return fmt.Errorf("missing required AUR packages and no paru command is available: %s; run bootstrap/cachyos.sh --apply", strings.Join(aurMissing, ", "))
+		}
+		fmt.Println("Installing missing required AUR packages...")
+		if err := run("paru", append([]string{"-S", "--needed"}, aurMissing...)...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r depResult) printSummary(applyCommand string) {
+	if !r.extrasApplicable {
+		fmt.Printf(`
+Summary:
+  Required repo packages missing: %d
+  Required AUR packages missing: %d
+
+Apply packages:
+  %s --apply
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), applyCommand)
+
+		printList("Required repo packages to install:", r.repoMissing)
+		printList("Required AUR packages to install:", r.aurMissing)
+		return
+	}
+
+	fmt.Printf(`
+Summary:
+  Required repo packages missing: %d
+  Required AUR packages missing: %d
+  Desktop extra repo packages missing: %d
+
+Apply required packages:
+  %s --apply --minimal
+
+Apply full profile packages:
+  %s --apply
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.extrasMissing)), applyCommand, applyCommand)
+
+	printList("Required repo packages to install:", r.repoMissing)
+	printList("Required AUR packages to install:", r.aurMissing)
+	printList("Desktop extra repo packages to install:", r.extrasMissing)
+}
+
+func (a app) ensureNix(opts bootstrapOptions) error {
+	if commandExists("nix") {
+		pass("nix command available")
+	} else if opts.installNix {
+		fail("nix command missing")
+		if opts.apply {
+			if err := installPacmanPackage("nix", "Nix daemon and CLI", opts.apply); err != nil {
+				return err
+			}
+		}
+	} else {
+		warn("nix command missing and --no-install-nix was set")
+	}
+
+	if opts.apply && commandExists("systemctl") {
+		if err := run("sudo", "systemctl", "enable", "--now", "nix-daemon.service"); err != nil {
+			return err
+		}
+	}
+
+	if opts.apply && groupExists("nix-users") {
+		user := os.Getenv("USER")
+		if userInGroup(user, "nix-users") {
+			pass("%s is already in nix-users", user)
+		} else {
+			if err := run("sudo", "usermod", "-aG", "nix-users", user); err != nil {
+				return err
+			}
+			warn("log out and back in if nix-daemon rejects builds for this user")
+		}
+	}
+	return nil
+}
+
+func (a app) ensureParu(opts bootstrapOptions) error {
+	if commandExists("paru") {
+		pass("paru command available")
+		return nil
+	}
+	if !opts.installParu {
+		warn("paru command missing and --no-install-paru was set")
+		return nil
+	}
+
+	fail("paru command missing")
+	if !opts.apply {
+		return nil
+	}
+
+	if err := installPacmanPackage("base-devel", "required to build AUR packages", opts.apply); err != nil {
+		return err
+	}
+	if err := installPacmanPackage("git", "required to fetch AUR package sources", opts.apply); err != nil {
+		return err
+	}
+	if pacmanHasPackage("paru") {
+		return installPacmanPackage("paru", "AUR helper", opts.apply)
+	}
+
+	tmp, err := os.MkdirTemp("", "ahdg-paru-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+
+	dest := filepath.Join(tmp, "paru-bin")
+	if err := run("git", "clone", "https://aur.archlinux.org/paru-bin.git", dest); err != nil {
+		return err
+	}
+	return runInDir(dest, "makepkg", "-si", "--noconfirm")
+}
+
+func installPacmanPackage(pkg, reason string, apply bool) error {
+	if pacmanPackageInstalled(pkg) {
+		pass("pacman package `%s` installed (%s)", pkg, reason)
+		return nil
+	}
+	fail("pacman package `%s` missing (%s)", pkg, reason)
+	if apply {
+		return run("sudo", "pacman", "-S", "--needed", pkg)
+	}
+	return nil
+}
+
+func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
+	apps := a.cfg.Flatpaks[opts.profile]
+	if len(apps) == 0 {
+		return nil
+	}
+	if opts.minimal {
+		warn("desktop Flatpak canaries for profile %q skipped by --minimal", opts.profile)
+		return nil
+	}
+	if !commandExists("flatpak") {
+		warn("flatpak command missing; runtime dependency step must install it before desktop Flatpaks can be applied")
+		return nil
+	}
+
+	if err := ensureFlathub(opts.apply); err != nil {
+		return err
+	}
+
+	var missing []string
+	for _, appID := range apps {
+		if flatpakAppInstalled(appID) {
+			pass("Flatpak app `%s` installed", appID)
+		} else {
+			fail("Flatpak app `%s` missing", appID)
+			missing = append(missing, appID)
+		}
+	}
+
+	if opts.apply && len(missing) > 0 {
+		args := append([]string{"install", "-y", "--or-update", "flathub"}, missing...)
+		return run("flatpak", args...)
+	}
+	return nil
+}
+
+func (a app) runHomeManager(opts bootstrapOptions) error {
+	flakeRef := fmt.Sprintf("%s#%s", a.repo, opts.flake)
+	if !opts.apply {
+		fmt.Printf("\nHome Manager switch command:\n  nix run github:nix-community/home-manager -- switch --flake %s -b pre-nix\n", flakeRef)
+		return nil
+	}
+
+	env := os.Environ()
+	env = append(env, "NIX_CONFIG=experimental-features = nix-command flakes\naccept-flake-config = true")
+	if err := runEnv(env, "nix", "run", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix"); err != nil {
+		return err
+	}
+	return run(filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify", opts.profile)
+}
+
+func ensureFlathub(apply bool) error {
+	if outputContainsLine("flatpak", []string{"remotes", "--columns=name"}, "flathub") {
+		pass("Flatpak remote `flathub` configured")
+		return nil
+	}
+	fail("Flatpak remote `flathub` missing")
+	if apply {
+		return run("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo")
+	}
+	return nil
+}

@@ -13,6 +13,7 @@ type depOptions struct {
 	minimal         bool
 	profile         string
 	profileExplicit bool
+	sudoReady       bool
 }
 
 type depResult struct {
@@ -39,6 +40,12 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 	fmt.Printf("Bootstrap target:\n  repo:    %s\n  profile: %s\n  flake:   %s\n  mode:    %s\n\n",
 		a.repo, opts.profile, opts.flake, modeName(opts.apply))
 
+	if opts.apply {
+		if err := requireSudo(); err != nil {
+			return err
+		}
+	}
+
 	if err := a.ensureNix(opts); err != nil {
 		return err
 	}
@@ -52,6 +59,7 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		minimal:         opts.minimal,
 		profile:         opts.profile,
 		profileExplicit: true,
+		sudoReady:       opts.apply,
 	}); err != nil {
 		return err
 	}
@@ -102,6 +110,12 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 		}
 	}
 	fmt.Println()
+
+	if opts.apply && !opts.sudoReady {
+		if err := requireSudo(); err != nil {
+			return result, err
+		}
+	}
 
 	for _, pkg := range a.cfg.Packages.Base {
 		result.ensureRepo(pkg)
@@ -441,6 +455,17 @@ func ensureFlathub(apply bool) error {
 	fail("Flatpak remote `flathub` missing")
 	if apply {
 		return run("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo")
+	}
+	return nil
+}
+
+func requireSudo() error {
+	if !commandExists("sudo") {
+		return errors.New("sudo command missing; install and configure sudo first, then re-run with --apply")
+	}
+	fmt.Println("Preparing sudo credentials...")
+	if err := run("sudo", "-v"); err != nil {
+		return fmt.Errorf("sudo authentication failed; run `sudo -v` first or configure sudo for this user: %w", err)
 	}
 	return nil
 }

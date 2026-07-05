@@ -108,6 +108,9 @@ Reason:
 		}
 		fmt.Println("Removing pacman packages that are now replaced by Nix or retired stacks...")
 		fmt.Println("Keeping zsh installed because the login shell is still /usr/bin/zsh.")
+		if err := requireSudo(); err != nil {
+			return err
+		}
 		return run("sudo", append([]string{"pacman", "-Rns"}, safe...)...)
 	}
 

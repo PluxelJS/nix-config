@@ -362,27 +362,11 @@ func (a app) ensureParu(opts bootstrapOptions) error {
 		return nil
 	}
 
-	if err := installPacmanPackage("base-devel", "required to build AUR packages", opts.apply); err != nil {
-		return err
-	}
-	if err := installPacmanPackage("git", "required to fetch AUR package sources", opts.apply); err != nil {
-		return err
-	}
 	if pacmanHasPackage("paru") {
 		return installPacmanPackage("paru", "AUR helper", opts.apply)
 	}
 
-	tmp, err := os.MkdirTemp("", "ahdg-paru-*")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmp)
-
-	dest := filepath.Join(tmp, "paru-bin")
-	if err := run("git", "clone", "https://aur.archlinux.org/paru-bin.git", dest); err != nil {
-		return err
-	}
-	return runInDir(dest, "makepkg", "-si", "--noconfirm")
+	return errors.New("paru is missing and no trusted repo package is available; enable the CachyOS repo package first")
 }
 
 func installPacmanPackage(pkg, reason string, apply bool) error {

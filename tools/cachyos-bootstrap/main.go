@@ -108,16 +108,6 @@ func runEnv(env []string, name string, args ...string) error {
 	return cmd.Run()
 }
 
-func runInDir(dir, name string, args ...string) error {
-	fmt.Println("+ " + shellJoin(append([]string{name}, args...)))
-	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
-}
-
 func outputContainsLine(name string, args []string, wanted string) bool {
 	cmd := exec.Command(name, args...)
 	out, err := cmd.Output()

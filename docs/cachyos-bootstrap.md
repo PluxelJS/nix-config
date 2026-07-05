@@ -7,7 +7,8 @@ Fresh-machine path for recreating this environment on CachyOS/Arch.
 Bootstrap prepares three layers:
 
 - **Host packages:** compositor/session runtimes and system integration from
-  pacman/AUR.
+  CachyOS/Arch repositories, with explicit AUR exceptions only when no reliable
+  repo package is available.
 - **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
   policy, and user services.
 - **Desktop Flatpaks:** apps currently used on the workstation, including
@@ -55,9 +56,9 @@ Apply the full desktop bootstrap:
 What it does:
 
 - installs Nix through pacman and enables `nix-daemon.service`
-- installs `paru` when missing, using a repo package if available or
-  `paru-bin` from AUR as a fallback
-- installs required pacman/AUR packages for the selected profile
+- installs `paru` from the CachyOS repository when missing
+- installs required repository packages and explicit AUR exceptions for the
+  selected profile
 - installs desktop helper packages, browser/download-manager packages, and the
   managed Flatpak app set
 - switches the matching Home Manager flake output
@@ -89,4 +90,5 @@ For an already prepared host, use the lower-level dependency checker:
 ~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
-This checker is profile-aware and separates pacman packages from AUR packages.
+This checker is profile-aware and separates repository packages from explicit
+AUR exceptions.

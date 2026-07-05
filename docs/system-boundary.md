@@ -91,6 +91,12 @@ AUR packages used by the desktop profile:
 
 - `mangowm-git`
 
+This is intentionally the only AUR package in the bootstrap policy right now.
+The CachyOS `mangowm` package is preferred in principle, but the currently
+published sync database points at package files that are not available on the
+checked mirrors. Keep using the installed git package until the repo package is
+downloadable and verified to provide the same `mango` and `mmsg` commands.
+
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,
 display/session plumbing, or a root/system-owned service before the Nix profile

@@ -46,7 +46,7 @@ gui = [
 ]
 
 [packages.profiles]
-desktop = ["podman"]
+desktop = ["base-devel", "git", "podman"]
 
 [packages.extras]
 gui = ["baloo", "copyq", "dolphin"]

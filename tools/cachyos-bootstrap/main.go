@@ -90,6 +90,9 @@ func main() {
 	if err != nil {
 		die(err)
 	}
+	if err := validateConfig(cfg); err != nil {
+		die(err)
+	}
 
 	a := app{repo: repo, cfg: cfg}
 
@@ -116,6 +119,9 @@ func main() {
 		runErr = fmt.Errorf("unknown command: %s", cmd)
 	}
 	if runErr != nil {
+		if errors.Is(runErr, flag.ErrHelp) {
+			return
+		}
 		die(runErr)
 	}
 }
@@ -161,6 +167,87 @@ func loadConfig(path string) (config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+func validateConfig(cfg config) error {
+	if len(cfg.Profiles) == 0 {
+		return errors.New("bootstrap config has no profiles")
+	}
+
+	for name, profile := range cfg.Profiles {
+		if name == "" {
+			return errors.New("bootstrap config contains an empty profile name")
+		}
+		if profile.Flake == "" {
+			return fmt.Errorf("profile %q has an empty flake attribute", name)
+		}
+		for _, feature := range profile.Features {
+			if feature == "" {
+				return fmt.Errorf("profile %q contains an empty feature", name)
+			}
+		}
+	}
+
+	for group, packages := range map[string][]pkgSpec{
+		"repoPackages.base": cfg.RepoPackages.Base,
+	} {
+		if err := validatePackages(group, packages); err != nil {
+			return err
+		}
+	}
+	for feature, packages := range cfg.RepoPackages.Features {
+		if err := validatePackages("repoPackages.features."+feature, packages); err != nil {
+			return err
+		}
+	}
+	for profile, packages := range cfg.RepoPackages.Profiles {
+		if _, ok := cfg.Profiles[profile]; !ok {
+			return fmt.Errorf("repoPackages.profiles references unknown profile %q", profile)
+		}
+		if err := validatePackages("repoPackages.profiles."+profile, packages); err != nil {
+			return err
+		}
+	}
+	for feature, packages := range cfg.RepoPackages.RecommendedFeatures {
+		if err := validatePackages("repoPackages.recommendedFeatures."+feature, packages); err != nil {
+			return err
+		}
+	}
+
+	for index, check := range cfg.DesktopCommands {
+		if check.Label == "" {
+			return fmt.Errorf("desktopCommands[%d] has an empty label", index)
+		}
+		if len(check.Commands) == 0 {
+			return fmt.Errorf("desktopCommands[%d] has no commands", index)
+		}
+		for _, command := range check.Commands {
+			if command == "" {
+				return fmt.Errorf("desktopCommands[%d] contains an empty command", index)
+			}
+		}
+	}
+
+	for profile, apps := range cfg.RecommendedFlatpaks {
+		if _, ok := cfg.Profiles[profile]; !ok {
+			return fmt.Errorf("recommendedFlatpaks references unknown profile %q", profile)
+		}
+		for _, appID := range apps {
+			if appID == "" {
+				return fmt.Errorf("recommendedFlatpaks.%s contains an empty app id", profile)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePackages(group string, packages []pkgSpec) error {
+	for index, pkg := range packages {
+		if pkg.Name == "" {
+			return fmt.Errorf("%s[%d] has an empty package name", group, index)
+		}
+	}
+	return nil
 }
 
 func (a app) runBootstrap(args []string) error {
@@ -375,7 +462,7 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 			return result, err
 		}
 	} else {
-		result.printSummary()
+		result.printSummary(filepath.Join(a.repo, "scripts", "install-arch-runtime-deps.sh"))
 	}
 
 	return result, nil
@@ -460,7 +547,7 @@ func (r depResult) applyPackages(includeRecommended bool) error {
 	return nil
 }
 
-func (r depResult) printSummary() {
+func (r depResult) printSummary(applyCommand string) {
 	fmt.Printf(`
 Summary:
   Required repo packages missing: %d
@@ -468,11 +555,11 @@ Summary:
   Recommended repo packages missing: %d
 
 Apply required packages:
-  ~/.config/nix/scripts/install-arch-runtime-deps.sh --apply
+  %s --apply
 
 Apply required + recommended packages:
-  ~/.config/nix/scripts/install-arch-runtime-deps.sh --apply --with-recommended
-`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.recommendedMissing)))
+  %s --apply --with-recommended
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.recommendedMissing)), applyCommand, applyCommand)
 
 	printList("Required repo packages to install:", r.repoMissing)
 	printList("Required AUR packages to install:", r.aurMissing)
@@ -564,11 +651,12 @@ func installPacmanPackage(pkg, reason string, apply bool) error {
 }
 
 func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
-	if opts.profile != "desktop" {
+	apps := a.cfg.RecommendedFlatpaks[opts.profile]
+	if len(apps) == 0 {
 		return nil
 	}
 	if !opts.includeRecommended {
-		warn("recommended Flatpak apps skipped; pass --with-recommended to install desktop canaries and bound apps")
+		warn("recommended Flatpak apps for profile %q skipped; pass --with-recommended to install them", opts.profile)
 		return nil
 	}
 	if !commandExists("flatpak") {
@@ -581,7 +669,7 @@ func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
 	}
 
 	var missing []string
-	for _, appID := range a.cfg.RecommendedFlatpaks["desktop"] {
+	for _, appID := range apps {
 		if flatpakAppInstalled(appID) {
 			pass("Flatpak app `%s` installed", appID)
 		} else {

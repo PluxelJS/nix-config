@@ -60,6 +60,28 @@ func TestBootstrapFlags(t *testing.T) {
 	}
 }
 
+func TestBootstrapMinimalAndLegacyRecommendedFlags(t *testing.T) {
+	opts := defaultBootstrapOptions()
+	cmd := &cobra.Command{
+		Use:           "test",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Run:           func(cmd *cobra.Command, args []string) {},
+	}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	addBootstrapFlags(cmd, &opts)
+	cmd.SetArgs([]string{"--minimal", "--with-recommended"})
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !opts.minimal {
+		t.Fatal("expected --minimal to enable minimal mode")
+	}
+}
+
 func TestRootHelpIncludesSubcommands(t *testing.T) {
 	var out bytes.Buffer
 	cmd := app{}.newRootCommand()

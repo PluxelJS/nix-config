@@ -84,7 +84,7 @@ Needed from Arch repositories:
   `xdg-desktop-portal-kde`, `dbus`
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
   `plasma-workspace`
-- recommended desktop apps/helpers: `baloo`, `copyq`, `dolphin`
+- desktop extras: `baloo`, `copyq`, `dolphin`
 
 AUR packages used by the desktop profile:
 
@@ -97,7 +97,7 @@ Host packages are still used when a binary is launched by the compositor,
 display/session plumbing, or a root/system-owned service before the Nix profile
 can be assumed.
 
-Recommended Flatpaks are handled by `bootstrap/cachyos.sh --with-recommended`
+Desktop Flatpaks are handled by `bootstrap/cachyos.sh --apply`
 when they are part of the current workflow or validation canaries.
 
 ## Package-Repair Rule

@@ -80,15 +80,15 @@ reason = "preferred KDE portal backend"
 name = "podman"
 reason = "user quadlets such as Verdaccio run through Podman"
 
-[[repoPackages.recommendedFeatures.gui]]
+[[repoPackages.featureExtras.gui]]
 name = "baloo"
 reason = "balooctl6 is launched from Mango startup"
 
-[[repoPackages.recommendedFeatures.gui]]
+[[repoPackages.featureExtras.gui]]
 name = "copyq"
 reason = "clipboard manager bound in Mango config before the Nix profile can be assumed"
 
-[[repoPackages.recommendedFeatures.gui]]
+[[repoPackages.featureExtras.gui]]
 name = "dolphin"
 reason = "default file manager bound in Mango config before the Nix profile can be assumed"
 
@@ -118,7 +118,7 @@ command = "zen-browser"
 reason = "used by Mango browser hotkey"
 note = "Install your preferred browser and keep BROWSER_CMD / BROWSER_DESKTOP_ID aligned with home/files/mango/scripts/browser-activate.sh."
 
-[recommendedFlatpaks]
+[flatpaks]
 desktop = [
   "io.missioncenter.MissionCenter",
   "org.gnome.eog",

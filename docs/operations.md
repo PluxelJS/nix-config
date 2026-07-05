@@ -9,7 +9,7 @@ Fresh CachyOS bootstrap:
 
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
 The bootstrap path installs or checks Nix, `paru`, host runtime dependencies,
@@ -42,7 +42,7 @@ Check or repair only the Arch-side runtime base:
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh deps
 ~/.config/nix/bootstrap/cachyos.sh deps --apply
-~/.config/nix/bootstrap/cachyos.sh deps --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
 ## Canonical Edit Paths

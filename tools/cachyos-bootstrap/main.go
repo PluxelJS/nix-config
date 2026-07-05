@@ -14,11 +14,11 @@ import (
 )
 
 type config struct {
-	Profiles            map[string]profileConfig `toml:"profiles"`
-	RepoPackages        repoPackages             `toml:"repoPackages"`
-	DesktopCommands     []commandCheck           `toml:"desktopCommands"`
-	Browser             browserCheck             `toml:"browser"`
-	RecommendedFlatpaks map[string][]string      `toml:"recommendedFlatpaks"`
+	Profiles        map[string]profileConfig `toml:"profiles"`
+	RepoPackages    repoPackages             `toml:"repoPackages"`
+	DesktopCommands []commandCheck           `toml:"desktopCommands"`
+	Browser         browserCheck             `toml:"browser"`
+	Flatpaks        map[string][]string      `toml:"flatpaks"`
 }
 
 type profileConfig struct {
@@ -27,10 +27,10 @@ type profileConfig struct {
 }
 
 type repoPackages struct {
-	Base                []pkgSpec            `toml:"base"`
-	Features            map[string][]pkgSpec `toml:"features"`
-	Profiles            map[string][]pkgSpec `toml:"profiles"`
-	RecommendedFeatures map[string][]pkgSpec `toml:"recommendedFeatures"`
+	Base          []pkgSpec            `toml:"base"`
+	Features      map[string][]pkgSpec `toml:"features"`
+	Profiles      map[string][]pkgSpec `toml:"profiles"`
+	FeatureExtras map[string][]pkgSpec `toml:"featureExtras"`
 }
 
 type pkgSpec struct {
@@ -58,27 +58,28 @@ type app struct {
 }
 
 type depOptions struct {
-	apply              bool
-	includeRecommended bool
-	profile            string
-	profileExplicit    bool
+	apply           bool
+	minimal         bool
+	profile         string
+	profileExplicit bool
 }
 
 type depResult struct {
-	repoMissing        []string
-	aurMissing         []string
-	recommendedMissing []string
-	notes              []string
+	repoMissing      []string
+	aurMissing       []string
+	extrasMissing    []string
+	extrasApplicable bool
+	notes            []string
 }
 
 type bootstrapOptions struct {
-	apply              bool
-	profile            string
-	flake              string
-	includeRecommended bool
-	installNix         bool
-	installParu        bool
-	switchAfter        bool
+	apply       bool
+	profile     string
+	flake       string
+	minimal     bool
+	installNix  bool
+	installParu bool
+	switchAfter bool
 }
 
 func main() {
@@ -183,8 +184,8 @@ func validateConfig(cfg config) error {
 			return err
 		}
 	}
-	for feature, packages := range cfg.RepoPackages.RecommendedFeatures {
-		if err := validatePackages("repoPackages.recommendedFeatures."+feature, packages); err != nil {
+	for feature, packages := range cfg.RepoPackages.FeatureExtras {
+		if err := validatePackages("repoPackages.featureExtras."+feature, packages); err != nil {
 			return err
 		}
 	}
@@ -203,13 +204,13 @@ func validateConfig(cfg config) error {
 		}
 	}
 
-	for profile, apps := range cfg.RecommendedFlatpaks {
+	for profile, apps := range cfg.Flatpaks {
 		if _, ok := cfg.Profiles[profile]; !ok {
-			return fmt.Errorf("recommendedFlatpaks references unknown profile %q", profile)
+			return fmt.Errorf("flatpaks references unknown profile %q", profile)
 		}
 		for _, appID := range apps {
 			if appID == "" {
-				return fmt.Errorf("recommendedFlatpaks.%s contains an empty app id", profile)
+				return fmt.Errorf("flatpaks.%s contains an empty app id", profile)
 			}
 		}
 	}
@@ -268,7 +269,7 @@ func (a app) newDepsCommand() *cobra.Command {
 		Short: "Check or install host runtime dependencies",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.profile != "" {
+			if cmd.Flags().Changed("profile") {
 				opts.profileExplicit = true
 			}
 			if len(args) == 1 {
@@ -281,7 +282,8 @@ func (a app) newDepsCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing host runtime dependencies")
-	cmd.Flags().BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages")
+	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
+	addLegacyRecommendedFlag(cmd)
 	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
 	return cmd
 }
@@ -329,7 +331,8 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing prerequisites and run Home Manager")
 	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
 	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
-	cmd.Flags().BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages and Flatpak apps")
+	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
+	addLegacyRecommendedFlag(cmd)
 	cmd.Flags().BoolVar(&opts.installNix, "install-nix", true, "install Nix when missing")
 	cmd.Flags().BoolVar(&opts.installParu, "install-paru", true, "install paru when missing")
 	cmd.Flags().BoolVar(&opts.switchAfter, "switch", true, "run Home Manager switch")
@@ -342,6 +345,12 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().BoolVar(&opts.switchAfter, "no-switch", true, "do not run Home Manager switch")
 	cmd.Flags().Lookup("no-switch").NoOptDefVal = "false"
 	_ = cmd.Flags().MarkHidden("no-switch")
+}
+
+func addLegacyRecommendedFlag(cmd *cobra.Command) {
+	var ignored bool
+	cmd.Flags().BoolVar(&ignored, "with-recommended", false, "legacy no-op; desktop extras are included by default")
+	_ = cmd.Flags().MarkHidden("with-recommended")
 }
 
 func (a app) runBootstrap(opts bootstrapOptions) error {
@@ -369,10 +378,10 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 
 	fmt.Println()
 	if _, err := a.checkDeps(depOptions{
-		apply:              opts.apply,
-		includeRecommended: opts.includeRecommended,
-		profile:            opts.profile,
-		profileExplicit:    true,
+		apply:           opts.apply,
+		minimal:         opts.minimal,
+		profile:         opts.profile,
+		profileExplicit: true,
 	}); err != nil {
 		return err
 	}
@@ -414,8 +423,13 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 	}
 
 	fmt.Printf("Profile: %s\nMode: %s\n", opts.profile, modeName(opts.apply))
-	if opts.includeRecommended {
-		fmt.Println("Recommended packages: include in apply mode")
+	result.extrasApplicable = hasFeatureExtras(a.cfg.RepoPackages.FeatureExtras, features)
+	if result.extrasApplicable {
+		if opts.minimal {
+			fmt.Println("Desktop extras: skip")
+		} else {
+			fmt.Println("Desktop extras: include")
+		}
 	}
 	fmt.Println()
 
@@ -461,9 +475,11 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 		}
 	}
 
-	for _, feature := range featureNames {
-		for _, pkg := range a.cfg.RepoPackages.RecommendedFeatures[feature] {
-			result.ensureRecommended(pkg)
+	if !opts.minimal {
+		for _, feature := range featureNames {
+			for _, pkg := range a.cfg.RepoPackages.FeatureExtras[feature] {
+				result.ensureExtra(pkg)
+			}
 		}
 	}
 
@@ -477,14 +493,22 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 	}
 
 	if opts.apply {
-		if err := result.applyPackages(opts.includeRecommended); err != nil {
+		if err := result.applyPackages(!opts.minimal); err != nil {
 			return result, err
 		}
 	} else {
-		result.printSummary(shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "deps"}))
+		result.printSummary(a.depApplyCommand(opts))
 	}
 
 	return result, nil
+}
+
+func (a app) depApplyCommand(opts depOptions) string {
+	args := []string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "deps"}
+	if opts.profileExplicit {
+		args = append(args, "--profile", opts.profile)
+	}
+	return shellJoin(args)
 }
 
 func (a app) featuresFor(profile string, explicit bool) (map[string]bool, error) {
@@ -506,6 +530,15 @@ func (a app) featuresFor(profile string, explicit bool) (map[string]bool, error)
 	return features, nil
 }
 
+func hasFeatureExtras(extras map[string][]pkgSpec, features map[string]bool) bool {
+	for feature, enabled := range features {
+		if enabled && len(extras[feature]) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *depResult) ensureRepo(pkg pkgSpec, apply bool) {
 	if pacmanPackageInstalled(pkg.Name) {
 		pass("repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
@@ -515,18 +548,18 @@ func (r *depResult) ensureRepo(pkg pkgSpec, apply bool) {
 	r.repoMissing = append(r.repoMissing, pkg.Name)
 }
 
-func (r *depResult) ensureRecommended(pkg pkgSpec) {
+func (r *depResult) ensureExtra(pkg pkgSpec) {
 	if pacmanPackageInstalled(pkg.Name) {
-		pass("recommended repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
+		pass("desktop extra repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
 		return
 	}
-	warn("recommended repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
-	r.recommendedMissing = append(r.recommendedMissing, pkg.Name)
+	warn("desktop extra repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
+	r.extrasMissing = append(r.extrasMissing, pkg.Name)
 }
 
-func (r depResult) applyPackages(includeRecommended bool) error {
+func (r depResult) applyPackages(includeExtras bool) error {
 	repoMissing := uniqueSorted(r.repoMissing)
-	recommendedMissing := uniqueSorted(r.recommendedMissing)
+	extrasMissing := uniqueSorted(r.extrasMissing)
 	aurMissing := uniqueSorted(r.aurMissing)
 
 	if len(repoMissing) > 0 {
@@ -538,19 +571,19 @@ func (r depResult) applyPackages(includeRecommended bool) error {
 		fmt.Println("No required repo packages missing.")
 	}
 
-	if includeRecommended && len(recommendedMissing) > 0 {
+	if includeExtras && len(extrasMissing) > 0 {
 		fmt.Println()
-		fmt.Println("Installing missing recommended repo packages...")
-		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, recommendedMissing...)...); err != nil {
+		fmt.Println("Installing missing desktop extra repo packages...")
+		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, extrasMissing...)...); err != nil {
 			return err
 		}
-	} else if len(recommendedMissing) > 0 {
+	} else if len(extrasMissing) > 0 {
 		fmt.Println()
-		fmt.Println("Recommended repo packages left untouched:")
-		for _, pkg := range recommendedMissing {
+		fmt.Println("Desktop extra repo packages left untouched:")
+		for _, pkg := range extrasMissing {
 			fmt.Printf("  %s\n", pkg)
 		}
-		fmt.Println("Re-run with --with-recommended if you want them installed too.")
+		fmt.Println("Re-run without --minimal if you want them installed too.")
 	}
 
 	if len(aurMissing) > 0 {
@@ -567,22 +600,37 @@ func (r depResult) applyPackages(includeRecommended bool) error {
 }
 
 func (r depResult) printSummary(applyCommand string) {
+	if !r.extrasApplicable {
+		fmt.Printf(`
+Summary:
+  Required repo packages missing: %d
+  Required AUR packages missing: %d
+
+Apply packages:
+  %s --apply
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), applyCommand)
+
+		printList("Required repo packages to install:", r.repoMissing)
+		printList("Required AUR packages to install:", r.aurMissing)
+		return
+	}
+
 	fmt.Printf(`
 Summary:
   Required repo packages missing: %d
   Required AUR packages missing: %d
-  Recommended repo packages missing: %d
+  Desktop extra repo packages missing: %d
 
 Apply required packages:
-  %s --apply
+  %s --apply --minimal
 
-Apply required + recommended packages:
-  %s --apply --with-recommended
-`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.recommendedMissing)), applyCommand, applyCommand)
+Apply full profile packages:
+  %s --apply
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.extrasMissing)), applyCommand, applyCommand)
 
 	printList("Required repo packages to install:", r.repoMissing)
 	printList("Required AUR packages to install:", r.aurMissing)
-	printList("Recommended repo packages to consider:", r.recommendedMissing)
+	printList("Desktop extra repo packages to install:", r.extrasMissing)
 }
 
 func (a app) ensureNix(opts bootstrapOptions) error {
@@ -670,16 +718,16 @@ func installPacmanPackage(pkg, reason string, apply bool) error {
 }
 
 func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
-	apps := a.cfg.RecommendedFlatpaks[opts.profile]
+	apps := a.cfg.Flatpaks[opts.profile]
 	if len(apps) == 0 {
 		return nil
 	}
-	if !opts.includeRecommended {
-		warn("recommended Flatpak apps for profile %q skipped; pass --with-recommended to install them", opts.profile)
+	if opts.minimal {
+		warn("desktop Flatpak canaries for profile %q skipped by --minimal", opts.profile)
 		return nil
 	}
 	if !commandExists("flatpak") {
-		warn("flatpak command missing; runtime dependency step must install it before recommended Flatpaks can be applied")
+		warn("flatpak command missing; runtime dependency step must install it before desktop Flatpaks can be applied")
 		return nil
 	}
 

@@ -12,14 +12,16 @@ The shell entrypoint is intentionally thin:
 
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh --apply
+~/.config/nix/bootstrap/cachyos.sh --apply --minimal
 ~/.config/nix/bootstrap/cachyos.sh deps
 ~/.config/nix/bootstrap/cachyos.sh cleanup
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
-`--with-recommended` includes desktop helper packages and Flatpak apps used by
-current keybinds, MIME defaults, and validation canaries.
+The desktop profile installs the current desktop helper packages and Flatpak
+canaries by default. `--minimal` skips those extras for lean shell/container
+bring-up or debugging.
 
 `bootstrap/cachyos.toml` is TOML because this file is maintained by humans:
 comments, dotted sections, and array tables fit package policy well. Runtime

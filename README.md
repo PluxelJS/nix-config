@@ -30,7 +30,7 @@ Fresh CachyOS machine:
 sudo pacman -S --needed git
 git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
 ~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
 Switch configurations:
@@ -92,8 +92,7 @@ bootstrap verifier uses for post-switch checks.
 ## Docs
 
 - [docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md):
-  fresh install flow, Nix/paru bootstrap, host packages, and recommended
-  Flatpak canaries
+  fresh install flow, Nix/paru bootstrap, host packages, and desktop Flatpaks
 - [docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md):
   host vs Home Manager ownership
 - [docs/theme-stack.md](/home/ahdg/.config/nix/docs/theme-stack.md):

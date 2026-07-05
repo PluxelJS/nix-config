@@ -10,7 +10,7 @@ Bootstrap prepares three layers:
   pacman/AUR.
 - **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
   policy, and user services.
-- **Recommended Flatpaks:** apps used by current keybinds, MIME defaults, and
+- **Desktop Flatpaks:** apps used by current keybinds, MIME defaults, and
   sandbox verification.
 
 This keeps migration fast without forcing MangoWC, DMS, or graphics/session
@@ -49,7 +49,7 @@ Dry-run the bootstrap:
 Apply the full desktop bootstrap:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
 What it does:
@@ -58,8 +58,8 @@ What it does:
 - installs `paru` when missing, using a repo package if available or
   `paru-bin` from AUR as a fallback
 - installs required pacman/AUR packages for the selected profile
-- with `--with-recommended`, installs desktop helper packages and recommended
-  Flatpaks such as Mission Center, Eye of GNOME, and Telegram
+- installs desktop helper packages and Flatpaks such as Mission Center, Eye of
+  GNOME, and Telegram
 - switches the matching Home Manager flake output
 - runs verification after switch
 
@@ -68,6 +68,7 @@ Useful variants:
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile shell
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile container
+~/.config/nix/bootstrap/cachyos.sh --apply --minimal
 ~/.config/nix/bootstrap/cachyos.sh --apply --no-switch
 ```
 
@@ -85,7 +86,7 @@ For an already prepared host, use the lower-level dependency checker:
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh deps
 ~/.config/nix/bootstrap/cachyos.sh deps --apply
-~/.config/nix/bootstrap/cachyos.sh deps --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
 This checker is profile-aware and separates pacman packages from AUR packages.

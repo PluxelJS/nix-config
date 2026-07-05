@@ -20,7 +20,7 @@ integration through Nix on a non-NixOS host.
 
 The fresh-machine logic is not embedded in large shell scripts. It is split into:
 
-- `bootstrap/cachyos.json`: declarative package, command, profile, and Flatpak
+- `bootstrap/cachyos.toml`: declarative package, command, profile, and Flatpak
   policy
 - `bootstrap/bin/cachyos-bootstrap`: committed Linux amd64 binary that can run
   immediately after `git clone`

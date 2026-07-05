@@ -5,7 +5,7 @@ Fresh-machine setup lives here.
 The primary implementation is the committed Go binary:
 
 - `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/cleanup/verify CLI
-- `bootstrap/cachyos.json`: profile, package, command, and Flatpak policy
+- `bootstrap/cachyos.toml`: profile, package, command, and Flatpak policy
 - `tools/cachyos-bootstrap/`: source for rebuilding the binary
 
 The shell entrypoint is intentionally thin:
@@ -21,11 +21,10 @@ The shell entrypoint is intentionally thin:
 `--with-recommended` includes desktop helper packages and Flatpak apps used by
 current keybinds, MIME defaults, and validation canaries.
 
-`bootstrap/cachyos.json` is intentionally JSON rather than YAML/TOML/Nix. The
-bootstrap binary must run directly after `git clone`, before Nix or Go packages
-can be assumed, so the config format stays on Go's standard library parser.
-Move repeated policy into data structures there; avoid adding a parser
-dependency just for nicer syntax.
+`bootstrap/cachyos.toml` is TOML because this file is maintained by humans:
+comments, dotted sections, and array tables fit package policy well. Runtime
+dependency size is irrelevant here because fresh machines run the committed
+binary, not `go run`.
 
 Rebuild the committed binary after changing Go code or `go.mod`:
 

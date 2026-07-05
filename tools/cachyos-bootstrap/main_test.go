@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestBundledConfigValidates(t *testing.T) {
-	cfg, err := loadConfig(filepath.Join("..", "..", "bootstrap", "cachyos.json"))
+	cfg, err := loadConfig(filepath.Join("..", "..", "bootstrap", "cachyos.toml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -15,14 +20,25 @@ func TestBundledConfigValidates(t *testing.T) {
 	}
 }
 
-func TestBootstrapOptionCompatibilityFlags(t *testing.T) {
-	opts, err := parseBootstrapOptions([]string{
+func TestBootstrapFlags(t *testing.T) {
+	opts := defaultBootstrapOptions()
+	cmd := &cobra.Command{
+		Use:           "test",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Run:           func(cmd *cobra.Command, args []string) {},
+	}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	addBootstrapFlags(cmd, &opts)
+	cmd.SetArgs([]string{
 		"--apply",
 		"--profile", "shell",
 		"--no-install-nix",
 		"--no-install-paru",
 		"--no-switch",
 	})
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,38 +60,22 @@ func TestBootstrapOptionCompatibilityFlags(t *testing.T) {
 	}
 }
 
-func TestDepProfilePositionalCompatibility(t *testing.T) {
-	app := app{}
-	opts, err := app.parseDepOptions([]string{"container"})
+func TestRootHelpIncludesSubcommands(t *testing.T) {
+	var out bytes.Buffer
+	cmd := app{}.newRootCommand()
+	cmd.SetOut(&out)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--help"})
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opts.profile != "container" {
-		t.Fatalf("profile = %q, want container", opts.profile)
-	}
-	if !opts.profileExplicit {
-		t.Fatal("expected positional profile to be explicit")
-	}
-}
 
-func TestCleanupOptions(t *testing.T) {
-	opts, err := parseCleanupOptions([]string{"--apply"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !opts.apply {
-		t.Fatal("expected cleanup apply mode")
-	}
-}
-
-func TestVerifyProfile(t *testing.T) {
-	app := app{}
-	opts, err := app.parseVerifyOptions([]string{"container"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if opts.profile != "container" {
-		t.Fatalf("profile = %q, want container", opts.profile)
+	help := out.String()
+	for _, want := range []string{"bootstrap", "deps", "cleanup", "verify"} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("help output missing %q:\n%s", want, help)
+		}
 	}
 }
 

@@ -1,0 +1,126 @@
+[profiles.desktop]
+flake = "ahdg"
+features = [
+  "fastfetch",
+  "ghostty",
+  "desktopXdg",
+  "fonts",
+  "gui",
+  "portal",
+  "flatpak",
+  "graphics",
+  "themeRuntime",
+]
+
+[profiles.shell]
+flake = "ahdg-shell"
+features = ["fonts"]
+
+[profiles.container]
+flake = "ahdg-container"
+features = []
+
+[[repoPackages.base]]
+name = "zsh"
+reason = "login shell still resolves to /usr/bin/zsh"
+
+[[repoPackages.base]]
+name = "pkgfile"
+reason = "Arch-native command/package lookup backend"
+
+[[repoPackages.features.gui]]
+name = "fcitx5"
+reason = "system-owned input method runtime"
+
+[[repoPackages.features.gui]]
+name = "fcitx5-gtk"
+reason = "GTK IM modules for host apps"
+
+[[repoPackages.features.gui]]
+name = "fcitx5-qt"
+reason = "Qt IM modules for host apps"
+
+[[repoPackages.features.gui]]
+name = "fcitx5-rime"
+reason = "Rime addon for fcitx5"
+
+[[repoPackages.features.gui]]
+name = "wlr-randr"
+reason = "monitor command used by Mango config and helper scripts"
+
+[[repoPackages.features.gui]]
+name = "kservice"
+reason = "provides kbuildsycoca6 used by DMS startup"
+
+[[repoPackages.features.gui]]
+name = "polkit-kde-agent"
+reason = "auth agent launched from DMS config"
+
+[[repoPackages.features.gui]]
+name = "plasma-workspace"
+reason = "provides xembedsniproxy bridge for tray apps"
+
+[[repoPackages.features.gui]]
+name = "dbus"
+reason = "provides dbus-update-activation-environment"
+
+[[repoPackages.features.flatpak]]
+name = "flatpak"
+reason = "Flatpak runtime stays on the host side"
+
+[[repoPackages.features.portal]]
+name = "xdg-desktop-portal"
+reason = "portal broker service"
+
+[[repoPackages.features.portal]]
+name = "xdg-desktop-portal-kde"
+reason = "preferred KDE portal backend"
+
+[[repoPackages.profiles.desktop]]
+name = "podman"
+reason = "user quadlets such as Verdaccio run through Podman"
+
+[[repoPackages.recommendedFeatures.gui]]
+name = "baloo"
+reason = "balooctl6 is launched from Mango startup"
+
+[[repoPackages.recommendedFeatures.gui]]
+name = "copyq"
+reason = "clipboard manager bound in Mango config before the Nix profile can be assumed"
+
+[[repoPackages.recommendedFeatures.gui]]
+name = "dolphin"
+reason = "default file manager bound in Mango config before the Nix profile can be assumed"
+
+[[desktopCommands]]
+label = "Mango compositor"
+reason = "session binary required by ~/.config/mango"
+commands = ["mango"]
+aurPackage = "mangowc"
+note = "Preferred AUR package: mangowc. If you intentionally track the git build, install mangowm-git instead."
+
+[[desktopCommands]]
+label = "Mango control tool"
+reason = "helper used by Mango scripts and keybinds"
+commands = ["mmsg"]
+aurPackage = "mangowc"
+note = "Reinstall the Mango package that provides both mango and mmsg."
+
+[[desktopCommands]]
+label = "DMS shell"
+reason = "desktop shell invoked from Mango config"
+commands = ["dms"]
+aurPackage = "dms-shell"
+note = "Preferred AUR package: dms-shell."
+
+[browser]
+command = "zen-browser"
+reason = "used by Mango browser hotkey"
+note = "Install your preferred browser and keep BROWSER_CMD / BROWSER_DESKTOP_ID aligned with home/files/mango/scripts/browser-activate.sh."
+
+[recommendedFlatpaks]
+desktop = [
+  "io.missioncenter.MissionCenter",
+  "org.gnome.eog",
+  "org.telegram.desktop",
+]

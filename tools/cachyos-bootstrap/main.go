@@ -1,54 +1,55 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/cobra"
 )
 
 type config struct {
-	Profiles            map[string]profileConfig `json:"profiles"`
-	RepoPackages        repoPackages             `json:"repoPackages"`
-	DesktopCommands     []commandCheck           `json:"desktopCommands"`
-	Browser             browserCheck             `json:"browser"`
-	RecommendedFlatpaks map[string][]string      `json:"recommendedFlatpaks"`
+	Profiles            map[string]profileConfig `toml:"profiles"`
+	RepoPackages        repoPackages             `toml:"repoPackages"`
+	DesktopCommands     []commandCheck           `toml:"desktopCommands"`
+	Browser             browserCheck             `toml:"browser"`
+	RecommendedFlatpaks map[string][]string      `toml:"recommendedFlatpaks"`
 }
 
 type profileConfig struct {
-	Flake    string   `json:"flake"`
-	Features []string `json:"features"`
+	Flake    string   `toml:"flake"`
+	Features []string `toml:"features"`
 }
 
 type repoPackages struct {
-	Base                []pkgSpec            `json:"base"`
-	Features            map[string][]pkgSpec `json:"features"`
-	Profiles            map[string][]pkgSpec `json:"profiles"`
-	RecommendedFeatures map[string][]pkgSpec `json:"recommendedFeatures"`
+	Base                []pkgSpec            `toml:"base"`
+	Features            map[string][]pkgSpec `toml:"features"`
+	Profiles            map[string][]pkgSpec `toml:"profiles"`
+	RecommendedFeatures map[string][]pkgSpec `toml:"recommendedFeatures"`
 }
 
 type pkgSpec struct {
-	Name   string `json:"name"`
-	Reason string `json:"reason"`
+	Name   string `toml:"name"`
+	Reason string `toml:"reason"`
 }
 
 type commandCheck struct {
-	Label      string   `json:"label"`
-	Reason     string   `json:"reason"`
-	Commands   []string `json:"commands"`
-	AURPackage string   `json:"aurPackage"`
-	Note       string   `json:"note"`
+	Label      string   `toml:"label"`
+	Reason     string   `toml:"reason"`
+	Commands   []string `toml:"commands"`
+	AURPackage string   `toml:"aurPackage"`
+	Note       string   `toml:"note"`
 }
 
 type browserCheck struct {
-	Command string `json:"command"`
-	Reason  string `json:"reason"`
-	Note    string `json:"note"`
+	Command string `toml:"command"`
+	Reason  string `toml:"reason"`
+	Note    string `toml:"note"`
 }
 
 type app struct {
@@ -86,7 +87,7 @@ func main() {
 		die(err)
 	}
 
-	cfg, err := loadConfig(filepath.Join(repo, "bootstrap", "cachyos.json"))
+	cfg, err := loadConfig(filepath.Join(repo, "bootstrap", "cachyos.toml"))
 	if err != nil {
 		die(err)
 	}
@@ -95,38 +96,8 @@ func main() {
 	}
 
 	a := app{repo: repo, cfg: cfg}
-
-	args := os.Args[1:]
-	cmd := "bootstrap"
-	if len(args) > 0 {
-		switch args[0] {
-		case "bootstrap", "deps", "cleanup", "verify":
-			cmd = args[0]
-			args = args[1:]
-		case "-h", "--help":
-			printTopUsage()
-			return
-		}
-	}
-
-	var runErr error
-	switch cmd {
-	case "bootstrap":
-		runErr = a.runBootstrap(args)
-	case "deps":
-		runErr = a.runDeps(args)
-	case "cleanup":
-		runErr = a.runCleanup(args)
-	case "verify":
-		runErr = a.runVerify(args)
-	default:
-		runErr = fmt.Errorf("unknown command: %s", cmd)
-	}
-	if runErr != nil {
-		if errors.Is(runErr, flag.ErrHelp) {
-			return
-		}
-		die(runErr)
+	if err := a.newRootCommand().Execute(); err != nil {
+		die(err)
 	}
 }
 
@@ -154,7 +125,7 @@ func findRepo() (string, error) {
 	}
 
 	for _, candidate := range candidates {
-		if fileExists(filepath.Join(candidate, "flake.nix")) && fileExists(filepath.Join(candidate, "bootstrap", "cachyos.json")) {
+		if fileExists(filepath.Join(candidate, "flake.nix")) && fileExists(filepath.Join(candidate, "bootstrap", "cachyos.toml")) {
 			return candidate, nil
 		}
 	}
@@ -167,7 +138,7 @@ func loadConfig(path string) (config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
@@ -254,12 +225,126 @@ func validatePackages(group string, packages []pkgSpec) error {
 	return nil
 }
 
-func (a app) runBootstrap(args []string) error {
-	opts, err := parseBootstrapOptions(args)
-	if err != nil {
-		return err
+func (a app) newRootCommand() *cobra.Command {
+	rootOpts := defaultBootstrapOptions()
+	cmd := &cobra.Command{
+		Use:           "cachyos-bootstrap",
+		Short:         "Bootstrap and validate the CachyOS host for this Home Manager repo",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return fmt.Errorf("unexpected arguments: %s", strings.Join(args, " "))
+			}
+			return a.runBootstrap(rootOpts)
+		},
 	}
+	cmd.CompletionOptions.DisableDefaultCmd = true
+	addBootstrapFlags(cmd, &rootOpts)
+	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	return cmd
+}
 
+func (a app) newBootstrapCommand() *cobra.Command {
+	opts := defaultBootstrapOptions()
+	cmd := &cobra.Command{
+		Use:   "bootstrap",
+		Short: "Run the fresh CachyOS setup flow",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return fmt.Errorf("unexpected arguments: %s", strings.Join(args, " "))
+			}
+			return a.runBootstrap(opts)
+		},
+	}
+	addBootstrapFlags(cmd, &opts)
+	return cmd
+}
+
+func (a app) newDepsCommand() *cobra.Command {
+	opts := depOptions{}
+	cmd := &cobra.Command{
+		Use:   "deps [profile]",
+		Short: "Check or install host runtime dependencies",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.profile != "" {
+				opts.profileExplicit = true
+			}
+			if len(args) == 1 {
+				opts.profile = args[0]
+				opts.profileExplicit = true
+			}
+			a.fillDefaultDepProfile(&opts)
+			_, err := a.checkDeps(opts)
+			return err
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing host runtime dependencies")
+	cmd.Flags().BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages")
+	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
+	return cmd
+}
+
+func (a app) newCleanupCommand() *cobra.Command {
+	opts := cleanupOptions{}
+	cmd := &cobra.Command{
+		Use:   "cleanup",
+		Short: "Remove pacman packages replaced by Nix or retired stacks",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.runCleanup(opts)
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "remove safe cleanup candidates")
+	return cmd
+}
+
+func (a app) newVerifyCommand() *cobra.Command {
+	opts := verifyOptions{}
+	cmd := &cobra.Command{
+		Use:   "verify [profile]",
+		Short: "Validate the Home Manager migration result",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				opts.profile = args[0]
+			}
+			return a.runVerify(opts)
+		},
+	}
+	return cmd
+}
+
+func defaultBootstrapOptions() bootstrapOptions {
+	return bootstrapOptions{
+		profile:     "desktop",
+		installNix:  true,
+		installParu: true,
+		switchAfter: true,
+	}
+}
+
+func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing prerequisites and run Home Manager")
+	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
+	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
+	cmd.Flags().BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages and Flatpak apps")
+	cmd.Flags().BoolVar(&opts.installNix, "install-nix", true, "install Nix when missing")
+	cmd.Flags().BoolVar(&opts.installParu, "install-paru", true, "install paru when missing")
+	cmd.Flags().BoolVar(&opts.switchAfter, "switch", true, "run Home Manager switch")
+	cmd.Flags().BoolVar(&opts.installNix, "no-install-nix", true, "skip Nix installation/daemon setup")
+	cmd.Flags().Lookup("no-install-nix").NoOptDefVal = "false"
+	_ = cmd.Flags().MarkHidden("no-install-nix")
+	cmd.Flags().BoolVar(&opts.installParu, "no-install-paru", true, "skip paru installation")
+	cmd.Flags().Lookup("no-install-paru").NoOptDefVal = "false"
+	_ = cmd.Flags().MarkHidden("no-install-paru")
+	cmd.Flags().BoolVar(&opts.switchAfter, "no-switch", true, "do not run Home Manager switch")
+	cmd.Flags().Lookup("no-switch").NoOptDefVal = "false"
+	_ = cmd.Flags().MarkHidden("no-switch")
+}
+
+func (a app) runBootstrap(opts bootstrapOptions) error {
 	profile, ok := a.cfg.Profiles[opts.profile]
 	if !ok {
 		return fmt.Errorf("unsupported profile: %s", opts.profile)
@@ -283,13 +368,12 @@ func (a app) runBootstrap(args []string) error {
 	}
 
 	fmt.Println()
-	_, err = a.checkDeps(depOptions{
+	if _, err := a.checkDeps(depOptions{
 		apply:              opts.apply,
 		includeRecommended: opts.includeRecommended,
 		profile:            opts.profile,
 		profileExplicit:    true,
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -308,78 +392,10 @@ func (a app) runBootstrap(args []string) error {
 	return nil
 }
 
-func (a app) runDeps(args []string) error {
-	opts, err := a.parseDepOptions(args)
-	if err != nil {
-		return err
-	}
-	_, err = a.checkDeps(opts)
-	return err
-}
-
-func parseBootstrapOptions(args []string) (bootstrapOptions, error) {
-	opts := bootstrapOptions{
-		profile:     "desktop",
-		installNix:  true,
-		installParu: true,
-		switchAfter: true,
-	}
-
-	fs := flag.NewFlagSet("bootstrap", flag.ContinueOnError)
-	fs.BoolVar(&opts.apply, "apply", false, "install missing prerequisites and run Home Manager")
-	fs.StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
-	fs.StringVar(&opts.flake, "flake", "", "flake output")
-	fs.BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages and Flatpak apps")
-	fs.BoolVar(&opts.installNix, "install-nix", true, "install Nix when missing")
-	fs.BoolVar(&opts.installParu, "install-paru", true, "install paru when missing")
-	fs.BoolVar(&opts.switchAfter, "switch", true, "run Home Manager switch")
-
-	rewritten := make([]string, 0, len(args))
-	for _, arg := range args {
-		switch arg {
-		case "--no-install-nix":
-			rewritten = append(rewritten, "--install-nix=false")
-		case "--no-install-paru":
-			rewritten = append(rewritten, "--install-paru=false")
-		case "--no-switch":
-			rewritten = append(rewritten, "--switch=false")
-		default:
-			rewritten = append(rewritten, arg)
-		}
-	}
-
-	fs.Usage = printBootstrapUsage
-	if err := fs.Parse(rewritten); err != nil {
-		return opts, err
-	}
-	if fs.NArg() != 0 {
-		return opts, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
-	}
-	return opts, nil
-}
-
-func (a app) parseDepOptions(args []string) (depOptions, error) {
-	opts := depOptions{}
-	fs := flag.NewFlagSet("deps", flag.ContinueOnError)
-	fs.BoolVar(&opts.apply, "apply", false, "install missing runtime dependencies")
-	fs.BoolVar(&opts.includeRecommended, "with-recommended", false, "include recommended desktop packages")
-	fs.StringVar(&opts.profile, "profile", "", "deployment profile")
-	fs.Usage = printDepsUsage
-	if err := fs.Parse(args); err != nil {
-		return opts, err
-	}
-
+func (a app) fillDefaultDepProfile(opts *depOptions) {
 	if opts.profile != "" {
 		opts.profileExplicit = true
 	}
-	if fs.NArg() > 0 {
-		if fs.NArg() > 1 {
-			return opts, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args()[1:], " "))
-		}
-		opts.profile = fs.Arg(0)
-		opts.profileExplicit = true
-	}
-
 	if opts.profile == "" {
 		if data, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".config", "ahdg", "profile")); err == nil {
 			opts.profile = strings.TrimSpace(string(data))
@@ -388,7 +404,6 @@ func (a app) parseDepOptions(args []string) (depOptions, error) {
 	if opts.profile == "" {
 		opts.profile = "desktop"
 	}
-	return opts, nil
 }
 
 func (a app) checkDeps(opts depOptions) (depResult, error) {
@@ -918,36 +933,4 @@ func fail(format string, args ...any) {
 func die(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)
 	os.Exit(1)
-}
-
-func printTopUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap <bootstrap|deps|cleanup|verify> [options]
-
-Commands:
-  bootstrap   fresh CachyOS setup flow
-  deps        check or install host runtime dependencies
-  cleanup     remove pacman packages replaced by Nix or retired stacks
-  verify      validate the Home Manager migration result`)
-}
-
-func printBootstrapUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap bootstrap [--apply] [--profile desktop|shell|container] [--with-recommended]
-
-Options:
-  --apply              install missing prerequisites and run Home Manager
-  --profile NAME       deployment profile; default: desktop
-  --flake ATTR         flake output; default follows profile
-  --with-recommended   include recommended desktop packages and Flatpak apps
-  --no-install-nix     skip Nix installation/daemon setup
-  --no-install-paru    skip paru installation
-  --no-switch          do not run Home Manager switch`)
-}
-
-func printDepsUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap deps [--apply] [--profile desktop|shell|container] [--with-recommended]
-
-Options:
-  --apply              install missing host runtime dependencies
-  --profile NAME       deployment profile; default from ~/.config/ahdg/profile or desktop
-  --with-recommended   include recommended desktop packages`)
 }

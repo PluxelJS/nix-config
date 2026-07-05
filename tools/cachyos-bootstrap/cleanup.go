@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -67,12 +66,7 @@ var cleanupGroups = []struct {
 	},
 }
 
-func (a app) runCleanup(args []string) error {
-	opts, err := parseCleanupOptions(args)
-	if err != nil {
-		return err
-	}
-
+func (a app) runCleanup(opts cleanupOptions) error {
 	installedByGroup := make(map[string][]string)
 	var installed []string
 	for _, group := range cleanupGroups {
@@ -135,20 +129,6 @@ To remove the duplicates, run:
 	return nil
 }
 
-func parseCleanupOptions(args []string) (cleanupOptions, error) {
-	opts := cleanupOptions{}
-	fs := flag.NewFlagSet("cleanup", flag.ContinueOnError)
-	fs.BoolVar(&opts.apply, "apply", false, "remove safe cleanup candidates")
-	fs.Usage = printCleanupUsage
-	if err := fs.Parse(args); err != nil {
-		return opts, err
-	}
-	if fs.NArg() != 0 {
-		return opts, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
-	}
-	return opts, nil
-}
-
 func reverseDependentsOutsideSet(pkg string, removalSet []string) []string {
 	if !commandExists("pactree") {
 		return nil
@@ -183,11 +163,4 @@ func stringInSlice(needle string, items []string) bool {
 		}
 	}
 	return false
-}
-
-func printCleanupUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap cleanup [--apply]
-
-Options:
-  --apply   remove safe pacman packages replaced by Nix or retired stacks`)
 }

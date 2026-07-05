@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,12 +20,7 @@ type verifier struct {
 	failures int
 }
 
-func (a app) runVerify(args []string) error {
-	opts, err := a.parseVerifyOptions(args)
-	if err != nil {
-		return err
-	}
-
+func (a app) runVerify(opts verifyOptions) error {
 	v, err := newVerifier(a.cfg, opts)
 	if err != nil {
 		return err
@@ -37,22 +31,6 @@ func (a app) runVerify(args []string) error {
 	}
 	fmt.Println("\nMigration checks passed.")
 	return nil
-}
-
-func (a app) parseVerifyOptions(args []string) (verifyOptions, error) {
-	opts := verifyOptions{}
-	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
-	fs.Usage = printVerifyUsage
-	if err := fs.Parse(args); err != nil {
-		return opts, err
-	}
-	if fs.NArg() > 1 {
-		return opts, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args()[1:], " "))
-	}
-	if fs.NArg() == 1 {
-		opts.profile = fs.Arg(0)
-	}
-	return opts, nil
 }
 
 func newVerifier(cfg config, opts verifyOptions) (*verifier, error) {
@@ -868,13 +846,4 @@ func kdeViewBackground(path string) string {
 		}
 	}
 	return ""
-}
-
-func printVerifyUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap verify [profile]
-
-Profiles:
-  desktop
-  shell
-  container`)
 }

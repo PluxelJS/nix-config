@@ -71,7 +71,7 @@ The authoritative install/check path is:
 
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/scripts/install-arch-runtime-deps.sh
+~/.config/nix/bootstrap/cachyos.sh deps
 ```
 
 The conceptual host package set is:

@@ -27,8 +27,9 @@ The fresh-machine logic is not embedded in large shell scripts. It is split into
 - `tools/cachyos-bootstrap/`: Go source for the binary
 - `bootstrap/cachyos.sh`: thin compatibility wrapper
 
-Routine repair still has a compatibility wrapper at
-`scripts/install-arch-runtime-deps.sh`, but it delegates to the same binary.
+Routine repair, cleanup, and verification are subcommands of the same binary:
+`bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh cleanup`, and
+`bootstrap/cachyos.sh verify`.
 
 ## Fresh Install
 
@@ -74,7 +75,7 @@ After the first bootstrap, log out and back in if the script added the user to
 `nix-users`, then run:
 
 ```bash
-~/.config/nix/scripts/verify-shell-migration.sh desktop
+~/.config/nix/bootstrap/cachyos.sh verify desktop
 ```
 
 ## Dependency Repair
@@ -82,9 +83,9 @@ After the first bootstrap, log out and back in if the script added the user to
 For an already prepared host, use the lower-level dependency checker:
 
 ```bash
-~/.config/nix/scripts/install-arch-runtime-deps.sh
-~/.config/nix/scripts/install-arch-runtime-deps.sh --apply
-~/.config/nix/scripts/install-arch-runtime-deps.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh deps
+~/.config/nix/bootstrap/cachyos.sh deps --apply
+~/.config/nix/bootstrap/cachyos.sh deps --apply --with-recommended
 ```
 
 This checker is profile-aware and separates pacman packages from AUR packages.

@@ -58,6 +58,27 @@ func TestDepProfilePositionalCompatibility(t *testing.T) {
 	}
 }
 
+func TestCleanupOptions(t *testing.T) {
+	opts, err := parseCleanupOptions([]string{"--apply"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !opts.apply {
+		t.Fatal("expected cleanup apply mode")
+	}
+}
+
+func TestVerifyProfile(t *testing.T) {
+	app := app{}
+	opts, err := app.parseVerifyOptions([]string{"container"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.profile != "container" {
+		t.Fatalf("profile = %q, want container", opts.profile)
+	}
+}
+
 func TestShellQuote(t *testing.T) {
 	cases := map[string]string{
 		"":                "''",

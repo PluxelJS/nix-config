@@ -40,9 +40,9 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 Check or repair only the Arch-side runtime base:
 
 ```bash
-~/.config/nix/scripts/install-arch-runtime-deps.sh
-~/.config/nix/scripts/install-arch-runtime-deps.sh --apply
-~/.config/nix/scripts/install-arch-runtime-deps.sh --apply --with-recommended
+~/.config/nix/bootstrap/cachyos.sh deps
+~/.config/nix/bootstrap/cachyos.sh deps --apply
+~/.config/nix/bootstrap/cachyos.sh deps --apply --with-recommended
 ```
 
 ## Canonical Edit Paths
@@ -320,8 +320,8 @@ After a successful switch:
 Use the cleanup helper in dry-run mode first:
 
 ```bash
-~/.config/nix/scripts/cleanup-pacman-duplicates.sh
-~/.config/nix/scripts/cleanup-pacman-duplicates.sh --apply
+~/.config/nix/bootstrap/cachyos.sh cleanup
+~/.config/nix/bootstrap/cachyos.sh cleanup --apply
 ```
 
 It is reverse-dependency aware and only proposes pacman removals that are safe
@@ -339,15 +339,15 @@ Intentionally kept outside that cleanup:
 Run after switching and again after reboot:
 
 ```bash
-~/.config/nix/scripts/verify-shell-migration.sh
+~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
 Or target a specific deployment explicitly:
 
 ```bash
-~/.config/nix/scripts/verify-shell-migration.sh shell
-~/.config/nix/scripts/verify-shell-migration.sh container
+~/.config/nix/bootstrap/cachyos.sh verify shell
+~/.config/nix/bootstrap/cachyos.sh verify container
 ```
 
-The verification script decides most checks from
+The verifier decides most checks from
 `~/.config/ahdg/enabled-features`, so custom feature mixes remain valid.

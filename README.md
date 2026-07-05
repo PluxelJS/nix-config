@@ -65,7 +65,6 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 - `bootstrap/`: fresh-machine binary, config, and thin shell entrypoint
 - `tools/cachyos-bootstrap/`: Go source for the bootstrap binary
 - `docs/`: policy and operator docs
-- `scripts/`: verification and host-side helper scripts
 
 ## Profiles
 
@@ -88,7 +87,7 @@ Exported configurations:
 - `ahdg-container`
 
 Activation writes resolved profile metadata to `~/.config/ahdg/`, which the
-verification script uses for post-switch checks.
+bootstrap verifier uses for post-switch checks.
 
 ## Docs
 

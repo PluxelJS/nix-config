@@ -100,7 +100,7 @@ func main() {
 	cmd := "bootstrap"
 	if len(args) > 0 {
 		switch args[0] {
-		case "bootstrap", "deps":
+		case "bootstrap", "deps", "cleanup", "verify":
 			cmd = args[0]
 			args = args[1:]
 		case "-h", "--help":
@@ -115,6 +115,10 @@ func main() {
 		runErr = a.runBootstrap(args)
 	case "deps":
 		runErr = a.runDeps(args)
+	case "cleanup":
+		runErr = a.runCleanup(args)
+	case "verify":
+		runErr = a.runVerify(args)
 	default:
 		runErr = fmt.Errorf("unknown command: %s", cmd)
 	}
@@ -300,7 +304,7 @@ func (a app) runBootstrap(args []string) error {
 	}
 
 	fmt.Printf("\nNext checks after reboot/login:\n  %s %s\n",
-		filepath.Join(a.repo, "scripts", "verify-shell-migration.sh"), opts.profile)
+		shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify"}), opts.profile)
 	return nil
 }
 
@@ -462,7 +466,7 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 			return result, err
 		}
 	} else {
-		result.printSummary(filepath.Join(a.repo, "scripts", "install-arch-runtime-deps.sh"))
+		result.printSummary(shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "deps"}))
 	}
 
 	return result, nil
@@ -697,7 +701,7 @@ func (a app) runHomeManager(opts bootstrapOptions) error {
 	if err := runEnv(env, "nix", "run", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix"); err != nil {
 		return err
 	}
-	return run(filepath.Join(a.repo, "scripts", "verify-shell-migration.sh"), opts.profile)
+	return run(filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify", opts.profile)
 }
 
 func ensureFlathub(apply bool) error {
@@ -917,11 +921,13 @@ func die(err error) {
 }
 
 func printTopUsage() {
-	fmt.Println(`Usage: cachyos-bootstrap <bootstrap|deps> [options]
+	fmt.Println(`Usage: cachyos-bootstrap <bootstrap|deps|cleanup|verify> [options]
 
 Commands:
   bootstrap   fresh CachyOS setup flow
-  deps        check or install host runtime dependencies`)
+  deps        check or install host runtime dependencies
+  cleanup     remove pacman packages replaced by Nix or retired stacks
+  verify      validate the Home Manager migration result`)
 }
 
 func printBootstrapUsage() {

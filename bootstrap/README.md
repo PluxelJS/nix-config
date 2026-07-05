@@ -19,9 +19,9 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
-The desktop profile installs the current desktop helper packages and Flatpak
-canaries by default. `--minimal` skips those extras for lean shell/container
-bring-up or debugging.
+The desktop profile installs the current desktop helper packages and managed
+Flatpak app set by default. `--minimal` skips those extras for lean
+shell/container bring-up or debugging.
 
 `bootstrap/cachyos.toml` stays intentionally small: profiles select feature
 names, package sections are plain package lists, and AUR entries map packages to

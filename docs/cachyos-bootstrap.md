@@ -10,8 +10,8 @@ Bootstrap prepares three layers:
   pacman/AUR.
 - **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
   policy, and user services.
-- **Desktop Flatpaks:** apps used by current keybinds, MIME defaults, and
-  sandbox verification.
+- **Desktop Flatpaks:** apps currently used on the workstation, including
+  keybind targets, MIME defaults, IDE sandboxes, and validation canaries.
 
 This keeps migration fast without forcing MangoWC, DMS, or graphics/session
 integration through Nix on a non-NixOS host.
@@ -58,8 +58,8 @@ What it does:
 - installs `paru` when missing, using a repo package if available or
   `paru-bin` from AUR as a fallback
 - installs required pacman/AUR packages for the selected profile
-- installs desktop helper packages and Flatpaks such as Mission Center, Eye of
-  GNOME, and Telegram
+- installs desktop helper packages, browser/download-manager packages, and the
+  managed Flatpak app set
 - switches the matching Home Manager flake output
 - runs verification after switch
 

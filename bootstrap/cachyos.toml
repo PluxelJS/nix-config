@@ -27,15 +27,22 @@ base = ["zsh", "pkgfile"]
 flatpak = ["flatpak"]
 portal = ["xdg-desktop-portal", "xdg-desktop-portal-kde"]
 gui = [
+  "ab-download-manager",
   "fcitx5",
   "fcitx5-gtk",
   "fcitx5-qt",
   "fcitx5-rime",
+  "gtk3",
+  "libappindicator",
+  "libayatana-appindicator",
+  "python",
   "wlr-randr",
   "kservice",
   "polkit-kde-agent",
   "plasma-workspace",
   "dbus",
+  "dms-shell",
+  "zen-browser-bin",
 ]
 
 [packages.profiles]
@@ -45,16 +52,32 @@ desktop = ["podman"]
 gui = ["baloo", "copyq", "dolphin"]
 
 [aurCommands]
-mangowc = ["mango", "mmsg"]
-dms-shell = ["dms"]
+mangowm-git = ["mango", "mmsg"]
 
 [browser]
 command = "zen-browser"
-note = "Install your preferred browser and keep BROWSER_CMD / BROWSER_DESKTOP_ID aligned with home/files/mango/scripts/browser-activate.sh."
 
 [flatpaks]
 desktop = [
+  "com.artemchep.keyguard",
+  "com.discordapp.Discord",
+  "com.github.PintaProject.Pinta",
+  "com.github.jeromerobert.pdfarranger",
+  "com.jetbrains.CLion",
+  "com.jetbrains.RustRover",
+  "com.obsproject.Studio",
+  "com.qq.QQ",
+  "com.rustdesk.RustDesk",
+  "com.teamspeak.TeamSpeak3",
+  "com.tencent.WeChat",
+  "com.tencent.wemeet",
+  "com.thincast.client",
+  "com.visualstudio.code",
+  "io.github.flattool.Warehouse",
   "io.missioncenter.MissionCenter",
+  "org.gnome.Boxes",
+  "org.gnome.baobab",
   "org.gnome.eog",
+  "org.mozilla.thunderbird_esr",
   "org.telegram.desktop",
 ]

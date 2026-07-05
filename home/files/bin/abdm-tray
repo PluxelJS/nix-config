@@ -1,0 +1,59 @@
+#!/bin/sh
+set -eu
+
+# Start AB Download Manager in tray/background mode. Prefer the CachyOS package
+# path, but keep the old local install path as a fallback.
+
+find_abdm() {
+  for candidate in \
+    /opt/abdownloadmanager/bin/ABDownloadManager \
+    "$HOME/.local/ABDownloadManager/bin/ABDownloadManager"
+  do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+exe="$(find_abdm)" || {
+  echo "ABDownloadManager executable not found" >&2
+  exit 127
+}
+
+settings="$HOME/.abdm/config/appSettings.json"
+
+ensure_tray_enabled() {
+  [ -f "$settings" ] || return 0
+  python3 - "$settings" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+
+if data.get("useSystemTray") is not True:
+    data["useSystemTray"] = True
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+        f.write("\n")
+PY
+}
+
+if ! pgrep -x xembedsniproxy >/dev/null 2>&1; then
+  nohup xembedsniproxy >/dev/null 2>&1 &
+fi
+
+if pgrep -f "$exe" >/dev/null 2>&1; then
+  exit 0
+fi
+
+ensure_tray_enabled
+
+nohup env SKIKO_RENDER_API=SOFTWARE_FAST "$exe" --background >/dev/null 2>&1 &
+exit 0

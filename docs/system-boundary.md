@@ -83,14 +83,13 @@ Needed from Arch repositories:
 - integration: `flatpak`, `podman`, `xdg-desktop-portal`,
   `xdg-desktop-portal-kde`, `dbus`
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
-  `plasma-workspace`
-- desktop extras: `baloo`, `copyq`, `dolphin`
+  `plasma-workspace`, `gtk3`, `python`
+- desktop extras: `ab-download-manager`, `baloo`, `copyq`, `dms-shell`,
+  `dolphin`, `libappindicator`, `libayatana-appindicator`, `zen-browser-bin`
 
 AUR packages used by the desktop profile:
 
-- `mangowc` or `mangowm-git`
-- `dms-shell`
-- `zen-browser-bin` if the default browser hotkey should work unchanged
+- `mangowm-git`
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,

@@ -1,12 +1,14 @@
 # Bootstrap
 
-Fresh-machine setup entrypoints live here.
+Fresh-machine setup lives here.
 
-These scripts may install host packages, AUR helpers, Nix itself, and then run
-Home Manager. Routine validation, cleanup, and repair scripts stay under
-`scripts/`.
+The primary implementation is the committed Go binary:
 
-Current entrypoint:
+- `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/dependency checker
+- `bootstrap/cachyos.json`: profile, package, command, and Flatpak policy
+- `tools/cachyos-bootstrap/`: source for rebuilding the binary
+
+The shell entrypoint is intentionally thin:
 
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh
@@ -15,3 +17,11 @@ Current entrypoint:
 
 `--with-recommended` includes desktop helper packages and Flatpak apps used by
 current keybinds, MIME defaults, and validation canaries.
+
+Rebuild the committed binary after changing Go code or `go.mod`:
+
+```bash
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -ldflags='-s -w' \
+  -o bootstrap/bin/cachyos-bootstrap ./tools/cachyos-bootstrap
+```

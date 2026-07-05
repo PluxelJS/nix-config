@@ -62,7 +62,8 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak
 - `home/modules/podman/`: user-scoped container quadlets
 - `home/files/`: native-format config sources and small runtime seeds
-- `bootstrap/`: fresh-machine bootstrap entrypoints
+- `bootstrap/`: fresh-machine binary, config, and thin shell entrypoint
+- `tools/cachyos-bootstrap/`: Go source for the bootstrap binary
 - `docs/`: policy and operator docs
 - `scripts/`: verification and host-side helper scripts
 

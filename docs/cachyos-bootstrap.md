@@ -16,6 +16,20 @@ Bootstrap prepares three layers:
 This keeps migration fast without forcing MangoWC, DMS, or graphics/session
 integration through Nix on a non-NixOS host.
 
+## Implementation
+
+The fresh-machine logic is not embedded in large shell scripts. It is split into:
+
+- `bootstrap/cachyos.json`: declarative package, command, profile, and Flatpak
+  policy
+- `bootstrap/bin/cachyos-bootstrap`: committed Linux amd64 binary that can run
+  immediately after `git clone`
+- `tools/cachyos-bootstrap/`: Go source for the binary
+- `bootstrap/cachyos.sh`: thin compatibility wrapper
+
+Routine repair still has a compatibility wrapper at
+`scripts/install-arch-runtime-deps.sh`, but it delegates to the same binary.
+
 ## Fresh Install
 
 Install Git and clone this repo:

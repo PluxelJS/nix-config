@@ -57,6 +57,10 @@ Canonical source files live here:
 - `~/.config/nix/home/files/starship/starship.toml`
 - `~/.config/nix/home/files/zsh/interactive.zsh`
 - `~/.config/nix/home/files/zsh/startup.zsh`
+- `~/.config/nix/home/files/bin/abdm-launch`
+- `~/.config/nix/home/files/bin/abdm-open`
+- `~/.config/nix/home/files/bin/abdm-tray`
+- `~/.config/nix/home/files/bin/protontricks-launch-mangohud`
 - `~/.config/nix/home/assets/fonts/custom/`
 - `~/.config/nix/home/files/fcitx5/config`
 - `~/.config/nix/home/files/fcitx5/profile`

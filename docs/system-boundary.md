@@ -84,8 +84,11 @@ Needed from Arch repositories:
   `xdg-desktop-portal-kde`, `dbus`
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
   `plasma-workspace`, `gtk3`, `python`
-- desktop extras: `ab-download-manager`, `baloo`, `copyq`, `dms-shell`,
-  `dolphin`, `libappindicator`, `libayatana-appindicator`, `zen-browser-bin`
+- desktop extras: `ab-download-manager`, `baloo`, `blueman`, `copyq`,
+  `dms-shell`, `dolphin`, `flatseal`, `libappindicator`,
+  `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
+- workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
+  `protontricks`, `steam`
 
 AUR packages used by the desktop profile:
 
@@ -101,6 +104,10 @@ Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,
 display/session plumbing, or a root/system-owned service before the Nix profile
 can be assumed.
+
+Small user glue scripts such as `abdm-launch` and
+`protontricks-launch-mangohud` are Home Manager-owned under `~/.local/bin`; the
+large applications they call stay in the host package layer.
 
 Desktop Flatpaks are handled by `bootstrap/cachyos.sh --apply`
 when they are part of the current workflow or validation canaries.

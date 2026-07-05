@@ -46,10 +46,18 @@ gui = [
 ]
 
 [packages.profiles]
-desktop = ["base-devel", "git", "podman"]
+desktop = [
+  "base-devel",
+  "git",
+  "mangohud",
+  "podman",
+  "podman-desktop",
+  "protontricks",
+  "steam",
+]
 
 [packages.extras]
-gui = ["baloo", "copyq", "dolphin"]
+gui = ["baloo", "blueman", "copyq", "dolphin", "flatseal", "pavucontrol"]
 
 [aurCommands]
 mangowm-git = ["mango", "mmsg"]

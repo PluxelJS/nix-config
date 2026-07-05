@@ -155,6 +155,17 @@ in
         mimeType = notepadNextMimeTypes;
       };
 
+      desktopEntries."protontricks-launch-mangohud" = {
+        name = "Protontricks Launcher (MangoHud)";
+        exec = "${homeDir}/.local/bin/protontricks-launch-mangohud %f";
+        noDisplay = true;
+        terminal = false;
+        mimeType = [
+          "application/x-ms-dos-executable"
+          "application/x-msdownload"
+        ];
+      };
+
       mimeApps = {
         enable = true;
 
@@ -247,6 +258,7 @@ in
           text = "zh_CN\n";
         };
       };
+
     })
     (lib.mkIf config.ahdg.features.ghostty {
       configFile."xdg-terminals.list" = {
@@ -260,6 +272,13 @@ in
       };
     })
   ];
+
+  home.file = lib.mkIf cfg.desktopXdg {
+    ".local/bin/protontricks-launch-mangohud" = {
+      source = ../files/bin/protontricks-launch-mangohud;
+      executable = true;
+    };
+  };
 
   home.sessionPath = [
     "$HOME/.local/bin"

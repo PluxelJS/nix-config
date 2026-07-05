@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+  --open)
+    shift || true
+    exec "$HOME/.local/bin/abdm-open" "$@"
+    ;;
+  *)
+    exec "$HOME/.local/bin/abdm-tray" "$@"
+    ;;
+esac

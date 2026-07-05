@@ -52,6 +52,11 @@ lib.mkIf config.ahdg.features.gui {
     executable = true;
   };
 
+  home.file.".local/bin/abdm-launch" = {
+    source = ../../files/bin/abdm-launch;
+    executable = true;
+  };
+
   home.file.".local/bin/abdm-tray" = {
     source = ../../files/bin/abdm-tray;
     executable = true;

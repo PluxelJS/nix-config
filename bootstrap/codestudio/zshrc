@@ -1,0 +1,80 @@
+setopt AUTO_CD
+setopt AUTO_PUSHD
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+setopt HIST_VERIFY
+setopt INTERACTIVE_COMMENTS
+setopt SHARE_HISTORY
+
+zmodload zsh/regex 2>/dev/null || true
+zmodload zsh/mathfunc 2>/dev/null || true
+
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+HISTSIZE=10000
+SAVEHIST=10000
+
+mkdir -p "${HISTFILE:h}"
+
+if [[ -n "${CODE_STUDIO_NIX_PROFILE:-}" && -d "$CODE_STUDIO_NIX_PROFILE/bin" ]]; then
+  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$CODE_STUDIO_NIX_PROFILE/bin:/app/bin:/usr/bin"
+else
+  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:/app/bin:/usr/bin"
+fi
+
+alias ..='cd ..'
+alias ...='cd ../..'
+alias gst='git status -sb'
+alias gl='git log --oneline --decorate --graph -20'
+
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate -q zsh)"
+fi
+
+if [[ -o interactive ]]; then
+  autoload -Uz compinit
+  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+  compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump-$ZSH_VERSION"
+fi
+
+if [[ -r /app/share/code-studio/zsh/interactive.zsh ]]; then
+  source /app/share/code-studio/zsh/interactive.zsh
+fi
+
+if [[ -o interactive ]] && [[ -t 0 ]] && [[ -t 1 ]] && [[ -n "${TERM:-}" ]] && [[ "$TERM" != "dumb" ]]; then
+  if command -v fzf >/dev/null 2>&1; then
+    source <(fzf --zsh)
+  fi
+
+  if command -v atuin >/dev/null 2>&1; then
+    eval "$(atuin init zsh)"
+  fi
+
+  if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init zsh)"
+  fi
+
+  if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+  fi
+
+  zmodload zsh/terminfo 2>/dev/null
+  bindkey '\e\e' sudo-command-line 2>/dev/null
+  bindkey '^[e' quick-insert 2>/dev/null
+  bindkey '^[a' opencode-tui 2>/dev/null
+  bindkey '^e' end-of-line
+  bindkey '^t' transpose-chars
+  if [[ -n "${terminfo[kf1]-}" ]]; then
+    bindkey "${terminfo[kf1]}" term-help 2>/dev/null
+  fi
+  bindkey '\eOP' term-help 2>/dev/null
+  bindkey '\e[11~' term-help 2>/dev/null
+fi
+
+if [[ -r /app/share/code-studio/zsh/startup.zsh ]]; then
+  source /app/share/code-studio/zsh/startup.zsh
+fi
+
+if [[ -f "$HOME/.config/code-studio/zshrc.local" ]]; then
+  source "$HOME/.config/code-studio/zshrc.local"
+fi

@@ -67,6 +67,9 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 	if err := a.ensureFlatpakApps(opts); err != nil {
 		return err
 	}
+	if err := a.ensureLocalFlatpakApps(opts); err != nil {
+		return err
+	}
 
 	if !opts.noSwitch {
 		if err := a.runHomeManager(opts); err != nil {
@@ -133,6 +136,10 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 	}
 
 	if features["gui"] {
+		for _, aurPackage := range a.cfg.AURPackages[opts.profile] {
+			result.ensureAURPackage(aurPackage)
+		}
+
 		for _, aurPackage := range sortedStringKeys(a.cfg.AURCommands) {
 			missing := missingCommands(a.cfg.AURCommands[aurPackage])
 			if len(missing) == 0 {
@@ -235,6 +242,15 @@ func (r *depResult) ensureExtra(pkg string) {
 	}
 	warn("desktop extra repo package `%s` missing", pkg)
 	r.extrasMissing = append(r.extrasMissing, pkg)
+}
+
+func (r *depResult) ensureAURPackage(pkg string) {
+	if pacmanPackageInstalled(pkg) {
+		pass("AUR package `%s` installed", pkg)
+		return
+	}
+	fail("AUR package `%s` missing", pkg)
+	r.aurMissing = append(r.aurMissing, pkg)
 }
 
 func (r depResult) applyPackages(includeExtras bool) error {
@@ -414,6 +430,50 @@ func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
 		return run("flatpak", args...)
 	}
 	return nil
+}
+
+func (a app) ensureLocalFlatpakApps(opts bootstrapOptions) error {
+	apps := a.cfg.LocalFlatpaks[opts.profile]
+	if len(apps) == 0 {
+		return nil
+	}
+	if opts.minimal {
+		warn("local desktop Flatpaks for profile %q skipped by --minimal", opts.profile)
+		return nil
+	}
+	if !commandExists("flatpak") {
+		warn("flatpak command missing; runtime dependency step must install it before local Flatpaks can be applied")
+		return nil
+	}
+
+	var missing []string
+	for _, appID := range apps {
+		if flatpakAppInstalled(appID) {
+			pass("local Flatpak app `%s` installed", appID)
+		} else {
+			fail("local Flatpak app `%s` missing", appID)
+			missing = append(missing, appID)
+		}
+	}
+
+	if opts.apply {
+		for _, appID := range missing {
+			if err := a.installLocalFlatpak(appID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (a app) installLocalFlatpak(appID string) error {
+	switch appID {
+	case "io.github.trumank.CodeStudio":
+		installer := filepath.Join(a.repo, "bootstrap", "codestudio", "install-code-studio.sh")
+		return run("bash", installer, a.repo)
+	default:
+		return fmt.Errorf("no local Flatpak installer registered for %s", appID)
+	}
 }
 
 func (a app) runHomeManager(opts bootstrapOptions) error {

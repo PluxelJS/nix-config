@@ -166,6 +166,14 @@ in
         ];
       };
 
+      desktopEntries."jetbrainsd" = {
+        name = "JetBrains";
+        exec = "${homeDir}/.local/share/JetBrains/Daemon/bundles/current/jetbrainsd/bin/jetbrainsd handleUri %u";
+        noDisplay = true;
+        terminal = false;
+        mimeType = [ "x-scheme-handler/jetbrains" ];
+      };
+
       mimeApps = {
         enable = true;
 
@@ -231,7 +239,7 @@ in
             ];
             "x-scheme-handler/clash" = "mihomo-party.desktop";
             "x-scheme-handler/mihomo" = "mihomo-party.desktop";
-            "x-scheme-handler/jetbrains" = "jetbrains-toolbox.desktop";
+            "x-scheme-handler/jetbrains" = "jetbrainsd.desktop";
           };
       };
 

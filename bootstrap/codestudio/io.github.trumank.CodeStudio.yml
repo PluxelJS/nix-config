@@ -1,0 +1,84 @@
+app-id: io.github.trumank.CodeStudio
+runtime: org.freedesktop.Sdk
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+command: code-studio
+build-options:
+  no-debuginfo: true
+  strip: false
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=xdg-run/pipewire-0
+  - --filesystem=~/code:create
+  - --filesystem=/nix/store:ro
+  - --filesystem=~/.local/state/nix/profiles:ro
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: zsh
+    buildsystem: autotools
+    config-opts:
+      - --prefix=/app
+      - --enable-multibyte
+      - --enable-dynamic
+    cleanup:
+      - /share/man
+      - /share/info
+    sources:
+      - type: archive
+        url: https://www.zsh.org/pub/zsh-5.9.1.tar.xz
+        sha256: 5d20bec03f981dc4e9a09ec245e7415388ff641f79c5c5c416b5042e58d8280d
+
+  - name: code-studio
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 code-studio-launcher /app/bin/code-studio
+      - ln -s code-studio /app/bin/code-studio-shell
+      - install -Dm644 settings.json /app/share/code-studio/settings.json
+      - install -Dm644 argv.json /app/share/code-studio/argv.json
+      - install -Dm644 locale.json /app/share/code-studio/locale.json
+      - install -Dm644 zshrc /app/share/code-studio/zshrc
+      - install -Dm644 interactive.zsh /app/share/code-studio/zsh/interactive.zsh
+      - install -Dm644 startup.zsh /app/share/code-studio/zsh/startup.zsh
+      - install -Dm644 starship.toml /app/share/code-studio/starship.toml
+      - install -Dm644 io.github.trumank.CodeStudio.desktop /app/share/applications/io.github.trumank.CodeStudio.desktop
+      - install -Dm644 io.github.trumank.CodeStudio.metainfo.xml /app/share/metainfo/io.github.trumank.CodeStudio.metainfo.xml
+      - install -Dm644 modio-cog-blue.png /app/share/icons/hicolor/32x32/apps/io.github.trumank.CodeStudio.png
+      - install -Dm644 modio-cog-blue.png /app/share/icons/hicolor/64x64/apps/io.github.trumank.CodeStudio.png
+      - install -Dm644 modio-cog-blue.png /app/share/icons/hicolor/128x128/apps/io.github.trumank.CodeStudio.png
+      - mkdir -p /app/lib/vscode
+      - tar -xzf code-stable-x64.tar.gz -C /app/lib/vscode --strip-components=1
+      - chmod +x /app/lib/vscode/bin/code /app/lib/vscode/code
+    sources:
+      - type: file
+        path: code-studio-launcher
+      - type: file
+        path: settings.json
+      - type: file
+        path: argv.json
+      - type: file
+        path: locale.json
+      - type: file
+        path: zshrc
+      - type: file
+        path: zsh/interactive.zsh
+      - type: file
+        path: zsh/startup.zsh
+      - type: file
+        path: starship.toml
+      - type: file
+        path: io.github.trumank.CodeStudio.desktop
+      - type: file
+        path: io.github.trumank.CodeStudio.metainfo.xml
+      - type: file
+        path: modio-cog-blue.png
+      - type: file
+        # VS Code 1.116.0 is pinned because newer 1.124.x / Electron 42 builds
+        # render fonts blurrier on this Wayland setup despite equivalent
+        # fontconfig visibility and settings.
+        url: https://vscode.download.prss.microsoft.com/dbazure/download/stable/560a9dba96f961efea7b1612916f89e5d5d4d679/code-stable-x64-1776214075.tar.gz
+        dest-filename: code-stable-x64.tar.gz
+        sha256: ce87b613dc65a40304e100fc21a82271b023ef5837700f5797299041030524ba

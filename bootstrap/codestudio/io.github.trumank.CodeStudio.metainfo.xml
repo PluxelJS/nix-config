@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.trumank.CodeStudio</id>
+  <name>Code Studio</name>
+  <summary>Custom VS Code Flatpak with persistent private development defaults</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Proprietary</project_license>
+  <description>
+    <p>Code Studio packages upstream VS Code with explicit persistent paths for settings, extensions, caches, and workspace launch defaults.</p>
+  </description>
+  <launchable type="desktop-id">io.github.trumank.CodeStudio.desktop</launchable>
+</component>

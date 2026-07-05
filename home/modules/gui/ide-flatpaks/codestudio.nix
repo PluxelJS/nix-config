@@ -36,7 +36,11 @@ let
   });
 in
 lib.mkIf config.ahdg.features.flatpak {
-  home.activation.manageFlatpakCodeStudioOverride = lib.hm.dag.entryAfter [ "prepareFlatpakIdeToolHomes" ] ''
+  home.activation.prepareCodeStudioProjectHome = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    mkdir -p '${ideLib.homeDir}/code'
+  '';
+
+  home.activation.manageFlatpakCodeStudioOverride = lib.hm.dag.entryAfter [ "prepareCodeStudioProjectHome" "prepareFlatpakIdeToolHomes" ] ''
     if command -v flatpak >/dev/null 2>&1; then
       ${codeStudioOverride}
     fi

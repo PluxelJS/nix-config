@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Code Studio
+GenericName=Code Editor
+Comment=Custom VS Code with persistent private development state
+Keywords=code;vscode;editor;ide;studio;
+Exec=code-studio %F
+Icon=io.github.trumank.CodeStudio
+Terminal=false
+Categories=Development;IDE;
+StartupNotify=true
+MimeType=text/plain;inode/directory;

@@ -6,6 +6,7 @@ The primary implementation is the committed Go binary:
 
 - `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/cleanup/verify CLI
 - `bootstrap/cachyos.toml`: profile, package, AUR exception, and Flatpak policy
+- `bootstrap/codestudio/`: local Code Studio Flatpak package used by desktop bootstrap
 - `tools/cachyos-bootstrap/`: source for rebuilding the binary
 
 The shell entrypoint is intentionally thin:
@@ -19,13 +20,15 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
-The desktop profile installs the current desktop helper packages and managed
-Flatpak app set by default. `--minimal` skips those extras for lean
-shell/container bring-up or debugging.
+The desktop profile installs the current desktop helper packages, Flathub app
+set, local Code Studio Flatpak, and XDG default-app dependencies by default.
+`--minimal` skips desktop extras and Flatpaks for lean shell/container bring-up
+or debugging.
 
 `bootstrap/cachyos.toml` stays intentionally small: profiles select feature
-names, package sections are plain package lists, and the remaining AUR exception
-maps to the commands expected on the desktop. Runtime dependency size is
+names, package sections are plain package lists, `aurPackages.desktop` declares
+the package-exact AUR exceptions required by XDG defaults, and `aurCommands`
+declares command-based AUR checks such as MangoWM. Runtime dependency size is
 irrelevant here because fresh machines run the committed binary, not `go run`.
 
 Rebuild the committed binary after changing Go code or `go.mod`:

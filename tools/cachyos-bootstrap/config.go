@@ -9,11 +9,13 @@ import (
 )
 
 type config struct {
-	Profiles    map[string]profileConfig `toml:"profiles"`
-	Packages    packageConfig            `toml:"packages"`
-	AURCommands map[string][]string      `toml:"aurCommands"`
-	Browser     browserCheck             `toml:"browser"`
-	Flatpaks    map[string][]string      `toml:"flatpaks"`
+	Profiles      map[string]profileConfig `toml:"profiles"`
+	Packages      packageConfig            `toml:"packages"`
+	AURCommands   map[string][]string      `toml:"aurCommands"`
+	AURPackages   map[string][]string      `toml:"aurPackages"`
+	Browser       browserCheck             `toml:"browser"`
+	Flatpaks      map[string][]string      `toml:"flatpaks"`
+	LocalFlatpaks map[string][]string      `toml:"localFlatpaks"`
 }
 
 type profileConfig struct {
@@ -95,6 +97,15 @@ func validateConfig(cfg config) error {
 		}
 	}
 
+	for profile, packages := range cfg.AURPackages {
+		if _, ok := cfg.Profiles[profile]; !ok {
+			return fmt.Errorf("aurPackages references unknown profile %q", profile)
+		}
+		if err := validateItems("aurPackages."+profile, packages); err != nil {
+			return err
+		}
+	}
+
 	for profile, apps := range cfg.Flatpaks {
 		if _, ok := cfg.Profiles[profile]; !ok {
 			return fmt.Errorf("flatpaks references unknown profile %q", profile)
@@ -102,6 +113,16 @@ func validateConfig(cfg config) error {
 		for _, appID := range apps {
 			if appID == "" {
 				return fmt.Errorf("flatpaks.%s contains an empty app id", profile)
+			}
+		}
+	}
+	for profile, apps := range cfg.LocalFlatpaks {
+		if _, ok := cfg.Profiles[profile]; !ok {
+			return fmt.Errorf("localFlatpaks references unknown profile %q", profile)
+		}
+		for _, appID := range apps {
+			if appID == "" {
+				return fmt.Errorf("localFlatpaks.%s contains an empty app id", profile)
 			}
 		}
 	}

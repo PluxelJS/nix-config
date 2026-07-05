@@ -82,25 +82,6 @@ func commandExists(name string) bool {
 	return err == nil
 }
 
-func commandAnyExists(commands []string) bool {
-	for _, cmd := range commands {
-		if commandExists(cmd) {
-			return true
-		}
-	}
-	return false
-}
-
-func existingCommands(commands []string) string {
-	var found []string
-	for _, cmd := range commands {
-		if commandExists(cmd) {
-			found = append(found, cmd)
-		}
-	}
-	return strings.Join(found, " ")
-}
-
 func commandOK(name string, args ...string) bool {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = nil
@@ -193,6 +174,25 @@ func sortedKeys(m map[string]bool) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func sortedStringKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func missingCommands(commands []string) []string {
+	var missing []string
+	for _, command := range commands {
+		if !commandExists(command) {
+			missing = append(missing, command)
+		}
+	}
+	return missing
 }
 
 func uniqueSorted(items []string) []string {

@@ -8,13 +8,13 @@ import (
 )
 
 type bootstrapOptions struct {
-	apply       bool
-	profile     string
-	flake       string
-	minimal     bool
-	installNix  bool
-	installParu bool
-	switchAfter bool
+	apply         bool
+	profile       string
+	flake         string
+	minimal       bool
+	noInstallNix  bool
+	noInstallParu bool
+	noSwitch      bool
 }
 
 func (a app) newRootCommand() *cobra.Command {
@@ -74,7 +74,6 @@ func (a app) newDepsCommand() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing host runtime dependencies")
 	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
-	addLegacyRecommendedFlag(cmd)
 	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
 	return cmd
 }
@@ -111,10 +110,7 @@ func (a app) newVerifyCommand() *cobra.Command {
 
 func defaultBootstrapOptions() bootstrapOptions {
 	return bootstrapOptions{
-		profile:     "desktop",
-		installNix:  true,
-		installParu: true,
-		switchAfter: true,
+		profile: "desktop",
 	}
 }
 
@@ -123,23 +119,7 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
 	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
 	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
-	addLegacyRecommendedFlag(cmd)
-	cmd.Flags().BoolVar(&opts.installNix, "install-nix", true, "install Nix when missing")
-	cmd.Flags().BoolVar(&opts.installParu, "install-paru", true, "install paru when missing")
-	cmd.Flags().BoolVar(&opts.switchAfter, "switch", true, "run Home Manager switch")
-	cmd.Flags().BoolVar(&opts.installNix, "no-install-nix", true, "skip Nix installation/daemon setup")
-	cmd.Flags().Lookup("no-install-nix").NoOptDefVal = "false"
-	_ = cmd.Flags().MarkHidden("no-install-nix")
-	cmd.Flags().BoolVar(&opts.installParu, "no-install-paru", true, "skip paru installation")
-	cmd.Flags().Lookup("no-install-paru").NoOptDefVal = "false"
-	_ = cmd.Flags().MarkHidden("no-install-paru")
-	cmd.Flags().BoolVar(&opts.switchAfter, "no-switch", true, "do not run Home Manager switch")
-	cmd.Flags().Lookup("no-switch").NoOptDefVal = "false"
-	_ = cmd.Flags().MarkHidden("no-switch")
-}
-
-func addLegacyRecommendedFlag(cmd *cobra.Command) {
-	var ignored bool
-	cmd.Flags().BoolVar(&ignored, "with-recommended", false, "legacy no-op; desktop extras are included by default")
-	_ = cmd.Flags().MarkHidden("with-recommended")
+	cmd.Flags().BoolVar(&opts.noInstallNix, "no-install-nix", false, "skip Nix installation/daemon setup")
+	cmd.Flags().BoolVar(&opts.noInstallParu, "no-install-paru", false, "skip paru installation")
+	cmd.Flags().BoolVar(&opts.noSwitch, "no-switch", false, "do not run Home Manager switch")
 }

@@ -60,7 +60,7 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		return err
 	}
 
-	if opts.switchAfter {
+	if !opts.noSwitch {
 		if err := a.runHomeManager(opts); err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 	}
 
 	fmt.Printf("Profile: %s\nMode: %s\n", opts.profile, modeName(opts.apply))
-	result.extrasApplicable = hasFeatureExtras(a.cfg.RepoPackages.FeatureExtras, features)
+	result.extrasApplicable = hasFeatureExtras(a.cfg.Packages.Extras, features)
 	if result.extrasApplicable {
 		if opts.minimal {
 			fmt.Println("Desktop extras: skip")
@@ -103,41 +103,37 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 	}
 	fmt.Println()
 
-	for _, pkg := range a.cfg.RepoPackages.Base {
-		result.ensureRepo(pkg, opts.apply)
+	for _, pkg := range a.cfg.Packages.Base {
+		result.ensureRepo(pkg)
 	}
 
 	featureNames := sortedKeys(features)
 	for _, feature := range featureNames {
-		for _, pkg := range a.cfg.RepoPackages.Features[feature] {
-			result.ensureRepo(pkg, opts.apply)
+		for _, pkg := range a.cfg.Packages.Features[feature] {
+			result.ensureRepo(pkg)
 		}
 	}
 
-	for _, pkg := range a.cfg.RepoPackages.Profiles[opts.profile] {
-		result.ensureRepo(pkg, opts.apply)
+	for _, pkg := range a.cfg.Packages.Profiles[opts.profile] {
+		result.ensureRepo(pkg)
 	}
 
 	if features["gui"] {
-		for _, check := range a.cfg.DesktopCommands {
-			if commandAnyExists(check.Commands) {
-				pass("%s available via: %s (%s)", check.Label, existingCommands(check.Commands), check.Reason)
-			} else {
-				fail("%s missing; expected one of: %s (%s)", check.Label, strings.Join(check.Commands, " "), check.Reason)
-				if check.AURPackage != "" {
-					result.aurMissing = append(result.aurMissing, check.AURPackage)
-				}
-				if check.Note != "" {
-					result.notes = append(result.notes, check.Note)
-				}
+		for _, aurPackage := range sortedStringKeys(a.cfg.AURCommands) {
+			missing := missingCommands(a.cfg.AURCommands[aurPackage])
+			if len(missing) == 0 {
+				pass("AUR package `%s` commands available: %s", aurPackage, strings.Join(a.cfg.AURCommands[aurPackage], " "))
+				continue
 			}
+			fail("AUR package `%s` missing commands: %s", aurPackage, strings.Join(missing, " "))
+			result.aurMissing = append(result.aurMissing, aurPackage)
 		}
 
 		if a.cfg.Browser.Command != "" {
 			if commandExists(a.cfg.Browser.Command) {
-				pass("browser command `%s` available (%s)", a.cfg.Browser.Command, a.cfg.Browser.Reason)
+				pass("browser command `%s` available", a.cfg.Browser.Command)
 			} else {
-				warn("browser command `%s` missing (%s)", a.cfg.Browser.Command, a.cfg.Browser.Reason)
+				warn("browser command `%s` missing", a.cfg.Browser.Command)
 				if a.cfg.Browser.Note != "" {
 					result.notes = append(result.notes, a.cfg.Browser.Note)
 				}
@@ -147,7 +143,7 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 
 	if !opts.minimal {
 		for _, feature := range featureNames {
-			for _, pkg := range a.cfg.RepoPackages.FeatureExtras[feature] {
+			for _, pkg := range a.cfg.Packages.Extras[feature] {
 				result.ensureExtra(pkg)
 			}
 		}
@@ -200,7 +196,7 @@ func (a app) featuresFor(profile string, explicit bool) (map[string]bool, error)
 	return features, nil
 }
 
-func hasFeatureExtras(extras map[string][]pkgSpec, features map[string]bool) bool {
+func hasFeatureExtras(extras map[string][]string, features map[string]bool) bool {
 	for feature, enabled := range features {
 		if enabled && len(extras[feature]) > 0 {
 			return true
@@ -209,22 +205,22 @@ func hasFeatureExtras(extras map[string][]pkgSpec, features map[string]bool) boo
 	return false
 }
 
-func (r *depResult) ensureRepo(pkg pkgSpec, apply bool) {
-	if pacmanPackageInstalled(pkg.Name) {
-		pass("repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
+func (r *depResult) ensureRepo(pkg string) {
+	if pacmanPackageInstalled(pkg) {
+		pass("repo package `%s` installed", pkg)
 		return
 	}
-	fail("repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
-	r.repoMissing = append(r.repoMissing, pkg.Name)
+	fail("repo package `%s` missing", pkg)
+	r.repoMissing = append(r.repoMissing, pkg)
 }
 
-func (r *depResult) ensureExtra(pkg pkgSpec) {
-	if pacmanPackageInstalled(pkg.Name) {
-		pass("desktop extra repo package `%s` installed (%s)", pkg.Name, pkg.Reason)
+func (r *depResult) ensureExtra(pkg string) {
+	if pacmanPackageInstalled(pkg) {
+		pass("desktop extra repo package `%s` installed", pkg)
 		return
 	}
-	warn("desktop extra repo package `%s` missing (%s)", pkg.Name, pkg.Reason)
-	r.extrasMissing = append(r.extrasMissing, pkg.Name)
+	warn("desktop extra repo package `%s` missing", pkg)
+	r.extrasMissing = append(r.extrasMissing, pkg)
 }
 
 func (r depResult) applyPackages(includeExtras bool) error {
@@ -306,7 +302,7 @@ Apply full profile packages:
 func (a app) ensureNix(opts bootstrapOptions) error {
 	if commandExists("nix") {
 		pass("nix command available")
-	} else if opts.installNix {
+	} else if !opts.noInstallNix {
 		fail("nix command missing")
 		if opts.apply {
 			if err := installPacmanPackage("nix", "Nix daemon and CLI", opts.apply); err != nil {
@@ -342,7 +338,7 @@ func (a app) ensureParu(opts bootstrapOptions) error {
 		pass("paru command available")
 		return nil
 	}
-	if !opts.installParu {
+	if opts.noInstallParu {
 		warn("paru command missing and --no-install-paru was set")
 		return nil
 	}

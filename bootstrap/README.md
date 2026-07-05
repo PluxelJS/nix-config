@@ -5,7 +5,7 @@ Fresh-machine setup lives here.
 The primary implementation is the committed Go binary:
 
 - `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/cleanup/verify CLI
-- `bootstrap/cachyos.toml`: profile, package, command, and Flatpak policy
+- `bootstrap/cachyos.toml`: profile, package, AUR command, and Flatpak policy
 - `tools/cachyos-bootstrap/`: source for rebuilding the binary
 
 The shell entrypoint is intentionally thin:
@@ -23,10 +23,10 @@ The desktop profile installs the current desktop helper packages and Flatpak
 canaries by default. `--minimal` skips those extras for lean shell/container
 bring-up or debugging.
 
-`bootstrap/cachyos.toml` is TOML because this file is maintained by humans:
-comments, dotted sections, and array tables fit package policy well. Runtime
-dependency size is irrelevant here because fresh machines run the committed
-binary, not `go run`.
+`bootstrap/cachyos.toml` stays intentionally small: profiles select feature
+names, package sections are plain package lists, and AUR entries map packages to
+the commands expected on the desktop. Runtime dependency size is irrelevant here
+because fresh machines run the committed binary, not `go run`.
 
 Rebuild the committed binary after changing Go code or `go.mod`:
 

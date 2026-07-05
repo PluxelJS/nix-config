@@ -9,11 +9,11 @@ import (
 )
 
 type config struct {
-	Profiles        map[string]profileConfig `toml:"profiles"`
-	RepoPackages    repoPackages             `toml:"repoPackages"`
-	DesktopCommands []commandCheck           `toml:"desktopCommands"`
-	Browser         browserCheck             `toml:"browser"`
-	Flatpaks        map[string][]string      `toml:"flatpaks"`
+	Profiles    map[string]profileConfig `toml:"profiles"`
+	Packages    packageConfig            `toml:"packages"`
+	AURCommands map[string][]string      `toml:"aurCommands"`
+	Browser     browserCheck             `toml:"browser"`
+	Flatpaks    map[string][]string      `toml:"flatpaks"`
 }
 
 type profileConfig struct {
@@ -21,29 +21,15 @@ type profileConfig struct {
 	Features []string `toml:"features"`
 }
 
-type repoPackages struct {
-	Base          []pkgSpec            `toml:"base"`
-	Features      map[string][]pkgSpec `toml:"features"`
-	Profiles      map[string][]pkgSpec `toml:"profiles"`
-	FeatureExtras map[string][]pkgSpec `toml:"featureExtras"`
-}
-
-type pkgSpec struct {
-	Name   string `toml:"name"`
-	Reason string `toml:"reason"`
-}
-
-type commandCheck struct {
-	Label      string   `toml:"label"`
-	Reason     string   `toml:"reason"`
-	Commands   []string `toml:"commands"`
-	AURPackage string   `toml:"aurPackage"`
-	Note       string   `toml:"note"`
+type packageConfig struct {
+	Base     []string            `toml:"base"`
+	Features map[string][]string `toml:"features"`
+	Profiles map[string][]string `toml:"profiles"`
+	Extras   map[string][]string `toml:"extras"`
 }
 
 type browserCheck struct {
 	Command string `toml:"command"`
-	Reason  string `toml:"reason"`
 	Note    string `toml:"note"`
 }
 
@@ -78,39 +64,34 @@ func validateConfig(cfg config) error {
 		}
 	}
 
-	if err := validatePackages("repoPackages.base", cfg.RepoPackages.Base); err != nil {
+	if err := validateItems("packages.base", cfg.Packages.Base); err != nil {
 		return err
 	}
-	for feature, packages := range cfg.RepoPackages.Features {
-		if err := validatePackages("repoPackages.features."+feature, packages); err != nil {
+	for feature, packages := range cfg.Packages.Features {
+		if err := validateItems("packages.features."+feature, packages); err != nil {
 			return err
 		}
 	}
-	for profile, packages := range cfg.RepoPackages.Profiles {
+	for profile, packages := range cfg.Packages.Profiles {
 		if _, ok := cfg.Profiles[profile]; !ok {
-			return fmt.Errorf("repoPackages.profiles references unknown profile %q", profile)
+			return fmt.Errorf("packages.profiles references unknown profile %q", profile)
 		}
-		if err := validatePackages("repoPackages.profiles."+profile, packages); err != nil {
+		if err := validateItems("packages.profiles."+profile, packages); err != nil {
 			return err
 		}
 	}
-	for feature, packages := range cfg.RepoPackages.FeatureExtras {
-		if err := validatePackages("repoPackages.featureExtras."+feature, packages); err != nil {
+	for feature, packages := range cfg.Packages.Extras {
+		if err := validateItems("packages.extras."+feature, packages); err != nil {
 			return err
 		}
 	}
 
-	for index, check := range cfg.DesktopCommands {
-		if check.Label == "" {
-			return fmt.Errorf("desktopCommands[%d] has an empty label", index)
+	for aurPackage, commands := range cfg.AURCommands {
+		if aurPackage == "" {
+			return errors.New("aurCommands contains an empty package name")
 		}
-		if len(check.Commands) == 0 {
-			return fmt.Errorf("desktopCommands[%d] has no commands", index)
-		}
-		for _, command := range check.Commands {
-			if command == "" {
-				return fmt.Errorf("desktopCommands[%d] contains an empty command", index)
-			}
+		if err := validateItems("aurCommands."+aurPackage, commands); err != nil {
+			return err
 		}
 	}
 
@@ -127,10 +108,10 @@ func validateConfig(cfg config) error {
 	return nil
 }
 
-func validatePackages(group string, packages []pkgSpec) error {
-	for index, pkg := range packages {
-		if pkg.Name == "" {
-			return fmt.Errorf("%s[%d] has an empty package name", group, index)
+func validateItems(group string, items []string) error {
+	for index, item := range items {
+		if item == "" {
+			return fmt.Errorf("%s[%d] is empty", group, index)
 		}
 	}
 	return nil

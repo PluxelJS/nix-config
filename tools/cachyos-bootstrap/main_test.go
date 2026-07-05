@@ -49,18 +49,18 @@ func TestBootstrapFlags(t *testing.T) {
 	if opts.profile != "shell" {
 		t.Fatalf("profile = %q, want shell", opts.profile)
 	}
-	if opts.installNix {
-		t.Fatal("expected --no-install-nix to clear installNix")
+	if !opts.noInstallNix {
+		t.Fatal("expected --no-install-nix to set noInstallNix")
 	}
-	if opts.installParu {
-		t.Fatal("expected --no-install-paru to clear installParu")
+	if !opts.noInstallParu {
+		t.Fatal("expected --no-install-paru to set noInstallParu")
 	}
-	if opts.switchAfter {
-		t.Fatal("expected --no-switch to clear switchAfter")
+	if !opts.noSwitch {
+		t.Fatal("expected --no-switch to set noSwitch")
 	}
 }
 
-func TestBootstrapMinimalAndLegacyRecommendedFlags(t *testing.T) {
+func TestBootstrapMinimalFlag(t *testing.T) {
 	opts := defaultBootstrapOptions()
 	cmd := &cobra.Command{
 		Use:           "test",
@@ -71,7 +71,7 @@ func TestBootstrapMinimalAndLegacyRecommendedFlags(t *testing.T) {
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	addBootstrapFlags(cmd, &opts)
-	cmd.SetArgs([]string{"--minimal", "--with-recommended"})
+	cmd.SetArgs([]string{"--minimal"})
 	err := cmd.Execute()
 	if err != nil {
 		t.Fatal(err)

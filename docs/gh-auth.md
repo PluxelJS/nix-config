@@ -5,8 +5,10 @@ adding more runtime complexity to the Home Manager config today.
 
 ## Current Practice
 
-- Let Home Manager own package installation and normal config for `git` and
-  `gh`.
+- Let the system package manager own `github-cli`, because `gh` may be needed
+  before Nix can pull or switch this repo.
+- Let Home Manager own normal config for `git` and `gh`, but not the `gh`
+  binary itself.
 - Keep `ragenix` installed as a future-facing encryption helper, but do not
   wire it into `gh` auth yet.
 - Let local runtime auth stay local:

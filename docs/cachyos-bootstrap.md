@@ -28,9 +28,9 @@ The fresh-machine logic is not embedded in large shell scripts. It is split into
 - `tools/cachyos-bootstrap/`: Go source for the binary
 - `bootstrap/cachyos.sh`: thin compatibility wrapper
 
-Routine repair, cleanup, and verification are subcommands of the same binary:
-`bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh cleanup`, and
-`bootstrap/cachyos.sh verify`.
+Routine repair, Flatpak catch-up, cleanup, and verification are subcommands of
+the same binary: `bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh flatpaks`,
+`bootstrap/cachyos.sh cleanup`, and `bootstrap/cachyos.sh verify`.
 
 ## Fresh Install
 
@@ -54,7 +54,7 @@ Dry-run the bootstrap:
 bootstrap/cachyos.sh
 ```
 
-Apply the full desktop bootstrap:
+Apply the desktop bootstrap:
 
 ```bash
 bootstrap/cachyos.sh --apply
@@ -69,9 +69,10 @@ What it does:
 - installs desktop helper packages, browser/download-manager packages,
   OpenRazer runtime packages, and selected desktop extras such as CopyQ and
   EasyEffects
-- installs Flathub apps plus the local Code Studio Flatpak package
 - adds the current user to profile-required groups such as `openrazer`
 - switches the matching Home Manager flake output
+- defers Flathub apps plus the local Code Studio Flatpak package to an
+  explicit catch-up command
 - prints the verification command to run after the session has been refreshed
 
 Useful variants:
@@ -80,13 +81,20 @@ Useful variants:
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile shell
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile container
 ~/.config/nix/bootstrap/cachyos.sh --apply --minimal
-~/.config/nix/bootstrap/cachyos.sh --apply --no-flatpaks
+~/.config/nix/bootstrap/cachyos.sh --apply --with-flatpaks
 ~/.config/nix/bootstrap/cachyos.sh --apply --no-switch
 ```
 
-Use `--no-flatpaks` when you want the desktop Home Manager profile applied now
-and want to install the slower remote/local Flatpak apps later. Re-run the same
-bootstrap command without `--no-flatpaks` to catch them up.
+The default `--apply` path prioritizes the desktop base: host packages, Nix,
+Home Manager, shell, WM/session config, portals, and theme/runtime files.
+Install slower app-layer Flatpaks later with:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh flatpaks --apply
+```
+
+Use `--with-flatpaks` only when you explicitly want remote and local Flatpak app
+installation to run in the same foreground bootstrap.
 
 After the first bootstrap, log out and back in if the script added the user to
 `nix-users` or profile-required hardware groups. Reboot if kernel modules were

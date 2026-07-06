@@ -35,6 +35,7 @@ func TestBootstrapFlags(t *testing.T) {
 		"--apply",
 		"--profile", "shell",
 		"--no-flatpaks",
+		"--with-flatpaks",
 		"--no-install-nix",
 		"--no-install-paru",
 		"--no-switch",
@@ -52,6 +53,9 @@ func TestBootstrapFlags(t *testing.T) {
 	}
 	if !opts.noFlatpaks {
 		t.Fatal("expected --no-flatpaks to set noFlatpaks")
+	}
+	if !opts.withFlatpaks {
+		t.Fatal("expected --with-flatpaks to set withFlatpaks")
 	}
 	if !opts.noInstallNix {
 		t.Fatal("expected --no-install-nix to set noInstallNix")
@@ -98,7 +102,7 @@ func TestRootHelpIncludesSubcommands(t *testing.T) {
 	}
 
 	help := out.String()
-	for _, want := range []string{"bootstrap", "deps", "cleanup", "verify"} {
+	for _, want := range []string{"bootstrap", "deps", "flatpaks", "cleanup", "verify"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help output missing %q:\n%s", want, help)
 		}

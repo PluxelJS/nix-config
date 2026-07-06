@@ -10,7 +10,6 @@ let
       pkgs.noto-fonts-color-emoji
     ]
     ++ lib.optionals config.ahdg.features.gui [
-      pkgs.darkly
       pkgs.bibata-cursors
       pkgs.papirus-icon-theme
       pkgs.notepad-next

@@ -255,6 +255,7 @@ func (v *verifier) checkMaterializedGUI() {
 	v.checkAbsent(".config/autostart/org.fcitx.Fcitx5.desktop", "system fcitx autostart is no longer masked by a user override", "system fcitx autostart should not be masked under ~/.config/autostart")
 	for _, rel := range []string{
 		".config/autostart/abdownloader.desktop",
+		".config/autostart/cachyos-hello.desktop",
 		".config/autostart/jetbrains-toolbox.desktop",
 		".config/autostart/mihomo-party.desktop",
 		".config/autostart/razer.desktop",
@@ -376,7 +377,7 @@ func (v *verifier) checkInteractiveShell() {
 		v.checkZsh("[[ \"$XDG_DESKTOP_DIR\" == \"$HOME/桌面\" && \"$XDG_DOWNLOAD_DIR\" == \"$HOME/下载\" ]]", "interactive zsh exports the migrated XDG user directories", "interactive zsh is missing migrated XDG user directory variables")
 	}
 	if v.has("gui") {
-		v.checkZsh("command -v darkly-settings6 >/dev/null", "Darkly is provided by the Nix profile", "Darkly is missing from the Nix profile")
+		v.checkZsh("command -v darkly-settings6 >/dev/null", "Darkly is provided by the system KDE/Qt package set", "Darkly is missing from the system KDE/Qt package set")
 		v.checkZsh("[[ \"$INPUT_METHOD\" == \"fcitx\" && \"$XMODIFIERS\" == \"@im=fcitx\" && \"$GTK_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULES\" == \"wayland;fcitx\" ]]", "interactive zsh exports the migrated fcitx environment", "interactive zsh is missing part of the migrated fcitx environment")
 	}
 	if v.has("fonts") {

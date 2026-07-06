@@ -33,11 +33,11 @@ git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
-To apply the desktop Home Manager profile first and leave Flatpak app downloads
-for later:
+The default apply path prioritizes the usable desktop base and defers slower
+Flatpak app downloads. Catch up those apps later:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh --apply --no-flatpaks
+~/.config/nix/bootstrap/cachyos.sh flatpaks --apply
 ```
 
 Then log out and back in if the bootstrap added `nix-users` or hardware access

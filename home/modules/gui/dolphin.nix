@@ -3,11 +3,10 @@ let
   themeEnvironmentFile = "${config.xdg.configHome}/ahdg/theme/session.env";
 in
 lib.mkIf config.ahdg.features.gui {
-  # Dolphin has two separate config surfaces:
-  # - dolphinrc for stable UI/preferences
-  # - kxmlgui user overrides for action shortcuts
+  # Dolphin rewrites these files eagerly. Keep the baseline enforced so this
+  # machine stays close to the known-good desktop layout.
   home.activation.initializeDolphinDefaults = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    seed_file() {
+    sync_file() {
       local source_path=$1
       local target_path=$2
 
@@ -15,13 +14,11 @@ lib.mkIf config.ahdg.features.gui {
         rm -f "$target_path"
       fi
 
-      if [[ ! -e "$target_path" ]]; then
-        install -Dm644 "$source_path" "$target_path"
-      fi
+      install -Dm644 "$source_path" "$target_path"
     }
 
-    seed_file "${../../files/dolphin/dolphinrc}" "${config.xdg.configHome}/dolphinrc"
-    seed_file "${../../files/dolphin/dolphinui.rc}" "${config.xdg.dataHome}/kxmlgui5/dolphin/dolphinui.rc"
+    sync_file "${../../files/dolphin/dolphinrc}" "${config.xdg.configHome}/dolphinrc"
+    sync_file "${../../files/dolphin/dolphinui.rc}" "${config.xdg.dataHome}/kxmlgui5/dolphin/dolphinui.rc"
   '';
 
   systemd.user.services.plasma-dolphin = {

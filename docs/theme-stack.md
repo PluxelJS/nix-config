@@ -27,11 +27,15 @@ environment by Home Manager:
 
 - `pkgs.catppuccin-gtk`
 - `pkgs.catppuccin-kde`
-- `pkgs.darkly`
 - `pkgs.papirus-icon-theme`
 - `pkgs.bibata-cursors`
 - `pkgs.kdePackages.breeze-icons`
 - font packages and fontconfig rules
+
+Darkly is intentionally system-owned (`darkly` on Cachy/Arch/AUR) because it
+provides Qt/KDE style plugins that must match the system Plasma/Qt plugin
+loader. Nix still writes `widgetStyle=Darkly` as policy, but does not provide
+the plugin payload.
 
 Nix ownership includes both of these delivery modes:
 

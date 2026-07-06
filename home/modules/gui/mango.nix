@@ -87,10 +87,34 @@ lib.mkIf config.ahdg.features.gui {
       "${mangoTarget}/env.conf"
   '';
 
+  home.activation.configureCopyqTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    copyq_config="${config.xdg.configHome}/copyq/copyq.conf"
+    install -dm755 "$(dirname "$copyq_config")"
+    if [[ ! -e "$copyq_config" ]]; then
+      printf '[Options]\nstyle=Darkly\n' > "$copyq_config"
+    elif grep -q '^style=' "$copyq_config"; then
+      sed -i 's/^style=.*/style=Darkly/' "$copyq_config"
+    else
+      printf 'style=Darkly\n' >> "$copyq_config"
+    fi
+
+    if command -v copyq >/dev/null 2>&1; then
+      timeout 2s copyq config style Darkly >/dev/null 2>&1 || true
+    fi
+  '';
+
+  home.activation.ensureOpenRazerRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    if command -v systemctl >/dev/null 2>&1 && command -v openrazer-daemon >/dev/null 2>&1; then
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+      systemctl --user enable --now openrazer-daemon.service >/dev/null 2>&1 || true
+    fi
+  '';
+
   home.activation.removeMigratedMangoAutostart = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
     autostart_dir="${config.xdg.configHome}/autostart"
     for entry in \
       abdownloader.desktop \
+      cachyos-hello.desktop \
       jetbrains-toolbox.desktop \
       mihomo-party.desktop \
       razer.desktop \

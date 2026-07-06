@@ -26,6 +26,10 @@ type depResult struct {
 }
 
 func (a app) runBootstrap(opts bootstrapOptions) error {
+	if opts.noFlatpaks && opts.withFlatpaks {
+		return errors.New("--no-flatpaks and --with-flatpaks cannot be used together")
+	}
+
 	profile, ok := a.cfg.Profiles[opts.profile]
 	if !ok {
 		return fmt.Errorf("unsupported profile: %s", opts.profile)
@@ -73,15 +77,23 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 
 	if opts.noFlatpaks {
 		warn("remote and local Flatpak app installs skipped by --no-flatpaks")
+	} else if opts.withFlatpaks {
+		if err := a.runFlatpaks(flatpakOptions{
+			apply:   opts.apply,
+			minimal: opts.minimal,
+			profile: opts.profile,
+		}); err != nil {
+			return err
+		}
 	} else {
-		if err := a.ensureFlatpakApps(opts); err != nil {
-			return err
-		}
-		if err := a.ensureLocalFlatpakApps(opts); err != nil {
-			return err
-		}
+		warn("remote and local Flatpak app installs deferred; desktop base is applied first")
 	}
 
+	fmt.Printf("\nDesktop base flow complete.\n")
+	if !opts.withFlatpaks && !opts.noFlatpaks && !opts.minimal && (len(a.cfg.Flatpaks[opts.profile]) > 0 || len(a.cfg.LocalFlatpaks[opts.profile]) > 0) {
+		fmt.Printf("\nOptional Flatpak app catch-up:\n  %s\n",
+			shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "flatpaks", "--apply", "--profile", opts.profile}))
+	}
 	fmt.Printf("\nNext checks after reboot/login:\n  %s %s\n",
 		shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify"}), opts.profile)
 	return nil
@@ -91,6 +103,17 @@ func (a app) fillDefaultDepProfile(opts *depOptions) {
 	if opts.profile != "" {
 		opts.profileExplicit = true
 	}
+	if opts.profile == "" {
+		if data, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".config", "ahdg", "profile")); err == nil {
+			opts.profile = strings.TrimSpace(string(data))
+		}
+	}
+	if opts.profile == "" {
+		opts.profile = "desktop"
+	}
+}
+
+func (a app) fillDefaultFlatpakProfile(opts *flatpakOptions) {
 	if opts.profile == "" {
 		if data, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".config", "ahdg", "profile")); err == nil {
 			opts.profile = strings.TrimSpace(string(data))
@@ -455,13 +478,33 @@ func installPacmanPackage(pkg, reason string, apply bool) error {
 	return nil
 }
 
+func (a app) runFlatpaks(opts flatpakOptions) error {
+	if _, ok := a.cfg.Profiles[opts.profile]; !ok {
+		return fmt.Errorf("unsupported profile: %s", opts.profile)
+	}
+
+	fmt.Printf("Flatpak target:\n  profile: %s\n  mode:    %s\n\n", opts.profile, modeName(opts.apply))
+	bootstrapOpts := bootstrapOptions{
+		apply:   opts.apply,
+		minimal: opts.minimal,
+		profile: opts.profile,
+	}
+	if err := a.ensureFlatpakApps(bootstrapOpts); err != nil {
+		return err
+	}
+	if err := a.ensureLocalFlatpakApps(bootstrapOpts); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
 	apps := a.cfg.Flatpaks[opts.profile]
 	if len(apps) == 0 {
 		return nil
 	}
 	if opts.minimal {
-		warn("desktop Flatpak canaries for profile %q skipped by --minimal", opts.profile)
+		warn("desktop Flatpak apps for profile %q skipped by --minimal", opts.profile)
 		return nil
 	}
 	if !commandExists("flatpak") {

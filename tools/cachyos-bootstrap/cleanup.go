@@ -19,7 +19,6 @@ var cleanupGroups = []struct {
 		packages: []string{
 			"bat",
 			"delta",
-			"darkly-bin",
 			"eza",
 			"fastfetch",
 			"fd",
@@ -28,7 +27,6 @@ var cleanupGroups = []struct {
 			"ghostty-shell-integration",
 			"ghostty-terminfo",
 			"git",
-			"github-cli",
 			"mise",
 			"maplemono-cn",
 			"maplemono-nf-cn",

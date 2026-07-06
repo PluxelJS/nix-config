@@ -13,9 +13,16 @@ type bootstrapOptions struct {
 	flake         string
 	minimal       bool
 	noFlatpaks    bool
+	withFlatpaks  bool
 	noInstallNix  bool
 	noInstallParu bool
 	noSwitch      bool
+}
+
+type flatpakOptions struct {
+	apply   bool
+	minimal bool
+	profile string
 }
 
 func (a app) newRootCommand() *cobra.Command {
@@ -34,7 +41,7 @@ func (a app) newRootCommand() *cobra.Command {
 	}
 	cmd.CompletionOptions.DisableDefaultCmd = true
 	addBootstrapFlags(cmd, &rootOpts)
-	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFlatpaksCommand(), a.newCleanupCommand(), a.newVerifyCommand())
 	return cmd
 }
 
@@ -74,7 +81,27 @@ func (a app) newDepsCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing host runtime dependencies")
-	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
+	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak apps")
+	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
+	return cmd
+}
+
+func (a app) newFlatpaksCommand() *cobra.Command {
+	opts := flatpakOptions{}
+	cmd := &cobra.Command{
+		Use:   "flatpaks [profile]",
+		Short: "Check or install desktop Flatpak apps",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				opts.profile = args[0]
+			}
+			a.fillDefaultFlatpakProfile(&opts)
+			return a.runFlatpaks(opts)
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing remote and local Flatpak apps")
+	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip Flatpak apps")
 	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
 	return cmd
 }
@@ -119,8 +146,9 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing prerequisites and run Home Manager")
 	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
 	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
-	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
-	cmd.Flags().BoolVar(&opts.noFlatpaks, "no-flatpaks", false, "skip installing remote and local Flatpak apps")
+	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak apps")
+	cmd.Flags().BoolVar(&opts.noFlatpaks, "no-flatpaks", false, "deprecated; Flatpak apps are deferred unless --with-flatpaks is set")
+	cmd.Flags().BoolVar(&opts.withFlatpaks, "with-flatpaks", false, "install remote and local Flatpak apps in this foreground bootstrap run")
 	cmd.Flags().BoolVar(&opts.noInstallNix, "no-install-nix", false, "skip Nix installation/daemon setup")
 	cmd.Flags().BoolVar(&opts.noInstallParu, "no-install-paru", false, "skip paru installation")
 	cmd.Flags().BoolVar(&opts.noSwitch, "no-switch", false, "do not run Home Manager switch")

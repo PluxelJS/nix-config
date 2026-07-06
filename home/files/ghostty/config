@@ -52,6 +52,7 @@ unfocused-split-fill = #44464f
 gtk-titlebar = false
 
 # Shell integration
+command = /home/ahdg/.local/state/nix/profiles/profile/bin/zsh
 shell-integration = detect
 shell-integration-features = cursor,sudo,title,no-cursor
 keybind = shift+enter=text:\n

@@ -21,7 +21,7 @@ flake = "ahdg-container"
 features = []
 
 [packages]
-base = ["zsh", "pkgfile"]
+base = ["zsh", "pkgfile", "github-cli"]
 
 [packages.features]
 flatpak = ["desktop-file-utils", "flatpak", "flatpak-builder"]
@@ -69,6 +69,7 @@ mangowm-git = ["mango", "mmsg"]
 [aurPackages]
 desktop = [
   "clash-party-bin",
+  "darkly",
   "peazip-qt-bin",
   "polychromatic",
   "wps-office-cn",

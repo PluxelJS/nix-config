@@ -45,10 +45,10 @@ Check or repair only the Arch-side runtime base:
 ~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
-Apply desktop Home Manager first while skipping slower Flatpak app installs:
+Install or catch up slower Flatpak app installs after the desktop base is up:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh --apply --no-flatpaks
+~/.config/nix/bootstrap/cachyos.sh flatpaks --apply
 ```
 
 ## Canonical Edit Paths

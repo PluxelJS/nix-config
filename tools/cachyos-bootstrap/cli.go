@@ -12,6 +12,7 @@ type bootstrapOptions struct {
 	profile       string
 	flake         string
 	minimal       bool
+	noFlatpaks    bool
 	noInstallNix  bool
 	noInstallParu bool
 	noSwitch      bool
@@ -119,6 +120,7 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
 	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
 	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak canaries")
+	cmd.Flags().BoolVar(&opts.noFlatpaks, "no-flatpaks", false, "skip installing remote and local Flatpak apps")
 	cmd.Flags().BoolVar(&opts.noInstallNix, "no-install-nix", false, "skip Nix installation/daemon setup")
 	cmd.Flags().BoolVar(&opts.noInstallParu, "no-install-paru", false, "skip paru installation")
 	cmd.Flags().BoolVar(&opts.noSwitch, "no-switch", false, "do not run Home Manager switch")

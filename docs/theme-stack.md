@@ -44,16 +44,19 @@ Materialized files are still Nix-controlled. They are regenerated on
 
 ## DMS-Owned Runtime Outputs
 
-DMS remains the owner only for runtime-generated outputs that are expected to be
-mutable while the session is running:
+DMS remains the owner only for runtime-generated visual/session outputs that are
+expected to be mutable while the session is running:
 
 - `~/.config/ghostty/config-dankcolors`
 - `~/.config/mango/dms/colors.conf`
 - `~/.config/mango/dms/cursor.conf`
 - `~/.config/mango/dms/layout.conf`
-- `~/.config/mango/dms/outputs.conf`
 
 Those files may change live and should not become Home Manager symlinks.
+
+Mango monitor/output rules are intentionally excluded from DMS ownership. Keep
+them in `~/.config/mango/monitors.conf` so scale, mode, and position stay
+declarative and cannot be overwritten by DMS display profiles.
 
 ## Authority Rule
 
@@ -64,12 +67,13 @@ The policy is:
 - GUI-editable preference files should normally be seeded with defaults once and
   then remain user-owned unless there is a clear reason to keep enforcing them.
 - DMS is only the source of truth for live runtime color generation and mutable
-  compositor/session overlays.
+  non-display compositor/session overlays.
 
 This means:
 
 - GTK, KDE, portal, icons, cursors, and theme assets should prefer Nix.
-- MangoWC runtime overlay files should continue to prefer DMS.
+- MangoWC visual runtime overlay files should continue to prefer DMS, but
+  monitor/output rules should prefer Nix.
 - Terminal/TUI app themes such as `yazi` do not conflict with DMS and should be
   Nix-managed if we want a pinned reproducible theme.
 

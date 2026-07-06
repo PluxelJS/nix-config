@@ -7,6 +7,25 @@ lib.mkIf config.ahdg.features.portal {
   xdg.configFile."xdg-desktop-portal/portals.conf".force = true;
   dbus.packages = [ pkgs.kdePackages.kwallet ];
 
+  home.activation.syncGraphicalSessionEnvironment = lib.hm.dag.entryBefore [ "reloadSystemd" ] ''
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+      if [[ -n "''${WAYLAND_DISPLAY:-}" && -S "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]]; then
+        dbus-update-activation-environment --systemd \
+          WAYLAND_DISPLAY \
+          DISPLAY \
+          XDG_RUNTIME_DIR \
+          XDG_SESSION_TYPE \
+          XDG_CURRENT_DESKTOP \
+          DESKTOP_SESSION \
+          QT_QPA_PLATFORM \
+          QT_QPA_PLATFORMTHEME \
+          KDE_SESSION_VERSION \
+          KDE_FULL_SESSION \
+          NIX_XDG_DESKTOP_PORTAL_DIR
+      fi
+    fi
+  '';
+
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;

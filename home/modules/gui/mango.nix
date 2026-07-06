@@ -1,22 +1,40 @@
 { config, lib, ... }:
 let
-  guiLib = import ./lib.nix { inherit lib; };
   runtime = config.ahdg.theme.runtime;
   mangoTarget = "${config.xdg.configHome}/mango";
   mangoSource = ../../files/mango;
-  writableRuntimeFiles = [
-    "${mangoTarget}/env.conf"
-    "${mangoTarget}/dms/colors.conf"
-    "${mangoTarget}/dms/cursor.conf"
-    "${mangoTarget}/dms/layout.conf"
-    "${mangoTarget}/dms/outputs.conf"
+  staticFiles = [
+    "appearance.conf"
+    "config.conf"
+    "dms.conf"
+    "env.conf"
+    "monitors.conf"
+    "rules.conf"
+    "rules/10-float-and-geometry.conf"
+    "rules/20-tags.conf"
+    "rules/90-games.conf"
+    "startup.conf"
+  ];
+  runtimeFiles = [
+    "dms/colors.conf"
+    "dms/cursor.conf"
+    "dms/layout.conf"
+  ];
+  scriptFiles = [
+    "scripts/browser-activate.sh"
+    "scripts/clipboard-image-dump.sh"
+    "scripts/dump-active-window.sh"
+    "scripts/force-kill-focused.sh"
+    "scripts/lid-internal-output.sh"
+    "scripts/overview-spotlight-toggle.sh"
+    "scripts/screenshot.sh"
+    "scripts/spawn"
   ];
 in
 lib.mkIf config.ahdg.features.gui {
-  home.activation.removeLegacyMangoConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    if [[ -e "${mangoTarget}" ]] && [[ ! -L "${mangoTarget}" ]]; then
-      chmod -R u+w "${mangoTarget}" 2>/dev/null || true
-      rm -rf "${mangoTarget}"
+  home.activation.prepareMangoConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    if [[ -L "${mangoTarget}" || -f "${mangoTarget}" ]]; then
+      rm -f "${mangoTarget}"
     fi
 
     mango_session_target="${config.xdg.configHome}/systemd/user/mango-session.target"
@@ -25,25 +43,48 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
-  home.activation.materializeWritableMangoRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+  home.activation.installMangoConfig = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    install -dm755 "${mangoTarget}"
     rm -f "${mangoTarget}"/config.conf.backup*
+    rm -f "${mangoTarget}/dms/outputs.conf"
+    rm -rf "${mangoTarget}/dms/profiles"
 
-    ${guiLib.materializeRuntimePaths { files = writableRuntimeFiles; }}
+    ${lib.concatMapStringsSep "\n" (path: ''
+      install -Dm644 "${mangoSource}/${path}" "${mangoTarget}/${path}"
+    '') staticFiles}
 
-    if [[ -f "${mangoTarget}/env.conf" ]]; then
-      sed -i \
-        -e 's/^env=GTK_THEME,.*/env=GTK_THEME,${runtime.gtk.themeSpec}/' \
-        -e 's/^env=XCURSOR_THEME,.*/env=XCURSOR_THEME,${runtime.cursor.name}/' \
-        -e 's/^env=XCURSOR_SIZE,.*/env=XCURSOR_SIZE,${toString runtime.cursor.size}/' \
-        "${mangoTarget}/env.conf"
-    fi
+    ${lib.concatMapStringsSep "\n" (path: ''
+      install -Dm755 "${mangoSource}/${path}" "${mangoTarget}/${path}"
+    '') scriptFiles}
 
-    if [[ -f "${mangoTarget}/dms/cursor.conf" ]]; then
-      sed -i \
-        -e 's/^cursor_size=.*/cursor_size=${toString runtime.cursor.size}/' \
-        -e 's/^cursor_theme=.*/cursor_theme=${runtime.cursor.name}/' \
-        "${mangoTarget}/dms/cursor.conf"
-    fi
+    seed_runtime_file() {
+      local path=$1
+      local target="${mangoTarget}/$path"
+      local resolved=
+
+      if [[ -L "$target" ]]; then
+        resolved="$(readlink -f "$target" || true)"
+        rm -f "$target"
+        if [[ -n "$resolved" && -f "$resolved" ]]; then
+          install -Dm644 "$resolved" "$target"
+          return
+        fi
+      fi
+
+      if [[ ! -e "$target" ]]; then
+        install -Dm644 "${mangoSource}/$path" "$target"
+      fi
+    }
+
+    for path in ${lib.escapeShellArgs runtimeFiles}; do
+      seed_runtime_file "$path"
+    done
+
+    sed -i \
+      -e 's/^env=GTK_THEME,.*/env=GTK_THEME,${runtime.gtk.themeSpec}/' \
+      -e 's/^env=XCURSOR_THEME,.*/env=XCURSOR_THEME,${runtime.cursor.name}/' \
+      -e 's/^env=XCURSOR_SIZE,.*/env=XCURSOR_SIZE,${toString runtime.cursor.size}/' \
+      "${mangoTarget}/env.conf"
   '';
 
   home.activation.removeMigratedMangoAutostart = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
@@ -58,12 +99,6 @@ lib.mkIf config.ahdg.features.gui {
       rm -f "$autostart_dir/$entry"
     done
   '';
-
-  xdg.configFile."mango" = {
-    force = true;
-    recursive = true;
-    source = mangoSource;
-  };
 
   xdg.configFile."systemd/user/mango-session.target" = {
     force = true;

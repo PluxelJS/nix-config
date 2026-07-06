@@ -33,6 +33,13 @@ git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
+To apply the desktop Home Manager profile first and leave Flatpak app downloads
+for later:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh --apply --no-flatpaks
+```
+
 Then log out and back in if the bootstrap added `nix-users` or hardware access
 groups such as `openrazer`, reboot if DKMS/kernel modules were installed, and
 validate:

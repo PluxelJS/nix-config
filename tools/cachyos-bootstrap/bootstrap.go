@@ -65,15 +65,19 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		return err
 	}
 
-	if err := a.ensureFlatpakApps(opts); err != nil {
-		return err
-	}
-	if err := a.ensureLocalFlatpakApps(opts); err != nil {
-		return err
-	}
-
 	if !opts.noSwitch {
 		if err := a.runHomeManager(opts); err != nil {
+			return err
+		}
+	}
+
+	if opts.noFlatpaks {
+		warn("remote and local Flatpak app installs skipped by --no-flatpaks")
+	} else {
+		if err := a.ensureFlatpakApps(opts); err != nil {
+			return err
+		}
+		if err := a.ensureLocalFlatpakApps(opts); err != nil {
 			return err
 		}
 	}

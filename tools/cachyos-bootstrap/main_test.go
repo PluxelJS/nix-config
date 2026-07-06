@@ -34,6 +34,7 @@ func TestBootstrapFlags(t *testing.T) {
 	cmd.SetArgs([]string{
 		"--apply",
 		"--profile", "shell",
+		"--no-flatpaks",
 		"--no-install-nix",
 		"--no-install-paru",
 		"--no-switch",
@@ -48,6 +49,9 @@ func TestBootstrapFlags(t *testing.T) {
 	}
 	if opts.profile != "shell" {
 		t.Fatalf("profile = %q, want shell", opts.profile)
+	}
+	if !opts.noFlatpaks {
+		t.Fatal("expected --no-flatpaks to set noFlatpaks")
 	}
 	if !opts.noInstallNix {
 		t.Fatal("expected --no-install-nix to set noInstallNix")

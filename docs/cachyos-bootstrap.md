@@ -80,8 +80,13 @@ Useful variants:
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile shell
 ~/.config/nix/bootstrap/cachyos.sh --apply --profile container
 ~/.config/nix/bootstrap/cachyos.sh --apply --minimal
+~/.config/nix/bootstrap/cachyos.sh --apply --no-flatpaks
 ~/.config/nix/bootstrap/cachyos.sh --apply --no-switch
 ```
+
+Use `--no-flatpaks` when you want the desktop Home Manager profile applied now
+and want to install the slower remote/local Flatpak apps later. Re-run the same
+bootstrap command without `--no-flatpaks` to catch them up.
 
 After the first bootstrap, log out and back in if the script added the user to
 `nix-users` or profile-required hardware groups. Reboot if kernel modules were

@@ -49,10 +49,14 @@ gui = [
 desktop = [
   "base-devel",
   "git",
+  "linux-cachyos-headers",
   "mangohud",
+  "openrazer-daemon",
+  "openrazer-driver-dkms",
   "podman",
   "podman-desktop",
   "protontricks",
+  "python-openrazer",
   "steam",
 ]
 
@@ -66,10 +70,14 @@ mangowm-git = ["mango", "mmsg"]
 desktop = [
   "clash-party-bin",
   "peazip-qt-bin",
+  "polychromatic",
   "wps-office-cn",
   "wps-office-mime-cn",
   "wps-office-mui-zh-cn",
 ]
+
+[userGroups]
+desktop = ["openrazer"]
 
 [browser]
 command = "zen-browser"

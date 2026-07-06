@@ -14,10 +14,11 @@ type verifyOptions struct {
 }
 
 type verifier struct {
-	home     string
-	profile  string
-	features map[string]bool
-	failures int
+	home       string
+	profile    string
+	features   map[string]bool
+	userGroups []string
+	failures   int
 }
 
 func (a app) runVerify(opts verifyOptions) error {
@@ -64,7 +65,7 @@ func newVerifier(cfg config, opts verifyOptions) (*verifier, error) {
 		}
 	}
 
-	return &verifier{home: home, profile: profile, features: features}, nil
+	return &verifier{home: home, profile: profile, features: features, userGroups: cfg.UserGroups[profile]}, nil
 }
 
 func (v *verifier) run() {
@@ -80,6 +81,7 @@ func (v *verifier) run() {
 	} else {
 		v.fail("runtime profile marker does not match %s", v.profile)
 	}
+	v.checkUserGroups()
 
 	if v.has("ghostty") {
 		v.checkSymlink(".config/ghostty/config")
@@ -325,6 +327,21 @@ func (v *verifier) checkFlatpakOverridesWritable() {
 	}
 }
 
+func (v *verifier) checkUserGroups() {
+	user := os.Getenv("USER")
+	for _, group := range v.userGroups {
+		if !groupExists(group) {
+			v.fail("required user group `%s` is missing", group)
+			continue
+		}
+		if userInGroup(user, group) {
+			v.pass("%s is in required user group `%s`", user, group)
+		} else {
+			v.fail("%s is not in required user group `%s`", user, group)
+		}
+	}
+}
+
 func (v *verifier) checkInteractiveShell() {
 	expectedTools := []string{"zsh", "starship", "git", "gh", "fzf", "zoxide", "mise", "atuin"}
 	if v.has("fastfetch") {
@@ -334,7 +351,7 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "ghostty")
 	}
 	if v.has("gui") {
-		expectedTools = append(expectedTools, "copyq", "file", "mark-shot", "notify-send", "songrec", "wl-paste")
+		expectedTools = append(expectedTools, "copyq", "file", "mark-shot", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "wl-paste")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
 		v.pass("interactive zsh resolves the migrated toolchain")

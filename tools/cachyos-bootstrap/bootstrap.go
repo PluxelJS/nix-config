@@ -20,6 +20,7 @@ type depResult struct {
 	repoMissing      []string
 	aurMissing       []string
 	extrasMissing    []string
+	groupsMissing    []string
 	extrasApplicable bool
 	notes            []string
 }
@@ -170,6 +171,10 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 		}
 	}
 
+	for _, group := range a.cfg.UserGroups[opts.profile] {
+		result.ensureUserGroup(os.Getenv("USER"), group)
+	}
+
 	result.notes = uniqueSorted(result.notes)
 	if len(result.notes) > 0 {
 		fmt.Println()
@@ -181,6 +186,9 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 
 	if opts.apply {
 		if err := result.applyPackages(!opts.minimal); err != nil {
+			return result, err
+		}
+		if err := a.applyUserGroups(opts.profile); err != nil {
 			return result, err
 		}
 	} else {
@@ -253,6 +261,20 @@ func (r *depResult) ensureAURPackage(pkg string) {
 	r.aurMissing = append(r.aurMissing, pkg)
 }
 
+func (r *depResult) ensureUserGroup(user, group string) {
+	if !groupExists(group) {
+		fail("user group `%s` missing", group)
+		r.groupsMissing = append(r.groupsMissing, group)
+		return
+	}
+	if userInGroup(user, group) {
+		pass("%s is already in `%s`", user, group)
+		return
+	}
+	fail("%s is not in user group `%s`", user, group)
+	r.groupsMissing = append(r.groupsMissing, group)
+}
+
 func (r depResult) applyPackages(includeExtras bool) error {
 	repoMissing := uniqueSorted(r.repoMissing)
 	extrasMissing := uniqueSorted(r.extrasMissing)
@@ -295,19 +317,49 @@ func (r depResult) applyPackages(includeExtras bool) error {
 	return nil
 }
 
+func (a app) applyUserGroups(profile string) error {
+	groups := uniqueSorted(a.cfg.UserGroups[profile])
+	if len(groups) == 0 {
+		return nil
+	}
+
+	user := os.Getenv("USER")
+	var missing []string
+	for _, group := range groups {
+		if !groupExists(group) {
+			missing = append(missing, group)
+			continue
+		}
+		if userInGroup(user, group) {
+			pass("%s is already in `%s`", user, group)
+			continue
+		}
+		if err := run("sudo", "usermod", "-aG", group, user); err != nil {
+			return err
+		}
+		warn("log out and back in before using devices that require `%s`", group)
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("required user groups are still missing after package install: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
 func (r depResult) printSummary(applyCommand string) {
 	if !r.extrasApplicable {
 		fmt.Printf(`
 Summary:
   Required repo packages missing: %d
   Required AUR packages missing: %d
+  Required user groups missing: %d
 
 Apply packages:
   %s --apply
-`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), applyCommand)
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.groupsMissing)), applyCommand)
 
 		printList("Required repo packages to install:", r.repoMissing)
 		printList("Required AUR packages to install:", r.aurMissing)
+		printList("Required user groups to join:", r.groupsMissing)
 		return
 	}
 
@@ -315,6 +367,7 @@ Apply packages:
 Summary:
   Required repo packages missing: %d
   Required AUR packages missing: %d
+  Required user groups missing: %d
   Desktop extra repo packages missing: %d
 
 Apply required packages:
@@ -322,10 +375,11 @@ Apply required packages:
 
 Apply full profile packages:
   %s --apply
-`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.extrasMissing)), applyCommand, applyCommand)
+`, len(uniqueSorted(r.repoMissing)), len(uniqueSorted(r.aurMissing)), len(uniqueSorted(r.groupsMissing)), len(uniqueSorted(r.extrasMissing)), applyCommand, applyCommand)
 
 	printList("Required repo packages to install:", r.repoMissing)
 	printList("Required AUR packages to install:", r.aurMissing)
+	printList("Required user groups to join:", r.groupsMissing)
 	printList("Desktop extra repo packages to install:", r.extrasMissing)
 }
 

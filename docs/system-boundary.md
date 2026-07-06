@@ -89,16 +89,21 @@ Needed from Arch repositories:
   `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
 - workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
   `protontricks`, `steam`
+- Razer runtime: `linux-cachyos-headers`, `openrazer-daemon`,
+  `openrazer-driver-dkms`, `python-openrazer`; the desktop user must be in the
+  `openrazer` group
 
 AUR packages used by the desktop profile:
 
 - `mangowm-git`
+- `polychromatic`
+- `clash-party-bin`, `peazip-qt-bin`, `wps-office-cn`,
+  `wps-office-mime-cn`, `wps-office-mui-zh-cn`
 
-This is intentionally the only AUR package in the bootstrap policy right now.
-The CachyOS `mangowm` package is preferred in principle, but the currently
-published sync database points at package files that are not available on the
-checked mirrors. Keep using the installed git package until the repo package is
-downloadable and verified to provide the same `mango` and `mmsg` commands.
+These AUR packages remain explicit exceptions because they provide current
+desktop behavior that is not equivalently available from the trusted repo set:
+MangoWM commands, Polychromatic's OpenRazer UI, PeaZip's Dolphin service menu,
+Mihomo Party's desktop/scheme handler, and WPS desktop/MIME integration.
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,

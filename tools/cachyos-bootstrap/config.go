@@ -13,6 +13,7 @@ type config struct {
 	Packages      packageConfig            `toml:"packages"`
 	AURCommands   map[string][]string      `toml:"aurCommands"`
 	AURPackages   map[string][]string      `toml:"aurPackages"`
+	UserGroups    map[string][]string      `toml:"userGroups"`
 	Browser       browserCheck             `toml:"browser"`
 	Flatpaks      map[string][]string      `toml:"flatpaks"`
 	LocalFlatpaks map[string][]string      `toml:"localFlatpaks"`
@@ -102,6 +103,15 @@ func validateConfig(cfg config) error {
 			return fmt.Errorf("aurPackages references unknown profile %q", profile)
 		}
 		if err := validateItems("aurPackages."+profile, packages); err != nil {
+			return err
+		}
+	}
+
+	for profile, groups := range cfg.UserGroups {
+		if _, ok := cfg.Profiles[profile]; !ok {
+			return fmt.Errorf("userGroups references unknown profile %q", profile)
+		}
+		if err := validateItems("userGroups."+profile, groups); err != nil {
 			return err
 		}
 	}

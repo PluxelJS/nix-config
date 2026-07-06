@@ -29,8 +29,6 @@ for old_app_id in com.mint.DevCode io.github.trumank.MintCodeStudio; do
   fi
 done
 
-bash "$script_dir/apply-desktop-overrides.sh"
-
 if ! flatpak --user info org.freedesktop.Sdk//24.08 >/dev/null 2>&1; then
   flatpak --user install -y flathub org.freedesktop.Sdk//24.08
 fi

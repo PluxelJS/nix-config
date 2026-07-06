@@ -10,8 +10,8 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
   Flatpak home: `~/.var/app/io.github.trumank.CodeStudio/home`.
 - Expose only `~/code` as writable host project storage.
 - Use Wayland only; X11 and fallback X11 are intentionally not granted.
-- Keep theme/font/input integration in `overrides/global`, installed as the
-  user Flatpak global override.
+- Keep theme/font/input integration in the Home Manager-owned Flatpak global
+  override.
 
 The launcher creates:
 
@@ -65,21 +65,6 @@ The local Flatpak repository is kept at:
 The installer registers it as the user remote `ahdg-code-studio` with
 `no-enumerate` and `no-gpg-verify`. `no-enumerate` is intentional for this
 single-app local repo; it keeps the package out of Flatpak search/discovery.
-
-## Override Handling
-
-`install-code-studio.sh` installs `overrides/global` to:
-
-```text
-~/.local/share/flatpak/overrides/global
-```
-
-If that target already exists and differs, the installer refuses to overwrite
-it. Review the diff, then rerun with:
-
-```bash
-CODE_STUDIO_REPLACE_FLATPAK_OVERRIDE=1 bash bootstrap/codestudio/install-code-studio.sh "$PWD"
-```
 
 ## Diagnostics
 

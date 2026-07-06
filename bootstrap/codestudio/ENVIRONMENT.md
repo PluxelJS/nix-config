@@ -28,7 +28,8 @@ References:
 
 ## Values We Do Not Pin In Flatpak Overrides
 
-Do not add these to `overrides/global` unless there is a specific bug that requires pinning them:
+Do not add these to the Home Manager-owned Flatpak global override unless
+there is a specific bug that requires pinning them:
 
 - `XDG_CURRENT_DESKTOP`
 - `XDG_SESSION_DESKTOP`
@@ -53,11 +54,18 @@ Do not add these to `overrides/global` unless there is a specific bug that requi
 - `SDL_IM_MODULE`
 - `XMODIFIERS`
 
-These are session values. They should come from the compositor/session setup, currently managed by MangoWC/Home Manager outside this Flatpak package. Pinning them globally would make Flatpak apps stale after changing the WM, theme, input method, locale, or terminal color policy.
+These are session values. They should come from the compositor/session setup,
+currently managed by MangoWC/Home Manager outside this Flatpak package. Pinning
+them globally would make Flatpak apps stale after changing the WM, theme, input
+method, locale, or terminal color policy.
 
-Current host policy keeps `ELECTRON_OZONE_PLATFORM_HINT=auto` as the global session default. That is intentional: it is safer for general Electron apps. `CodeStudio` overrides only Electron's Wayland hint locally because this app is intentionally Wayland-only.
+Current host policy keeps `ELECTRON_OZONE_PLATFORM_HINT=auto` as the global
+session default. That is intentional: it is safer for general Electron apps.
+`CodeStudio` overrides only Electron's Wayland hint locally because this app is
+intentionally Wayland-only.
 
-On the current machine, these values are observed inside `io.github.trumank.CodeStudio` without being written in `overrides/global`:
+On the current machine, these values are observed inside
+`io.github.trumank.CodeStudio` without being written in the global override:
 
 - `XDG_CURRENT_DESKTOP=mangowc`
 - `XDG_SESSION_DESKTOP=mangowc`
@@ -77,7 +85,9 @@ flatpak run --command=env io.github.trumank.CodeStudio | sort
 
 None by default.
 
-The global Flatpak override should not be a second source of truth for GUI environment variables. Put common GUI env in the host session, then let Flatpak inherit it.
+The global Flatpak override should not be a second source of truth for GUI
+environment variables. Put common GUI env in the host session, then let Flatpak
+inherit it.
 
 `CodeStudio` sets only app-specific Electron values in `code-studio-launcher`.
 The launcher pins `ELECTRON_OZONE_PLATFORM_HINT=wayland` and passes
@@ -87,10 +97,12 @@ used for the current font-rendering regression instead.
 
 ## Filesystem Integration
 
-The global override exposes read-only desktop integration files because Flatpak apps cannot otherwise see all host theme/input/font resources:
+The Home Manager-owned global override exposes read-only desktop integration
+files because Flatpak apps cannot otherwise see all host theme/input/font
+resources:
 
 - GTK config: `xdg-config/gtk-2.0`, `xdg-config/gtk-3.0`, `xdg-config/gtk-4.0`, `~/.gtkrc-2.0`
-- Qt/KDE config: `xdg-config/kdeglobals`, `xdg-config/kcminputrc`, `xdg-config/qt5ct`, `xdg-config/qt6ct`, `xdg-config/Kvantum`, `xdg-data/Kvantum`
+- Qt/KDE config: `xdg-config/kdeglobals`, `xdg-config/kcminputrc`, `xdg-config/Kvantum`, `xdg-data/Kvantum`
 - Input method config: `xdg-config/fcitx5`, `xdg-data/fcitx5`
 - Fonts/icons/themes: `xdg-data/fonts`, `xdg-data/icons`, `xdg-data/themes`, `~/.fonts`, `~/.icons`, `~/.themes`
 - Other desktop data: `xdg-data/color-schemes`, `xdg-config/color-schemes`, `xdg-data/sounds`, `xdg-config/mimeapps.list`, `xdg-config/mimeinfo.cache`

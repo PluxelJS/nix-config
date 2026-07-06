@@ -421,7 +421,8 @@ func (v *verifier) checkFlatpakApps() {
 	}
 
 	globalOverride := v.path(".local/share/flatpak/overrides/global")
-	if fileLineMatches(globalOverride, `^filesystems=.*xdg-config/qt5ct:ro.*xdg-config/qt6ct:ro`) && !fileContainsRegex(globalOverride, `/usr/share/icons|/usr/share/themes`) {
+	if fileLineMatches(globalOverride, `^filesystems=.*xdg-config/kdeglobals:ro.*xdg-data/themes:ro`) &&
+		!fileContainsRegex(globalOverride, `/usr/share/icons|/usr/share/themes|xdg-config/qt5ct|xdg-config/qt6ct`) {
 		v.pass("Flatpak global override matches the Nix-managed host integration policy")
 	} else {
 		v.fail("Flatpak global override does not match the expected Nix-managed policy")

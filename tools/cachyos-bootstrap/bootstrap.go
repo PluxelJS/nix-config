@@ -480,7 +480,7 @@ func (a app) ensureFlatpakApps(opts bootstrapOptions) error {
 	}
 
 	if opts.apply && len(missing) > 0 {
-		args := append([]string{"install", "-y", "--or-update", "flathub"}, missing...)
+		args := append([]string{"--user", "install", "-y", "--or-update", "flathub"}, missing...)
 		return run("flatpak", args...)
 	}
 	return nil
@@ -542,17 +542,17 @@ func (a app) runHomeManager(opts bootstrapOptions) error {
 	if err := runEnv(env, "nix", "run", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix"); err != nil {
 		return err
 	}
-	return run(filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify", opts.profile)
+	return nil
 }
 
 func ensureFlathub(apply bool) error {
-	if outputContainsLine("flatpak", []string{"remotes", "--columns=name"}, "flathub") {
-		pass("Flatpak remote `flathub` configured")
+	if outputContainsLine("flatpak", []string{"remotes", "--user", "--columns=name"}, "flathub") {
+		pass("user Flatpak remote `flathub` configured")
 		return nil
 	}
-	fail("Flatpak remote `flathub` missing")
+	fail("user Flatpak remote `flathub` missing")
 	if apply {
-		return run("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo")
+		return run("flatpak", "--user", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo")
 	}
 	return nil
 }

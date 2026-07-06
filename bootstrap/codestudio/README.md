@@ -56,6 +56,16 @@ Prerequisites are declared in `bootstrap/cachyos.toml`:
 The VS Code tarball is downloaded by `flatpak-builder` from the pinned URL in
 the manifest; it is intentionally not committed to git.
 
+The local Flatpak repository is kept at:
+
+```text
+~/.local/share/ahdg/flatpak-repos/code-studio
+```
+
+The installer registers it as the user remote `ahdg-code-studio` with
+`no-enumerate` and `no-gpg-verify`. `no-enumerate` is intentional for this
+single-app local repo; it keeps the package out of Flatpak search/discovery.
+
 ## Override Handling
 
 `install-code-studio.sh` installs `overrides/global` to:

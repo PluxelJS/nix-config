@@ -34,23 +34,30 @@ Routine repair, cleanup, and verification are subcommands of the same binary:
 
 ## Fresh Install
 
-Install Git and clone this repo:
+On a pure CachyOS install, first update the host and install Git:
 
 ```bash
+sudo pacman -Syu
 sudo pacman -S --needed git
+```
+
+Clone the repo into the canonical path:
+
+```bash
 git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
+cd ~/.config/nix
 ```
 
 Dry-run the bootstrap:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh
+bootstrap/cachyos.sh
 ```
 
 Apply the full desktop bootstrap:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh --apply
+bootstrap/cachyos.sh --apply
 ```
 
 What it does:
@@ -59,10 +66,12 @@ What it does:
 - installs `paru` from the CachyOS repository when missing
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
-- installs desktop helper packages, browser/download-manager packages, and the
-  managed Flatpak app set
+- installs desktop helper packages, browser/download-manager packages,
+  OpenRazer runtime packages, and selected desktop extras such as CopyQ
+- installs Flathub apps plus the local Code Studio Flatpak package
+- adds the current user to profile-required groups such as `openrazer`
 - switches the matching Home Manager flake output
-- runs verification after switch
+- prints the verification command to run after the session has been refreshed
 
 Useful variants:
 
@@ -74,11 +83,23 @@ Useful variants:
 ```
 
 After the first bootstrap, log out and back in if the script added the user to
-`nix-users`, then run:
+`nix-users` or profile-required hardware groups. Reboot if kernel modules were
+installed or rebuilt, for example after installing `openrazer-driver-dkms`.
+Then run:
 
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh verify desktop
 ```
+
+Expected first-run notes:
+
+- `nix-users` membership may require a new login before Nix daemon operations
+  work for the user.
+- `openrazer` membership may require a new login before Razer devices are
+  accessible.
+- DKMS modules may require a reboot before the device stack is fully active.
+- Code Studio is built from `bootstrap/codestudio/`; the pinned VS Code tarball
+  is downloaded by `flatpak-builder` instead of being committed to git.
 
 ## Dependency Repair
 
@@ -90,5 +111,5 @@ For an already prepared host, use the lower-level dependency checker:
 ~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
-This checker is profile-aware and separates repository packages from explicit
-AUR exceptions.
+This checker is profile-aware and separates repository packages, explicit AUR
+exceptions, desktop extras, and profile-required user groups.

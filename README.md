@@ -33,6 +33,14 @@ git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ```
 
+Then log out and back in if the bootstrap added `nix-users` or hardware access
+groups such as `openrazer`, reboot if DKMS/kernel modules were installed, and
+validate:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh verify desktop
+```
+
 Switch configurations:
 
 ```bash
@@ -91,20 +99,18 @@ bootstrap verifier uses for post-switch checks.
 
 ## Docs
 
-- [docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md):
+- [docs/cachyos-bootstrap.md](docs/cachyos-bootstrap.md):
   fresh install flow, Nix/paru bootstrap, host packages, and desktop Flatpaks
-- [docs/system-boundary.md](/home/ahdg/.config/nix/docs/system-boundary.md):
+- [docs/system-boundary.md](docs/system-boundary.md):
   host vs Home Manager ownership
-- [docs/theme-stack.md](/home/ahdg/.config/nix/docs/theme-stack.md):
+- [docs/theme-stack.md](docs/theme-stack.md):
   theme ownership between Nix and DMS
-- [docs/operations.md](/home/ahdg/.config/nix/docs/operations.md):
+- [docs/operations.md](docs/operations.md):
   switch commands, cleanup, validation, runtime expectations, canonical edit
   paths
-- [docs/shortcut-policy.md](/home/ahdg/.config/nix/docs/shortcut-policy.md):
+- [docs/shortcut-policy.md](docs/shortcut-policy.md):
   shortcut rules and cross-app decisions
-- [docs/shell-shortcuts.md](/home/ahdg/.config/nix/docs/shell-shortcuts.md):
+- [docs/shell-shortcuts.md](docs/shell-shortcuts.md):
   actual shell shortcut cheatsheet
-- [docs/gh-auth.md](/home/ahdg/.config/nix/docs/gh-auth.md):
+- [docs/gh-auth.md](docs/gh-auth.md):
   GitHub auth strategy
-- [docs/prep-cleanup-plan.md](/home/ahdg/.config/nix/docs/prep-cleanup-plan.md):
-  staging note for splitting large cleanup work into coherent commits

@@ -20,6 +20,9 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
+Use [docs/cachyos-bootstrap.md](../docs/cachyos-bootstrap.md) for the complete
+pure-CachyOS deployment flow.
+
 The desktop profile installs the current desktop helper packages, Flathub app
 set, local Code Studio Flatpak, and XDG default-app dependencies by default.
 `--minimal` skips desktop extras and Flatpaks for lean shell/container bring-up

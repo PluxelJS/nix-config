@@ -14,7 +14,7 @@ Fresh CachyOS bootstrap:
 
 The bootstrap path installs or checks Nix, `paru`, host runtime dependencies,
 and then runs the matching Home Manager switch. See
-[docs/cachyos-bootstrap.md](/home/ahdg/.config/nix/docs/cachyos-bootstrap.md)
+[docs/cachyos-bootstrap.md](cachyos-bootstrap.md)
 for the full fresh-machine flow.
 
 Routine Home Manager switches:

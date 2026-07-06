@@ -182,6 +182,7 @@ func (v *verifier) checkGUIFiles() {
 		v.checkFile(rel)
 	}
 	for _, rel := range []string{
+		".config/systemd/user/mango-session.target",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
 		".local/share/plasma/look-and-feel/Catppuccin-Latte-Lavender",
 		".local/share/aurorae/themes/CatppuccinMacchiato-Modern",
@@ -252,6 +253,15 @@ func (v *verifier) checkMaterializedGUI() {
 	}
 
 	v.checkAbsent(".config/autostart/org.fcitx.Fcitx5.desktop", "system fcitx autostart is no longer masked by a user override", "system fcitx autostart should not be masked under ~/.config/autostart")
+	for _, rel := range []string{
+		".config/autostart/abdownloader.desktop",
+		".config/autostart/jetbrains-toolbox.desktop",
+		".config/autostart/mihomo-party.desktop",
+		".config/autostart/razer.desktop",
+		".config/autostart/后台启动浏览器.desktop",
+	} {
+		v.checkAbsent(rel, "%s migrated user autostart is removed", "%s should be owned by Mango startup or the package autostart")
+	}
 	v.checkFlatpakOverridesWritable()
 }
 

@@ -67,7 +67,8 @@ What it does:
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
 - installs desktop helper packages, browser/download-manager packages,
-  OpenRazer runtime packages, and selected desktop extras such as CopyQ
+  OpenRazer runtime packages, and selected desktop extras such as CopyQ and
+  EasyEffects
 - installs Flathub apps plus the local Code Studio Flatpak package
 - adds the current user to profile-required groups such as `openrazer`
 - switches the matching Home Manager flake output

@@ -18,6 +18,11 @@ lib.mkIf config.ahdg.features.gui {
       chmod -R u+w "${mangoTarget}" 2>/dev/null || true
       rm -rf "${mangoTarget}"
     fi
+
+    mango_session_target="${config.xdg.configHome}/systemd/user/mango-session.target"
+    if [[ -e "$mango_session_target" && ! -L "$mango_session_target" ]]; then
+      rm -f "$mango_session_target"
+    fi
   '';
 
   home.activation.materializeWritableMangoRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -41,10 +46,34 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
+  home.activation.removeMigratedMangoAutostart = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+    autostart_dir="${config.xdg.configHome}/autostart"
+    for entry in \
+      abdownloader.desktop \
+      jetbrains-toolbox.desktop \
+      mihomo-party.desktop \
+      razer.desktop \
+      后台启动浏览器.desktop
+    do
+      rm -f "$autostart_dir/$entry"
+    done
+  '';
+
   xdg.configFile."mango" = {
     force = true;
     recursive = true;
     source = mangoSource;
+  };
+
+  xdg.configFile."systemd/user/mango-session.target" = {
+    force = true;
+    text = ''
+      [Unit]
+      Description=MangoWC compositor session
+      After=graphical-session.target
+      BindsTo=graphical-session.target
+      Wants=graphical-session.target xdg-desktop-autostart.target
+    '';
   };
 
   home.file.".local/bin/abdm-open" = {

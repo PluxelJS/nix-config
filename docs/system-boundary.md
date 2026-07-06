@@ -85,7 +85,7 @@ Needed from Arch repositories:
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
   `plasma-workspace`, `gtk3`, `python`
 - desktop extras: `ab-download-manager`, `baloo`, `blueman`, `copyq`,
-  `dms-shell`, `dolphin`, `flatseal`, `libappindicator`,
+  `dms-shell`, `dolphin`, `easyeffects`, `flatseal`, `libappindicator`,
   `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
 - workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
   `protontricks`, `steam`
@@ -104,6 +104,15 @@ These AUR packages remain explicit exceptions because they provide current
 desktop behavior that is not equivalently available from the trusted repo set:
 MangoWM commands, Polychromatic's OpenRazer UI, PeaZip's Dolphin service menu,
 Mihomo Party's desktop/scheme handler, and WPS desktop/MIME integration.
+
+Mango session startup is user-layer and Home Manager-owned:
+
+- `~/.config/systemd/user/mango-session.target` defines the compositor session
+  target started by Mango's `exec-once`
+- `~/.config/mango/startup.conf` owns session apps such as CopyQ, ABDM tray,
+  Mihomo Party, browser warmup, and display helper scripts
+- package-provided XDG autostart entries remain package-owned; stale or
+  migrated user overrides under `~/.config/autostart` are removed by activation
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,

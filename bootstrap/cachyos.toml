@@ -61,7 +61,7 @@ desktop = [
 ]
 
 [packages.extras]
-gui = ["baloo", "blueman", "copyq", "dolphin", "flatseal", "pavucontrol"]
+gui = ["baloo", "blueman", "copyq", "dolphin", "easyeffects", "flatseal", "pavucontrol"]
 
 [aurCommands]
 mangowm-git = ["mango", "mmsg"]

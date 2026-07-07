@@ -102,7 +102,7 @@ func TestRootHelpIncludesSubcommands(t *testing.T) {
 	}
 
 	help := out.String()
-	for _, want := range []string{"bootstrap", "deps", "flatpaks", "cleanup", "verify"} {
+	for _, want := range []string{"bootstrap", "deps", "flatpaks", "pull-gui-config", "cleanup", "verify"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help output missing %q:\n%s", want, help)
 		}

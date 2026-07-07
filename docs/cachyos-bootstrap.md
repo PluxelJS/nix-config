@@ -28,8 +28,9 @@ The fresh-machine logic is not embedded in large shell scripts. It is split into
 - `tools/cachyos-bootstrap/`: Go source for the binary
 - `bootstrap/cachyos.sh`: thin compatibility wrapper
 
-Routine repair, Flatpak catch-up, cleanup, and verification are subcommands of
-the same binary: `bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh flatpaks`,
+Routine repair, Flatpak catch-up, GUI config import, cleanup, and verification
+are subcommands of the same binary: `bootstrap/cachyos.sh deps`,
+`bootstrap/cachyos.sh flatpaks`, `bootstrap/cachyos.sh pull-gui-config`,
 `bootstrap/cachyos.sh cleanup`, and `bootstrap/cachyos.sh verify`.
 
 ## Fresh Install
@@ -95,6 +96,21 @@ Install slower app-layer Flatpaks later with:
 
 Use `--with-flatpaks` only when you explicitly want remote and local Flatpak app
 installation to run in the same foreground bootstrap.
+
+## GUI Config Import
+
+Some GUI tools are easier to tune live. Import those changes back into the Nix
+source tree with an explicit dry-run first:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh pull-gui-config
+~/.config/nix/bootstrap/cachyos.sh pull-gui-config --apply
+```
+
+The import list is intentionally conservative: static Mango, Ghostty, Dolphin,
+and fcitx config files only. Runtime state such as DMS colors, `gh` auth,
+KWallet, user dictionaries, app caches, Flatpak private state, and IDE project
+history stays local.
 
 After the first bootstrap, log out and back in if the script added the user to
 `nix-users` or profile-required hardware groups. Reboot if kernel modules were

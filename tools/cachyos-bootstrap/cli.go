@@ -25,6 +25,10 @@ type flatpakOptions struct {
 	profile string
 }
 
+type pullGUIConfigOptions struct {
+	apply bool
+}
+
 func (a app) newRootCommand() *cobra.Command {
 	rootOpts := defaultBootstrapOptions()
 	cmd := &cobra.Command{
@@ -41,7 +45,7 @@ func (a app) newRootCommand() *cobra.Command {
 	}
 	cmd.CompletionOptions.DisableDefaultCmd = true
 	addBootstrapFlags(cmd, &rootOpts)
-	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFlatpaksCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFlatpaksCommand(), a.newPullGUIConfigCommand(), a.newCleanupCommand(), a.newVerifyCommand())
 	return cmd
 }
 
@@ -103,6 +107,20 @@ func (a app) newFlatpaksCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install missing remote and local Flatpak apps")
 	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip Flatpak apps")
 	cmd.Flags().StringVar(&opts.profile, "profile", "", "deployment profile")
+	return cmd
+}
+
+func (a app) newPullGUIConfigCommand() *cobra.Command {
+	opts := pullGUIConfigOptions{}
+	cmd := &cobra.Command{
+		Use:   "pull-gui-config",
+		Short: "Import whitelisted GUI-edited config back into the repo",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.runPullGUIConfig(opts)
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "copy changed whitelisted GUI config files into home/files")
 	return cmd
 }
 

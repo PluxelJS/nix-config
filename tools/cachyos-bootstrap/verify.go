@@ -568,6 +568,11 @@ func (v *verifier) checkDesktopRuntime() {
 		} else {
 			v.fail("fcitx runtime is not currently owned by the system fcitx5 binary")
 		}
+		if commandOK("mango", "-p", "-c", v.path(".config/mango/config.conf")) {
+			v.pass("Mango config validates against the installed compositor")
+		} else {
+			v.fail("Mango config does not validate against the installed compositor")
+		}
 	}
 
 	if v.has("ghostty") {

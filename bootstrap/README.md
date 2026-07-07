@@ -16,6 +16,7 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ~/.config/nix/bootstrap/cachyos.sh --apply --minimal
 ~/.config/nix/bootstrap/cachyos.sh deps
+~/.config/nix/bootstrap/cachyos.sh pull-gui-config
 ~/.config/nix/bootstrap/cachyos.sh cleanup
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
@@ -40,6 +41,10 @@ names, package sections are plain package lists, `aurPackages.desktop` declares
 the package-exact AUR exceptions required by XDG defaults, and `aurCommands`
 declares command-based AUR checks such as MangoWM. Runtime dependency size is
 irrelevant here because fresh machines run the committed binary, not `go run`.
+
+`pull-gui-config` is the explicit reverse-import path for GUI-edited static
+config. It is dry-run by default and only imports whitelisted non-secret files
+with `--apply`.
 
 Rebuild the committed binary after changing Go code or `go.mod`:
 

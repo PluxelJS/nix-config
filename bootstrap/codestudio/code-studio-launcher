@@ -88,6 +88,9 @@ export MISE_CONFIG_DIR="$virtual_home/.config/mise"
 export MISE_CACHE_DIR="$virtual_home/.cache/mise"
 export ZDOTDIR="$zsh_config_dir"
 export SHELL="/app/bin/zsh"
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export GIT_SSH_COMMAND="ssh -F $ssh_home/config"
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
 export ELECTRON_TRASH=gio
 unset DISPLAY
@@ -401,7 +404,7 @@ for arg in "$@"; do
 done
 
 if [[ "${1:-}" == "--print-code-studio-env" ]]; then
-  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
+  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
   for command_name in git gh gpg ssh gcc make python3 node npm pnpm bun mise starship fzf zoxide atuin eza bat fastfetch rg fd yazi codex opencode code-studio-shell; do
     printf '%s=' "$command_name"
     command -v "$command_name" || true

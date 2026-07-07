@@ -51,6 +51,13 @@ Install or catch up slower Flatpak app installs after the desktop base is up:
 ~/.config/nix/bootstrap/cachyos.sh flatpaks --apply
 ```
 
+Review GUI-edited config before importing it back into the Nix source tree:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh pull-gui-config
+~/.config/nix/bootstrap/cachyos.sh pull-gui-config --apply
+```
+
 ## Canonical Edit Paths
 
 Canonical source files live here:

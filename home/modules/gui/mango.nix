@@ -91,11 +91,11 @@ lib.mkIf config.ahdg.features.gui {
     copyq_config="${config.xdg.configHome}/copyq/copyq.conf"
     install -dm755 "$(dirname "$copyq_config")"
     if [[ ! -e "$copyq_config" ]]; then
-      printf '[Options]\nstyle=Darkly\n' > "$copyq_config"
+      printf '[Options]\nstyle=@ByteArray(Darkly)\n' > "$copyq_config"
     elif grep -q '^style=' "$copyq_config"; then
-      sed -i 's/^style=.*/style=Darkly/' "$copyq_config"
+      sed -i 's/^style=.*/style=@ByteArray(Darkly)/' "$copyq_config"
     else
-      printf 'style=Darkly\n' >> "$copyq_config"
+      printf 'style=@ByteArray(Darkly)\n' >> "$copyq_config"
     fi
 
     if command -v copyq >/dev/null 2>&1; then

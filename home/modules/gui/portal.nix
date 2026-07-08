@@ -46,9 +46,11 @@ lib.mkIf config.ahdg.features.portal {
         "*"
       ];
 
+      # GTK's folder chooser keeps Ctrl+L path entry usable; KDE's portal
+      # directory picker currently hides that basic workflow.
       "org.freedesktop.impl.portal.FileChooser" = [
-        "kde"
         "gtk"
+        "kde"
         "*"
       ];
 

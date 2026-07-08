@@ -14,7 +14,7 @@ fi
 
 real_home="${CODE_STUDIO_HOST_HOME:-$HOME}"
 if [[ "$real_home" == */.var/app/"$app_id"/home ]]; then
-  real_home="${real_home%%/.var/app/$app_id/home}"
+  real_home="${real_home%%/.var/app/"$app_id"/home}"
 fi
 private_root="$real_home/.var/app/$app_id"
 virtual_home="$private_root/home"
@@ -25,6 +25,7 @@ cache_root="$private_root/cache"
 tmp_root="$private_root/tmp"
 gnupg_home="$virtual_home/.gnupg"
 ssh_home="$virtual_home/.ssh"
+host_ssh_home="$real_home/.ssh"
 user_data_dir="$share_root/code-studio/code-user-data"
 user_settings_dir="$user_data_dir/User"
 extensions_dir="$virtual_home/.vscode/extensions"
@@ -126,6 +127,25 @@ fi
 # Flatpak creates app-private paths safely, but nested tool directories are
 # still regular user directories, so normalize them before tools like mise run.
 chmod 700 "$gnupg_home" "$ssh_home" 2>/dev/null || true
+
+touch "$ssh_home/known_hosts" "$ssh_home/config"
+chmod 600 "$ssh_home/known_hosts" "$ssh_home/config" 2>/dev/null || true
+
+if [[ -f "$host_ssh_home/known_hosts" ]]; then
+  while IFS= read -r host_key_line || [[ -n "$host_key_line" ]]; do
+    [[ -z "$host_key_line" || "$host_key_line" == \#* ]] && continue
+    grep -Fxq -- "$host_key_line" "$ssh_home/known_hosts" 2>/dev/null || printf '%s\n' "$host_key_line" >> "$ssh_home/known_hosts"
+  done < "$host_ssh_home/known_hosts"
+fi
+
+if ! grep -Fq "# Code Studio managed defaults" "$ssh_home/config" 2>/dev/null; then
+  {
+    printf '\n# Code Studio managed defaults\n'
+    printf 'Host *\n'
+    printf '  UserKnownHostsFile %s\n' "$ssh_home/known_hosts"
+    printf '  StrictHostKeyChecking accept-new\n'
+  } >> "$ssh_home/config"
+fi
 
 if [[ -d "$nix_profile/bin" ]]; then
   export CODE_STUDIO_NIX_PROFILE="$nix_profile"

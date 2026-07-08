@@ -26,6 +26,7 @@ tmp_root="$private_root/tmp"
 gnupg_home="$virtual_home/.gnupg"
 ssh_home="$virtual_home/.ssh"
 host_ssh_home="$real_home/.ssh"
+host_git_config="$real_home/.gitconfig"
 user_data_dir="$share_root/code-studio/code-user-data"
 user_settings_dir="$user_data_dir/User"
 extensions_dir="$virtual_home/.vscode/extensions"
@@ -80,6 +81,7 @@ export XDG_CACHE_HOME="$cache_root"
 export TMPDIR="$tmp_root"
 export GNUPGHOME="$gnupg_home"
 export CODEX_HOME="$codex_home"
+export GIT_CONFIG_GLOBAL="$host_git_config"
 export BUN_INSTALL="$virtual_home/.bun"
 export NPM_CONFIG_PREFIX="$virtual_home/.local"
 export PNPM_HOME="$virtual_home/.local/share/pnpm"
@@ -145,6 +147,10 @@ if ! grep -Fq "# Code Studio managed defaults" "$ssh_home/config" 2>/dev/null; t
     printf '  UserKnownHostsFile %s\n' "$ssh_home/known_hosts"
     printf '  StrictHostKeyChecking accept-new\n'
   } >> "$ssh_home/config"
+fi
+
+if [[ -f "$virtual_home/.gitconfig" ]] && grep -Fq "/.local/state/nix/profiles/profile/bin/gh auth git-credential" "$virtual_home/.gitconfig" 2>/dev/null; then
+  mv -f "$virtual_home/.gitconfig" "$virtual_home/.gitconfig.pre-host-global-config"
 fi
 
 if [[ -d "$nix_profile/bin" ]]; then
@@ -424,7 +430,7 @@ for arg in "$@"; do
 done
 
 if [[ "${1:-}" == "--print-code-studio-env" ]]; then
-  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
+  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|GIT_CONFIG_GLOBAL|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
   for command_name in git gh gpg ssh gcc make python3 node npm pnpm bun mise starship fzf zoxide atuin eza bat fastfetch rg fd yazi codex opencode code-studio-shell; do
     printf '%s=' "$command_name"
     command -v "$command_name" || true

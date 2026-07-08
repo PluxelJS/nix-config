@@ -5,10 +5,10 @@ adding more runtime complexity to the Home Manager config today.
 
 ## Current Practice
 
-- Let the system package manager own `github-cli`, because `gh` may be needed
-  before Nix can pull or switch this repo.
-- Let Home Manager own normal config for `git` and `gh`, but not the `gh`
-  binary itself.
+- Keep `gh` in the Home Manager profile as well as the host package set, so
+  Flatpak IDE terminals can resolve the GitHub credential helper.
+- Let Home Manager own normal config for `git`; seed `gh` defaults as a writable
+  runtime file so `gh` can migrate or update its own config.
 - Keep `ragenix` installed as a future-facing encryption helper, but do not
   wire it into `gh` auth yet.
 - Let local runtime auth stay local:

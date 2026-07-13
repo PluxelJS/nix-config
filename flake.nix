@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-mise.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,14 +18,19 @@
     };
   };
 
-  outputs = { nixpkgs, home-manager, ragenix, nixgl, ... }:
+  outputs = { nixpkgs, nixpkgs-mise, home-manager, ragenix, nixgl, ... }:
     let
       system = "x86_64-linux";
+      pkgsMise = import nixpkgs-mise {
+        inherit system;
+        config.allowUnfree = true;
+      };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
           (final: prev: {
+            mise = pkgsMise.mise;
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             songrec = prev.songrec.override {
               # SongRec opens ALSA through libasound at runtime. The plain

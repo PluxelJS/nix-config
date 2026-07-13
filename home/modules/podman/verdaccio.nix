@@ -24,6 +24,12 @@ in
       default = 4873;
       description = "Host port for the Verdaccio HTTP registry.";
     };
+
+    bindAddress = lib.mkOption {
+      type = lib.types.str;
+      default = "0.0.0.0";
+      description = "Host address to bind the Verdaccio HTTP registry port to.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -46,7 +52,7 @@ in
       Image=${cfg.image}
       ContainerName=verdaccio
       Pull=missing
-      PublishPort=127.0.0.1:${toString cfg.port}:4873
+      PublishPort=${cfg.bindAddress}:${toString cfg.port}:4873
       Volume=verdaccio-storage:/verdaccio/storage
 
       [Service]

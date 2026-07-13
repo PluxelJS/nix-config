@@ -1,6 +1,8 @@
 { config, lib, ... }:
 {
   imports = [
+    ./acode.nix
+    ./casdoor.nix
     ./verdaccio.nix
   ];
 

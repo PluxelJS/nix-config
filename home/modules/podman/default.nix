@@ -2,7 +2,6 @@
 {
   imports = [
     ./acode.nix
-    ./casdoor.nix
     ./verdaccio.nix
   ];
 

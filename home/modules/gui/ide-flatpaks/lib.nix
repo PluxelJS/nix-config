@@ -127,6 +127,7 @@ rec {
     {
       sockets ? [ ],
       noSockets ? [ ],
+      devices ? [ ],
       talkNames ? [ ],
       filesystems ? [ ],
       noFilesystems ? [ ],
@@ -135,6 +136,7 @@ rec {
     }:
     (map (value: "--socket=${value}") sockets)
     ++ (map (value: "--nosocket=${value}") noSockets)
+    ++ (map (value: "--device=${value}") devices)
     ++ (map (value: "--talk-name=${value}") talkNames)
     ++ (map (value: "--nofilesystem=${value}") noFilesystems)
     ++ (map (value: "--filesystem=${value}") filesystems)

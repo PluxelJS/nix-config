@@ -25,6 +25,7 @@ let
       "fallback-x11"
     ];
     noFilesystems = [ "host" ];
+    devices = [ "kvm" ];
     talkNames = ideLib.sharedSecretTalkNames;
     filesystems = ideLib.sharedFilesystems;
     persists = codeStudioPersistDirs;

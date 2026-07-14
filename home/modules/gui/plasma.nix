@@ -211,16 +211,17 @@ if "[Mouse]" not in sections:
     sections["[Mouse]"] = []
     order.append("[Mouse]")
 
-existing_keys = {
-    line.split("=", 1)[0]
+sections["[Mouse]"] = [
+    line
     for line in sections["[Mouse]"]
-    if "=" in line and not line.startswith("#")
-}
-
-if "cursorTheme" not in existing_keys:
-    sections["[Mouse]"].append(f"cursorTheme={cursor_theme}")
-if "cursorSize" not in existing_keys:
-    sections["[Mouse]"].append(f"cursorSize={cursor_size}")
+    if not (
+        "=" in line
+        and not line.startswith("#")
+        and line.split("=", 1)[0] in {"cursorTheme", "cursorSize"}
+    )
+]
+sections["[Mouse]"].append(f"cursorTheme={cursor_theme}")
+sections["[Mouse]"].append(f"cursorSize={cursor_size}")
 
 out = []
 for index, section in enumerate(order):

@@ -80,6 +80,21 @@ lib.mkIf config.ahdg.features.gui {
       seed_runtime_file "$path"
     done
 
+    upsert_runtime_kv() {
+      local target=$1
+      local key=$2
+      local value=$3
+
+      if grep -q "^$key=" "$target"; then
+        sed -i "s/^$key=.*/$key=$value/" "$target"
+      else
+        printf '%s=%s\n' "$key" "$value" >> "$target"
+      fi
+    }
+
+    upsert_runtime_kv "${mangoTarget}/dms/cursor.conf" cursor_theme "${runtime.cursor.name}"
+    upsert_runtime_kv "${mangoTarget}/dms/cursor.conf" cursor_size "${toString runtime.cursor.size}"
+
     sed -i \
       -e 's/^env=GTK_THEME,.*/env=GTK_THEME,${runtime.gtk.themeSpec}/' \
       -e 's/^env=XCURSOR_THEME,.*/env=XCURSOR_THEME,${runtime.cursor.name}/' \

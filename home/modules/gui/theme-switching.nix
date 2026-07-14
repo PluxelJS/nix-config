@@ -205,6 +205,8 @@ let
       kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key LookAndFeelPackage "$kde_look_and_feel"
       kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key widgetStyle "$kde_widget_style"
       kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme "${runtime.icon.name}"
+      kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorTheme "${runtime.cursor.name}"
+      kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorSize "${toString runtime.cursor.size}"
       sync_kde_color_sections "$config_home/kdeglobals" "$kde_color_scheme_file"
 
       if command -v plasma-apply-colorscheme >/dev/null 2>&1; then
@@ -241,8 +243,12 @@ let
       # desktop appearance state independently of GTK settings.
       dconf write /org/gnome/desktop/interface/color-scheme "'$gsettings_color_scheme'" 2>/dev/null || true
       dconf write /org/gnome/desktop/interface/gtk-theme "'$gtk_theme_name'" 2>/dev/null || true
+      dconf write /org/gnome/desktop/interface/cursor-theme "'${runtime.cursor.name}'" 2>/dev/null || true
+      dconf write /org/gnome/desktop/interface/cursor-size ${toString runtime.cursor.size} 2>/dev/null || true
       gsettings set org.gnome.desktop.interface color-scheme "$gsettings_color_scheme" 2>/dev/null || true
       gsettings set org.gnome.desktop.interface gtk-theme "$gtk_theme_name" 2>/dev/null || true
+      gsettings set org.gnome.desktop.interface cursor-theme "${runtime.cursor.name}" 2>/dev/null || true
+      gsettings set org.gnome.desktop.interface cursor-size ${toString runtime.cursor.size} 2>/dev/null || true
     '';
   };
 in

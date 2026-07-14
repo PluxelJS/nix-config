@@ -31,6 +31,7 @@ in {
       fd
       mise
       nodejs
+      pandoc
       ripgrep
       yazi
       zsh-autopair

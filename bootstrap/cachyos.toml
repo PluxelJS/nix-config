@@ -49,6 +49,7 @@ gui = [
 desktop = [
   "base-devel",
   "git",
+  "libcap-ng",
   "linux-cachyos-headers",
   "mangohud",
   "openrazer-daemon",

@@ -122,7 +122,7 @@ func (v *verifier) run() {
 
 	if v.has("fonts") {
 		v.checkRegularPath(".config/fontconfig/fonts.conf", "%s is materialized for Flatpak", "%s should be a regular file for Flatpak compatibility")
-		if !hasSymlinkGlob(filepath.Join(v.home, ".config", "fontconfig", "conf.d"), "*.conf") {
+		if !hasSymlinkGlob(filepath.Join(v.home, ".config", "fontconfig", "conf.d"), "*-hm-*.conf") {
 			v.pass("%s snippets are materialized for Flatpak", filepath.Join(v.home, ".config", "fontconfig", "conf.d"))
 		} else {
 			v.fail("%s snippets should not be store symlinks for Flatpak compatibility", filepath.Join(v.home, ".config", "fontconfig", "conf.d"))
@@ -218,13 +218,12 @@ func (v *verifier) checkKDERuntimeTheme() {
 func (v *verifier) checkFonts() {
 	for _, rel := range []string{
 		".config/fontconfig/fonts.conf",
-		".config/fontconfig/conf.d/90-hm-ahdg-custom-font-rules.conf",
-		".local/share/fonts/nix/inter/Inter.ttc",
-		".local/share/fonts/nix/maple-mono-nf-cn/MapleMono-NF-CN-Regular.ttf",
+		".config/fontconfig/conf.d/53-hm-ahdg-ui-font-mappings.conf",
 		".local/share/fonts/custom/README.txt",
 	} {
 		v.checkFile(rel)
 	}
+	v.checkAbsent(".local/share/fonts/nix", "%s duplicate font tree is removed", "%s should be provided by the Home Manager profile instead")
 }
 
 func (v *verifier) checkMaterializedGUI() {
@@ -390,6 +389,26 @@ func (v *verifier) checkInteractiveShell() {
 			v.pass("monospace resolves to the Nix-managed Maple Mono stack")
 		} else {
 			v.fail("monospace no longer resolves to Maple Mono NF CN")
+		}
+		if regexp.MustCompile(`^Inter`).MatchString(commandOutput("fc-match", `system\-ui`)) {
+			v.pass("system-ui resolves to the desktop sans-serif stack")
+		} else {
+			v.fail("system-ui no longer resolves to Inter")
+		}
+		if regexp.MustCompile(`^SourceHanSerif.*"Source Han Serif SC"`).MatchString(commandOutput("fc-match", `ui\-serif`)) {
+			v.pass("ui-serif resolves to the desktop serif stack")
+		} else {
+			v.fail("ui-serif no longer resolves to Source Han Serif SC")
+		}
+		if regexp.MustCompile(`^(MapleMono-NF-CN|MapleMono-NF-CN-|Maple Mono NF CN)`).MatchString(commandOutput("fc-match", `ui\-monospace`)) {
+			v.pass("ui-monospace resolves to the desktop monospace stack")
+		} else {
+			v.fail("ui-monospace no longer resolves to Maple Mono NF CN")
+		}
+		if regexp.MustCompile(`^NotoColorEmoji.*"Noto Color Emoji"`).MatchString(commandOutput("fc-match", "emoji")) {
+			v.pass("emoji resolves to Noto Color Emoji")
+		} else {
+			v.fail("emoji no longer resolves to Noto Color Emoji")
 		}
 	}
 

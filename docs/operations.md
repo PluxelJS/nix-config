@@ -97,7 +97,7 @@ place to keep config.
 
 Stable policy-style desktop config is generated directly in Nix modules for:
 
-- fontconfig entrypoints and custom match rules
+- fontconfig entrypoints, default stacks, and CSS generic-family mappings
 - GTK 2/3 defaults and `xsettingsd`
 - Flatpak global override
 - `xdg-terminals.list`
@@ -119,10 +119,9 @@ This includes:
 
 Store symlinks are still acceptable for explicit toolchain/config mounts where
 the app is expected to read exact paths and `/nix/store` is deliberately exposed,
-for example IDE terminal access to shell config and Nix profile binaries. Large
-font package directories under `~/.local/share/fonts/nix/` also stay store-backed
-because fontconfig resolves them through the mounted store and the real Flatpak
-font check covers that behavior.
+for example IDE terminal access to shell config and Nix profile binaries. Fonts
+from nixpkgs are discovered once through the Home Manager profile; Flatpak can
+resolve them because both that profile and `/nix/store` are exposed read-only.
 
 When adding a new path to `home/modules/gui/flatpak.nix`, decide whether it is a
 scanned runtime asset or an explicit config/toolchain path. Scanned assets need
@@ -156,7 +155,6 @@ from this flake:
 - `~/.local/share/color-schemes/CatppuccinMacchiatoLavender.colors`
 - `~/.local/share/flatpak/overrides/global`
 - `~/.local/share/fcitx5/themes/`
-- `~/.local/share/fonts/nix/`
 - `~/.local/share/icons/Bibata-Modern-Ice`
 - `~/.local/share/icons/Papirus`
 - `~/.local/share/icons/breeze`

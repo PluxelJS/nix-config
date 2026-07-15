@@ -2,9 +2,37 @@
 let
   guiLib = import ./lib.nix { inherit lib; };
   customFontSourceDir = ../../assets/fonts/custom;
+  fontStacks = {
+    sansSerif = [
+      "Inter"
+      "Source Han Sans SC"
+      "Noto Color Emoji"
+    ];
+    serif = [
+      "Source Han Serif SC"
+      "Noto Color Emoji"
+    ];
+    monospace = [
+      "Maple Mono NF CN"
+      "Noto Color Emoji"
+    ];
+    emoji = [ "Noto Color Emoji" ];
+  };
+  mkStringElements = families:
+    lib.concatMapStringsSep "\n" (family: "        <string>${family}</string>") families;
+  mkGenericMapping = genericFamily: preferredFamilies: ''
+    <match target="pattern">
+      <test name="family" qual="any">
+        <string>${genericFamily}</string>
+      </test>
+      <edit name="family" mode="assign" binding="same">
+${mkStringElements preferredFamilies}
+      </edit>
+    </match>
+  '';
   fontconfigEntrypointText = ''
     <?xml version='1.0' encoding='UTF-8'?>
-    <!DOCTYPE fontconfig SYSTEM 'fonts.dtd'>
+    <!DOCTYPE fontconfig SYSTEM 'urn:fontconfig:fonts.dtd'>
     <fontconfig>
       <!-- Flatpak commonly loads only the user fontconfig entrypoint. Keep a
            simple top-level file so sandboxed apps also pick up the HM-managed
@@ -12,121 +40,18 @@ let
       <include ignore_missing="yes" prefix="xdg">fontconfig/conf.d</include>
     </fontconfig>
   '';
-  customFontRulesText = ''
+  uiFontMappingsText = ''
     <?xml version='1.0' encoding='UTF-8'?>
-    <!DOCTYPE fontconfig SYSTEM 'fonts.dtd'>
+    <!DOCTYPE fontconfig SYSTEM 'urn:fontconfig:fonts.dtd'>
     <fontconfig>
-      <!-- Keep rendering predictable: no embedded bitmap takeover, no global autohint. -->
-      <match target="font">
-        <edit mode="assign" name="embeddedbitmap">
-          <bool>false</bool>
-        </edit>
-        <edit mode="assign" name="lcdfilter">
-          <const>lcdlight</const>
-        </edit>
-        <edit mode="assign" name="autohint">
-          <bool>false</bool>
-        </edit>
-      </match>
-
-      <!-- Only help the small-pixel CJK families you actually use. -->
-      <match target="font">
-        <test compare="less_eq" name="pixelsize">
-          <double>18</double>
-        </test>
-        <test compare="eq" name="family">
-          <string>Source Han Sans SC</string>
-        </test>
-        <edit mode="assign" name="autohint">
-          <bool>true</bool>
-        </edit>
-      </match>
-
-      <match target="font">
-        <test compare="less_eq" name="pixelsize">
-          <double>18</double>
-        </test>
-        <test compare="eq" name="family">
-          <string>Source Han Serif SC</string>
-        </test>
-        <edit mode="assign" name="autohint">
-          <bool>true</bool>
-        </edit>
-      </match>
-
-      <match target="font">
-        <test compare="less_eq" name="pixelsize">
-          <double>18</double>
-        </test>
-        <test compare="eq" name="family">
-          <string>TsangerJinKai01</string>
-        </test>
-        <edit mode="assign" name="autohint">
-          <bool>true</bool>
-        </edit>
-      </match>
-
-      <!-- Make ui-* generics explicit so toolkits converge on the same stack. -->
-      <alias>
-        <family>system-ui</family>
-        <prefer>
-          <family>Inter</family>
-          <family>Source Han Sans SC</family>
-        </prefer>
-      </alias>
-
-      <alias>
-        <family>ui-sans-serif</family>
-        <prefer>
-          <family>Inter</family>
-          <family>Source Han Sans SC</family>
-        </prefer>
-      </alias>
-
-      <alias>
-        <family>ui-serif</family>
-        <prefer>
-          <family>TsangerJinKai01</family>
-          <family>Source Han Serif SC</family>
-        </prefer>
-      </alias>
-
-      <alias>
-        <family>ui-monospace</family>
-        <prefer>
-          <family>Maple Mono NF CN</family>
-          <family>Source Han Sans SC</family>
-        </prefer>
-      </alias>
-
-      <!-- In zh locales, keep Latin and digits anchored to Inter first. -->
-      <match target="pattern">
-        <test compare="eq" name="family" qual="any">
-          <string>system-ui</string>
-        </test>
-        <edit binding="strong" mode="prepend" name="family">
-          <string>Inter</string>
-        </edit>
-      </match>
-
-      <match target="pattern">
-        <test compare="eq" name="family" qual="any">
-          <string>sans-serif</string>
-        </test>
-        <edit binding="strong" mode="prepend" name="family">
-          <string>Inter</string>
-        </edit>
-      </match>
-
-      <match target="pattern">
-        <test compare="eq" name="family" qual="any">
-          <string>ui-sans-serif</string>
-        </test>
-        <edit binding="strong" mode="prepend" name="family">
-          <string>Inter</string>
-        </edit>
-      </match>
-
+      <description>Map CSS UI generic families to the desktop font stacks</description>
+      <!-- Normalize only CSS UI generic requests. Assigning the matched family
+           avoids fontconfig's generic-family classifier overriding ui-* aliases. -->
+    ${mkGenericMapping "system-ui" fontStacks.sansSerif}
+    ${mkGenericMapping "ui-sans-serif" fontStacks.sansSerif}
+    ${mkGenericMapping "ui-serif" fontStacks.serif}
+    ${mkGenericMapping "ui-monospace" fontStacks.monospace}
+    ${mkGenericMapping "ui-rounded" fontStacks.sansSerif}
     </fontconfig>
   '';
 in
@@ -140,10 +65,10 @@ lib.mkIf config.ahdg.features.fonts {
     fi
 
     if [[ -d "$legacy_fontconfig_dir" ]]; then
-      find "$legacy_fontconfig_dir" -maxdepth 1 -type f -name '*.conf' -delete
+      find "$legacy_fontconfig_dir" -maxdepth 1 -type f -name '*-hm-*.conf' -delete
     fi
 
-    if [[ -e "$managed_font_dir" ]] && [[ ! -L "$managed_font_dir" ]]; then
+    if [[ -e "$managed_font_dir" ]] || [[ -L "$managed_font_dir" ]]; then
       chmod -R u+w "$managed_font_dir" 2>/dev/null || true
       rm -rf "$managed_font_dir"
     fi
@@ -170,10 +95,14 @@ lib.mkIf config.ahdg.features.fonts {
     while IFS= read -r target; do
       [[ -n "$target" ]] || continue
       materialize_file "$target"
-    done < <(find "${config.xdg.configHome}/fontconfig/conf.d" -maxdepth 1 -type l -name '*.conf' 2>/dev/null | sort)
+    done < <(find "${config.xdg.configHome}/fontconfig/conf.d" -maxdepth 1 -type l -name '*-hm-*.conf' 2>/dev/null | sort)
   '';
 
-  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [ "materializeFontconfigForFlatpak" ] ''
+  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [
+    "installPackages"
+    "materializeFontconfigForFlatpak"
+    "syncCustomFontDropDir"
+  ] ''
     rm -rf "${config.xdg.cacheHome}/fontconfig"
 
     if [[ -d "${config.home.homeDirectory}/.var/app" ]]; then
@@ -192,33 +121,6 @@ lib.mkIf config.ahdg.features.fonts {
     text = fontconfigEntrypointText;
   };
 
-  xdg.dataFile = {
-    "fonts/nix/inter" = {
-      force = true;
-      source = "${pkgs.inter}/share/fonts/truetype";
-    };
-    "fonts/nix/maple-mono-nf-cn" = {
-      force = true;
-      source = "${pkgs.maple-mono."NF-CN"}/share/fonts/truetype";
-    };
-    "fonts/nix/source-han-sans" = {
-      force = true;
-      source = "${pkgs.source-han-sans}/share/fonts/opentype/source-han-sans";
-    };
-    "fonts/nix/source-han-serif" = {
-      force = true;
-      source = "${pkgs.source-han-serif}/share/fonts/opentype/source-han-serif";
-    };
-    "fonts/nix/twitter-color-emoji" = {
-      force = true;
-      source = "${pkgs.twitter-color-emoji}/share/fonts/truetype";
-    };
-    "fonts/nix/noto-color-emoji" = {
-      force = true;
-      source = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
-    };
-  };
-
   fonts.fontconfig = {
     enable = true;
 
@@ -226,29 +128,12 @@ lib.mkIf config.ahdg.features.fonts {
     hinting = "slight";
     subpixelRendering = "rgb";
 
-    defaultFonts = {
-      sansSerif = [
-        "Inter"
-        "Source Han Sans SC"
-      ];
-      serif = [
-        "TsangerJinKai01"
-        "Source Han Serif SC"
-      ];
-      monospace = [
-        "Maple Mono NF CN"
-        "Source Han Sans SC"
-      ];
-      emoji = [
-        "Twitter Color Emoji"
-        "Noto Color Emoji"
-      ];
-    };
+    defaultFonts = fontStacks;
 
-    configFile.ahdg-custom-font-rules = {
+    configFile.ahdg-ui-font-mappings = {
       enable = true;
-      priority = 90;
-      text = customFontRulesText;
+      priority = 53;
+      text = uiFontMappingsText;
     };
   };
 }

@@ -6,7 +6,6 @@ let
       pkgs.source-han-sans
       pkgs.source-han-serif
       pkgs.maple-mono."NF-CN"
-      pkgs.twitter-color-emoji
       pkgs.noto-fonts-color-emoji
     ]
     ++ lib.optionals config.ahdg.features.gui [

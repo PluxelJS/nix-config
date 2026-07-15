@@ -7,4 +7,5 @@ Workflow:
 - run `home-manager switch --flake ~/.config/nix#ahdg`
 - Home Manager will sync them to `~/.local/share/fonts/custom/`
 
-Keep the Home Manager-managed fonts under `~/.local/share/fonts/nix/` untouched.
+Fonts from nixpkgs are provided by the Home Manager profile; do not duplicate
+them here.

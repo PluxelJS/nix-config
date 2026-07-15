@@ -19,13 +19,27 @@ let
     "x-scheme-handler/https"
   ];
 
+  notepadNextCommand = "notepadnext";
   notepadNextDesktopId = "NotepadNext.desktop";
   notepadNextCustomMimeType = "text/x-notepadnext-text";
   notepadNextManagedMimeTypes = notepadNextMimeTypes ++ [ notepadNextCustomMimeType ];
+  textEditorAssociationDesktopIds = [
+    notepadNextDesktopId
+    "com.visualstudio.code.desktop"
+    "io.github.trumank.CodeStudio.desktop"
+    "codium.desktop"
+    "code-oss.desktop"
+    "codium-wayland.desktop"
+    "vim.desktop"
+    "micro.desktop"
+    "featherpad.desktop"
+  ];
 
   notepadNextMimeTypes = [
     "inode/x-empty"
     "text/plain"
+    "text/x-nix"
+    "text/x-ini"
     "application/json"
     "application/json5"
     "application/raml+yaml"
@@ -111,6 +125,9 @@ in
             <comment>NotepadNext text source</comment>
             <sub-class-of type="text/plain"/>
             <glob pattern="*.nix"/>
+            <glob pattern="*.conf"/>
+            <glob pattern="*.cfg"/>
+            <glob pattern="*.env"/>
             <glob pattern="*.ini"/>
             <glob pattern="*.inf"/>
             <glob pattern="*.properties"/>
@@ -137,52 +154,61 @@ in
             <glob pattern="*.bash"/>
             <glob pattern="*.bash_profile"/>
             <glob pattern="*.bashrc"/>
+            <glob pattern="*.zsh"/>
+            <glob pattern="*.zshrc"/>
+            <glob pattern="*.fish"/>
+            <glob pattern="*.sh"/>
+            <glob pattern="*.ps1"/>
+            <glob pattern="*.psd1"/>
+            <glob pattern="*.cmd"/>
             <glob pattern="*.profile"/>
+            <glob pattern="Dockerfile"/>
+            <glob pattern="Containerfile"/>
+            <glob pattern="Justfile"/>
           </mime-type>
         </mime-info>
       '';
 
-      desktopEntries."NotepadNext" = {
-        name = "Notepad Next";
-        genericName = "Text Editor";
-        comment = "A cross-platform, reimplementation of Notepad++";
-        exec = "NotepadNext %f";
-        icon = "NotepadNext";
-        terminal = false;
-        startupNotify = true;
-        categories = [
-          "Qt"
-          "TextEditor"
-          "Utility"
-        ];
-        mimeType = notepadNextMimeTypes;
-      };
+      dataFile."applications/${notepadNextDesktopId}".text = ''
+        [Desktop Entry]
+        Type=Application
+        Name=Notepad Next
+        GenericName=Text Editor
+        Comment=A cross-platform, reimplementation of Notepad++
+        Exec=${notepadNextCommand} %F
+        Icon=NotepadNext
+        Terminal=false
+        StartupNotify=true
+        Categories=Qt;TextEditor;Utility;
+        MimeType=${lib.concatStringsSep ";" notepadNextManagedMimeTypes};
+      '';
 
-      desktopEntries."protontricks-launch-mangohud" = {
-        name = "Protontricks Launcher (MangoHud)";
-        exec = "${homeDir}/.local/bin/protontricks-launch-mangohud %f";
-        noDisplay = true;
-        terminal = false;
-        mimeType = [
-          "application/x-ms-dos-executable"
-          "application/x-msdownload"
-        ];
-      };
+      dataFile."applications/protontricks-launch-mangohud.desktop".text = ''
+        [Desktop Entry]
+        Type=Application
+        Name=Protontricks Launcher (MangoHud)
+        Exec=${homeDir}/.local/bin/protontricks-launch-mangohud %f
+        NoDisplay=true
+        Terminal=false
+        MimeType=application/x-ms-dos-executable;application/x-msdownload;
+      '';
 
-      desktopEntries."jetbrainsd" = {
-        name = "JetBrains";
-        exec = "${homeDir}/.local/share/JetBrains/Daemon/bundles/current/jetbrainsd/bin/jetbrainsd handleUri %u";
-        noDisplay = true;
-        terminal = false;
-        mimeType = [ "x-scheme-handler/jetbrains" ];
-      };
+      dataFile."applications/jetbrainsd.desktop".text = ''
+        [Desktop Entry]
+        Type=Application
+        Name=JetBrains
+        Exec=${homeDir}/.local/share/JetBrains/Daemon/bundles/current/jetbrainsd/bin/jetbrainsd handleUri %u
+        NoDisplay=true
+        Terminal=false
+        MimeType=x-scheme-handler/jetbrains;
+      '';
 
       mimeApps = {
         enable = true;
 
         associations.added =
           (lib.genAttrs browserAssociationMimeTypes (_: "zen.desktop"))
-          // (lib.genAttrs notepadNextManagedMimeTypes (_: notepadNextDesktopId))
+          // (lib.genAttrs notepadNextManagedMimeTypes (_: textEditorAssociationDesktopIds))
           // {
             "application/pdf" = "wps-office-pdf.desktop";
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = "wps-office-wps.desktop";
@@ -297,11 +323,13 @@ in
   ];
 
   home.sessionVariables = {
-    EDITOR = "NotepadNext";
-    VISUAL = "NotepadNext";
     PAGER = "less";
     LESSHISTFILE = "${config.xdg.cacheHome}/less/history";
     TERMINFO_DIRS = "${config.home.profileDirectory}/share/terminfo:/nix/var/nix/profiles/default/share/terminfo:/usr/share/terminfo";
+  }
+  // lib.optionalAttrs cfg.desktopXdg {
+    EDITOR = notepadNextCommand;
+    VISUAL = notepadNextCommand;
   }
   // lib.optionalAttrs config.ahdg.features.ghostty {
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
@@ -315,9 +343,18 @@ in
     fi
   '';
 
-  home.activation.updateMimeDatabase = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    if command -v update-mime-database >/dev/null 2>&1; then
+  home.activation.materializeDesktopMimeApps = lib.mkIf cfg.desktopXdg (lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    install -dm755 "${config.xdg.dataHome}/applications"
+    rm -f "${config.xdg.dataHome}/applications/mimeapps.list"
+    install -m644 "${config.xdg.configHome}/mimeapps.list" "${config.xdg.dataHome}/applications/mimeapps.list"
+  '');
+
+  home.activation.updateMimeDatabase = lib.hm.dag.entryAfter [ "materializeDesktopMimeApps" ] ''
+    if [[ -d "${config.xdg.dataHome}/mime" ]] && command -v update-mime-database >/dev/null 2>&1; then
       update-mime-database "${config.xdg.dataHome}/mime"
+    fi
+    if [[ -d "${config.xdg.dataHome}/applications" ]] && command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database "${config.xdg.dataHome}/applications"
     fi
   '';
 }

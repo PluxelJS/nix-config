@@ -12,6 +12,11 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
 - Use Wayland only; X11 and fallback X11 are intentionally not granted.
 - Keep theme/font/input integration in the Home Manager-owned Flatpak global
   override.
+- Seed editor defaults only when the corresponding user files do not exist.
+- Keep startup free of settings migrations and user-state repair; Code Studio
+  owns its settings, workspace recovery data, locks, and extension caches.
+- Preserve the Home Manager-provided tool `PATH`, then prepend app-private
+  package manager and mise paths used by the integrated terminal.
 
 The launcher creates:
 
@@ -79,12 +84,3 @@ Open a shell inside the private home:
 ```bash
 flatpak run --command=code-studio-shell io.github.trumank.CodeStudio
 ```
-
-## Legacy Cleanup
-
-The installer removes stale desktop entries and old app IDs for previous local
-experiments:
-
-- `com.mint.DevCode`
-- `io.github.trumank.MintCodeStudio`
-- old `mint-*` desktop launchers

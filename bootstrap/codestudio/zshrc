@@ -16,12 +16,6 @@ SAVEHIST=10000
 
 mkdir -p "${HISTFILE:h}"
 
-if [[ -n "${CODE_STUDIO_NIX_PROFILE:-}" && -d "$CODE_STUDIO_NIX_PROFILE/bin" ]]; then
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$CODE_STUDIO_NIX_PROFILE/bin:/app/bin:/usr/bin"
-else
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:/app/bin:/usr/bin"
-fi
-
 alias ..='cd ..'
 alias ...='cd ../..'
 alias gst='git status -sb'

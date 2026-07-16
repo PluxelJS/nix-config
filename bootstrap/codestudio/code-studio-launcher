@@ -2,7 +2,7 @@
 set -euo pipefail
 
 app_id="${FLATPAK_ID:-io.github.trumank.CodeStudio}"
-program_name="$(basename "$0")"
+program_name="${0##*/}"
 shell_mode=0
 
 if [[ "$program_name" == "code-studio-shell" ]]; then
@@ -25,13 +25,10 @@ cache_root="$private_root/cache"
 tmp_root="$private_root/tmp"
 gnupg_home="$virtual_home/.gnupg"
 ssh_home="$virtual_home/.ssh"
-host_ssh_home="$real_home/.ssh"
 host_git_config="$real_home/.gitconfig"
 user_data_dir="$share_root/code-studio/code-user-data"
 user_settings_dir="$user_data_dir/User"
 extensions_dir="$virtual_home/.vscode/extensions"
-cached_vsix_dir="$user_data_dir/CachedExtensionVSIXs"
-crashpad_dir="$user_data_dir/Crashpad"
 codex_home="$virtual_home/.codex"
 zsh_config_dir="$config_root/zsh"
 nix_profile="$real_home/.local/state/nix/profiles/profile"
@@ -42,13 +39,12 @@ cli_only=0
 # VS Code terminals export VSCODE_* and ELECTRON_* variables. If Code Studio is
 # launched from such an environment, those values can redirect to the existing
 # editor instance or make Electron run in the wrong mode.
-while IFS='=' read -r env_name _; do
-  case "$env_name" in
-    VSCODE_*|ELECTRON_RUN_AS_NODE|ELECTRON_NO_ATTACH_CONSOLE|CHROME_DESKTOP)
-      unset "$env_name"
-      ;;
-  esac
-done < <(env)
+while IFS= read -r env_name; do
+  unset "$env_name"
+done < <(compgen -A variable VSCODE_)
+unset ELECTRON_RUN_AS_NODE ELECTRON_NO_ATTACH_CONSOLE CHROME_DESKTOP
+
+inherited_path="${PATH:-/app/bin:/usr/bin}"
 
 mkdir -p \
   "$virtual_home" \
@@ -57,18 +53,12 @@ mkdir -p \
   "$user_settings_dir" \
   "$extensions_dir" \
   "$state_root" \
-  "$cached_vsix_dir" \
-  "$crashpad_dir/pending" \
-  "$crashpad_dir/completed" \
   "$tmp_root" \
   "$gnupg_home" \
   "$codex_home" \
   "$ssh_home" \
   "$virtual_home/.cache" \
-  "$virtual_home/.config" \
   "$virtual_home/.local/bin" \
-  "$virtual_home/.local/state" \
-  "$virtual_home/.vscode" \
   "$zsh_config_dir" \
   "$config_root/starship"
 
@@ -91,8 +81,6 @@ export MISE_CONFIG_DIR="$virtual_home/.config/mise"
 export MISE_CACHE_DIR="$virtual_home/.cache/mise"
 export ZDOTDIR="$zsh_config_dir"
 export SHELL="/app/bin/zsh"
-export LANG=C.UTF-8
-export LC_ALL=C.UTF-8
 export GIT_SSH_COMMAND="ssh -F $ssh_home/config"
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
 export ELECTRON_TRASH=gio
@@ -130,50 +118,36 @@ fi
 # still regular user directories, so normalize them before tools like mise run.
 chmod 700 "$gnupg_home" "$ssh_home" 2>/dev/null || true
 
-touch "$ssh_home/known_hosts" "$ssh_home/config"
-chmod 600 "$ssh_home/known_hosts" "$ssh_home/config" 2>/dev/null || true
-
-if [[ -f "$host_ssh_home/known_hosts" ]]; then
-  while IFS= read -r host_key_line || [[ -n "$host_key_line" ]]; do
-    [[ -z "$host_key_line" || "$host_key_line" == \#* ]] && continue
-    grep -Fxq -- "$host_key_line" "$ssh_home/known_hosts" 2>/dev/null || printf '%s\n' "$host_key_line" >> "$ssh_home/known_hosts"
-  done < "$host_ssh_home/known_hosts"
+if [[ ! -e "$ssh_home/known_hosts" ]]; then
+  : > "$ssh_home/known_hosts"
 fi
 
-if ! grep -Fq "# Code Studio managed defaults" "$ssh_home/config" 2>/dev/null; then
+if [[ ! -e "$ssh_home/config" ]]; then
   {
-    printf '\n# Code Studio managed defaults\n'
+    printf '# Code Studio defaults\n'
     printf 'Host *\n'
     printf '  UserKnownHostsFile %s\n' "$ssh_home/known_hosts"
     printf '  StrictHostKeyChecking accept-new\n'
-  } >> "$ssh_home/config"
+  } > "$ssh_home/config"
 fi
-
-if [[ -f "$virtual_home/.gitconfig" ]] && grep -Fq "/.local/state/nix/profiles/profile/bin/gh auth git-credential" "$virtual_home/.gitconfig" 2>/dev/null; then
-  mv -f "$virtual_home/.gitconfig" "$virtual_home/.gitconfig.pre-host-global-config"
-fi
+chmod 600 "$ssh_home/known_hosts" "$ssh_home/config" 2>/dev/null || true
 
 if [[ -d "$nix_profile/bin" ]]; then
   export CODE_STUDIO_NIX_PROFILE="$nix_profile"
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$nix_profile/bin:/app/bin:/usr/bin"
+  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$nix_profile/bin:$inherited_path"
 else
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:/app/bin:/usr/bin"
-fi
-
-# Keep shims current after private mise installs. This is intentionally best
-# effort: project-level mise config errors should remain visible in terminals.
-if command -v mise >/dev/null 2>&1 && [[ -d "$MISE_DATA_DIR/installs" ]]; then
-  mise reshim >/dev/null 2>&1 || true
+  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$inherited_path"
 fi
 
 if [[ ! -f "$config_root/starship/starship.toml" ]]; then
   cp /app/share/code-studio/starship.toml "$config_root/starship/starship.toml"
 fi
 
-find "$ZDOTDIR" -maxdepth 1 -type f -name '.zshrc.tmp.*' -mmin +10 -delete 2>/dev/null || true
-zshrc_tmp="$(mktemp "$ZDOTDIR/.zshrc.tmp.XXXXXX")"
-cp /app/share/code-studio/zshrc "$zshrc_tmp"
-mv "$zshrc_tmp" "$ZDOTDIR/.zshrc"
+if ! cmp -s /app/share/code-studio/zshrc "$ZDOTDIR/.zshrc"; then
+  zshrc_tmp="$(mktemp "$ZDOTDIR/.zshrc.tmp.XXXXXX")"
+  cp /app/share/code-studio/zshrc "$zshrc_tmp"
+  mv "$zshrc_tmp" "$ZDOTDIR/.zshrc"
+fi
 
 if [[ "$shell_mode" == "1" ]]; then
   if [[ "$#" -eq 0 ]]; then
@@ -186,241 +160,6 @@ fi
 [[ -f "$user_data_dir/argv.json" ]] || cp /app/share/code-studio/argv.json "$user_data_dir/argv.json"
 [[ -f "$user_settings_dir/locale.json" ]] || cp /app/share/code-studio/locale.json "$user_settings_dir/locale.json"
 
-python3 - "$user_data_dir/argv.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-
-try:
-    argv = json.loads(path.read_text(encoding="utf-8"))
-except json.JSONDecodeError:
-    raise SystemExit(0)
-
-if not isinstance(argv, dict):
-    raise SystemExit(0)
-
-changed = False
-for key in ("disable-hardware-acceleration", "disable-gpu"):
-    if argv.pop(key, None) is not None:
-        changed = True
-
-if changed:
-    path.write_text(json.dumps(argv, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-PY
-
-python3 - "$user_settings_dir/settings.json" /app/share/code-studio/settings.json <<'PY'
-import json
-import os
-import shutil
-import sys
-import time
-
-path = sys.argv[1]
-default_path = sys.argv[2]
-
-def strip_jsonc(text):
-    result = []
-    in_string = False
-    escape = False
-    i = 0
-
-    while i < len(text):
-        char = text[i]
-        next_char = text[i + 1] if i + 1 < len(text) else ""
-
-        if in_string:
-            result.append(char)
-            if escape:
-                escape = False
-            elif char == "\\":
-                escape = True
-            elif char == '"':
-                in_string = False
-            i += 1
-            continue
-
-        if char == '"':
-            in_string = True
-            result.append(char)
-            i += 1
-            continue
-
-        if char == "/" and next_char == "/":
-            i += 2
-            while i < len(text) and text[i] not in "\r\n":
-                i += 1
-            continue
-
-        if char == "/" and next_char == "*":
-            i += 2
-            while i + 1 < len(text) and not (text[i] == "*" and text[i + 1] == "/"):
-                i += 1
-            i += 2
-            continue
-
-        result.append(char)
-        i += 1
-
-    text = "".join(result)
-    result = []
-    in_string = False
-    escape = False
-    i = 0
-
-    while i < len(text):
-        char = text[i]
-
-        if in_string:
-            result.append(char)
-            if escape:
-                escape = False
-            elif char == "\\":
-                escape = True
-            elif char == '"':
-                in_string = False
-            i += 1
-            continue
-
-        if char == '"':
-            in_string = True
-            result.append(char)
-            i += 1
-            continue
-
-        if char == ",":
-            j = i + 1
-            while j < len(text) and text[j] in " \t\r\n":
-                j += 1
-            if j < len(text) and text[j] in "}]":
-                i += 1
-                continue
-
-        result.append(char)
-        i += 1
-
-    return "".join(result)
-
-def backup(suffix):
-    stamp = time.strftime("%Y%m%d%H%M%S")
-    backup_path = f"{path}.{suffix}-{stamp}"
-    shutil.copy2(path, backup_path)
-    return backup_path
-
-with open(path, "r", encoding="utf-8") as handle:
-    raw = handle.read()
-
-try:
-    settings = json.loads(raw)
-    parsed_jsonc = False
-except json.JSONDecodeError:
-    try:
-        settings = json.loads(strip_jsonc(raw))
-        parsed_jsonc = True
-    except json.JSONDecodeError:
-        backup("broken")
-        with open(default_path, "r", encoding="utf-8") as handle:
-            settings = json.load(handle)
-        parsed_jsonc = False
-
-if not isinstance(settings, dict):
-    backup("broken")
-    with open(default_path, "r", encoding="utf-8") as handle:
-        settings = json.load(handle)
-    parsed_jsonc = False
-
-changed = parsed_jsonc
-if parsed_jsonc:
-    backup("jsonc-backup")
-
-if settings.get("terminal.integrated.defaultProfile.linux") != "zsh":
-    settings["terminal.integrated.defaultProfile.linux"] = "zsh"
-    changed = True
-
-profiles = settings.get("terminal.integrated.profiles.linux")
-if not isinstance(profiles, dict):
-    profiles = {}
-    settings["terminal.integrated.profiles.linux"] = profiles
-
-if profiles.get("zsh", {}).get("path") != "/app/bin/zsh":
-    profiles["zsh"] = {"path": "/app/bin/zsh"}
-    changed = True
-
-if "bash" in profiles and profiles["bash"].get("path") == "/usr/bin/bash":
-    profiles.pop("bash", None)
-    changed = True
-
-if settings.pop("terminal.integrated.env.linux", None) is not None:
-    changed = True
-
-defaults = {
-    "editor.fontFamily": '"Maple Mono NF CN", "Noto Color Emoji", monospace',
-    "editor.fontLigatures": "'calt', 'cv01', 'ss01', 'ss03', 'ss04'",
-    "editor.fontSize": 13,
-    "editor.letterSpacing": -0.1,
-    "editor.lineHeight": 1.35,
-    "terminal.integrated.fontFamily": '"Maple Mono NF CN", "Noto Color Emoji", monospace',
-    "terminal.integrated.gpuAcceleration": "auto",
-    "window.restoreWindows": "all",
-}
-
-for key, value in defaults.items():
-    if key not in settings:
-        settings[key] = value
-        changed = True
-
-if changed:
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(settings, handle, indent=2, ensure_ascii=False)
-        handle.write("\n")
-PY
-
-python3 - "$user_data_dir/User/globalStorage/storage.json" "$HOME" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-home_uri = "file://" + sys.argv[2]
-
-if not path.exists():
-    raise SystemExit(0)
-
-try:
-    storage = json.loads(path.read_text(encoding="utf-8"))
-except json.JSONDecodeError:
-    raise SystemExit(0)
-
-changed = False
-backup = storage.get("backupWorkspaces")
-if isinstance(backup, dict):
-    for key in ("folders", "workspaces"):
-        items = backup.get(key)
-        if isinstance(items, list):
-            filtered = [
-                item for item in items
-                if not (isinstance(item, dict) and item.get("folderUri") == home_uri)
-                and not (isinstance(item, dict) and item.get("workspaceUri") == home_uri)
-            ]
-            if filtered != items:
-                backup[key] = filtered
-                changed = True
-
-associations = storage.get("profileAssociations")
-if isinstance(associations, dict):
-    workspaces = associations.get("workspaces")
-    if isinstance(workspaces, dict) and home_uri in workspaces:
-        workspaces.pop(home_uri, None)
-        changed = True
-
-if changed:
-    path.write_text(json.dumps(storage, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
-PY
-
-rm -f "$user_data_dir/code.lock" 2>/dev/null || true
-find "$cached_vsix_dir" -maxdepth 1 -type f -name '.*' -delete 2>/dev/null || true
-
 for arg in "$@"; do
   case "$arg" in
     --help|-h|--version|-v|--status|--list-extensions|--show-versions|--install-extension|--uninstall-extension|--update-extensions)
@@ -432,8 +171,8 @@ done
 if [[ "${1:-}" == "--print-code-studio-env" ]]; then
   env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|GIT_CONFIG_GLOBAL|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
   for command_name in git gh gpg ssh gcc make python3 node npm pnpm bun mise starship fzf zoxide atuin eza bat fastfetch rg fd yazi codex opencode code-studio-shell; do
-    printf '%s=' "$command_name"
-    command -v "$command_name" || true
+    command_path="$(command -v "$command_name" || true)"
+    printf '%s=%s\n' "$command_name" "$command_path"
   done
   printf 'zsh_modules='
   /app/bin/zsh -fc 'zmodload zsh/regex && zmodload zsh/mathfunc && print ok' 2>/dev/null || true
@@ -449,9 +188,9 @@ code_args=(
 
 if [[ "$cli_only" != "1" ]]; then
   code_args+=(
-  "--ozone-platform=wayland"
-  "--no-sandbox"
-  "--disable-crash-reporter"
+    "--ozone-platform=wayland"
+    "--no-sandbox"
+    "--disable-crash-reporter"
   )
 
   if [[ "$#" -gt 0 ]]; then

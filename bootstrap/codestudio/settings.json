@@ -1,14 +1,14 @@
 {
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
-  "editor.fontFamily": "\"Maple Mono NF CN\", \"Noto Color Emoji\", monospace",
+  "editor.fontFamily": "\"Maple Mono NF CN\", monospace",
   "editor.fontLigatures": "'calt', 'cv01', 'ss01', 'ss03', 'ss04'",
   "editor.fontSize": 13,
   "editor.letterSpacing": -0.1,
   "editor.lineHeight": 1.35,
   "telemetry.telemetryLevel": "off",
   "terminal.integrated.defaultProfile.linux": "zsh",
-  "terminal.integrated.fontFamily": "\"Maple Mono NF CN\", \"Noto Color Emoji\", monospace",
+  "terminal.integrated.fontFamily": "\"Maple Mono NF CN\", monospace",
   "terminal.integrated.gpuAcceleration": "auto",
   "terminal.integrated.profiles.linux": {
     "zsh": {

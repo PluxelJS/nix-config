@@ -1,6 +1,8 @@
 { config, lib }:
 let
   homeDir = config.home.homeDirectory;
+  xdgConfigHome = config.xdg.configHome;
+  xdgDataHome = config.xdg.dataHome;
   profileBinDir = "${homeDir}/.local/state/nix/profiles/profile/bin";
   profileZsh = "${profileBinDir}/zsh";
   flatpakCodexHome = "${homeDir}/.local/share/codex";
@@ -8,6 +10,21 @@ let
 
   codeStudioAppId = "io.github.trumank.CodeStudio";
   codeStudioHomeDir = "${homeDir}/.var/app/${codeStudioAppId}/home";
+
+  desktopResources = import ../flatpak-desktop-resources.nix;
+  desktopBridgeEntries = fakeHomeDir:
+    (map (path: {
+      source = "${homeDir}/${path}";
+      target = "${fakeHomeDir}/${path}";
+    }) desktopResources.home)
+    ++ (map (path: {
+      source = "${xdgConfigHome}/${path}";
+      target = "${fakeHomeDir}/.config/${path}";
+    }) desktopResources.config)
+    ++ (map (path: {
+      source = "${xdgDataHome}/${path}";
+      target = "${fakeHomeDir}/.local/share/${path}";
+    }) desktopResources.data);
 
   hostToolHomeDirs = [
     ".bun"
@@ -122,6 +139,50 @@ rec {
     "org.kde.kwalletd6"
     "org.kde.secretservicecompat"
   ];
+
+  mkFakeHomeDesktopBridge = fakeHomeDir:
+    let
+      entries = desktopBridgeEntries fakeHomeDir;
+      sources = map (entry: entry.source) entries;
+      targets = map (entry: entry.target) entries;
+    in
+    ''
+      desktop_bridge_sources=(
+${renderShellArrayItems sources}
+      )
+      desktop_bridge_targets=(
+${renderShellArrayItems targets}
+      )
+
+      link_desktop_resource() {
+        local source_path="$1"
+        local target_path="$2"
+        local backup_path="$target_path.app-private.bak"
+
+        mkdir -p "$(dirname "$target_path")"
+
+        if [[ -L "$target_path" ]]; then
+          if [[ "$(readlink "$target_path")" == "$source_path" ]]; then
+            return 0
+          fi
+          rm -f "$target_path"
+        elif [[ -e "$target_path" ]]; then
+          if [[ -e "$backup_path" ]] || [[ -L "$backup_path" ]]; then
+            echo "cannot bridge $target_path: both the private path and $backup_path exist" >&2
+            return 1
+          fi
+          mv "$target_path" "$backup_path"
+        fi
+
+        ln -sT "$source_path" "$target_path"
+      }
+
+      for index in "''${!desktop_bridge_sources[@]}"; do
+        link_desktop_resource \
+          "''${desktop_bridge_sources[$index]}" \
+          "''${desktop_bridge_targets[$index]}"
+      done
+    '';
 
   mkOverrideArgs =
     {

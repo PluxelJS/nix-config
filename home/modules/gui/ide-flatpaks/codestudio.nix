@@ -41,7 +41,23 @@ lib.mkIf config.ahdg.features.flatpak {
     mkdir -p '${ideLib.homeDir}/code'
   '';
 
-  home.activation.manageFlatpakCodeStudioOverride = lib.hm.dag.entryAfter [ "prepareCodeStudioProjectHome" "prepareFlatpakIdeToolHomes" ] ''
+  home.activation.prepareCodeStudioDesktopBridge = lib.hm.dag.entryAfter [
+    "materializeFontconfigForFlatpak"
+    "materializeGtkThemeForFlatpak"
+    "materializeInputMethodForFlatpak"
+    "materializePlasmaThemeForFlatpak"
+    "prepareCodeStudioProjectHome"
+    "syncRimeStaticPayload"
+  ] ''
+    ${ideLib.mkFakeHomeDesktopBridge ideLib.codeStudioHomeDir}
+
+    rm -rf '${ideLib.homeDir}/.var/app/${ideLib.codeStudioAppId}/cache/fontconfig'
+  '';
+
+  home.activation.manageFlatpakCodeStudioOverride = lib.hm.dag.entryAfter [
+    "prepareCodeStudioDesktopBridge"
+    "prepareFlatpakIdeToolHomes"
+  ] ''
     if command -v flatpak >/dev/null 2>&1; then
       ${codeStudioOverride}
     fi

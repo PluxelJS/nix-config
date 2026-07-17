@@ -11,7 +11,7 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
 - Expose only `~/code` as writable host project storage.
 - Use Wayland only; X11 and fallback X11 are intentionally not granted.
 - Keep theme/font/input integration in the Home Manager-owned Flatpak global
-  override.
+  override and fake-home desktop bridge.
 - Seed editor defaults only when the corresponding user files do not exist.
 - Keep startup free of settings migrations and user-state repair; Code Studio
   owns its settings, workspace recovery data, locks, and extension caches.
@@ -26,6 +26,12 @@ The launcher creates:
 
 Home Manager creates `~/code` before applying the Flatpak override, so fresh
 machines get the same private-home layout.
+
+Home Manager also links the host-owned fontconfig, fonts, GTK/KDE settings,
+icons, themes, sounds, and Fcitx resources into their normal locations below
+the private home. Their targets are exposed by the global Flatpak override as
+read-only paths. Development-tool state remains private; the bridge contains
+only the shared desktop integration allowlist.
 
 ## Version Pin
 

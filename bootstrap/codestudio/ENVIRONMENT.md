@@ -107,6 +107,13 @@ resources:
 - Fonts/icons/themes: `xdg-data/fonts`, `xdg-data/icons`, `xdg-data/themes`, `~/.fonts`, `~/.icons`, `~/.themes`
 - Other desktop data: `xdg-data/color-schemes`, `xdg-config/color-schemes`, `xdg-data/sounds`, `xdg-config/mimeapps.list`, `xdg-config/mimeinfo.cache`
 
+CodeStudio replaces `HOME` and the writable XDG homes with its private home.
+Home Manager therefore mirrors this same allowlist into the private lookup
+locations using symlinks. The links do not grant additional access: every
+target must already be present in the read-only global override. Socket,
+device, session-bus, and runtime-directory permissions remain independent of
+the desktop bridge.
+
 Keep these read-only. Do not add host home access or writable desktop config access to the global override.
 
 `CodeStudio` has one app-specific writable host path, `~/code`, declared in its Flatpak manifest. Keep project access app-specific rather than putting writable host paths in the global override.

@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.ahdg.features;
   homeDir = config.home.homeDirectory;
@@ -19,7 +19,7 @@ let
     "x-scheme-handler/https"
   ];
 
-  notepadNextCommand = "notepadnext";
+  notepadNextCommand = "NotepadNext";
   notepadNextDesktopId = "NotepadNext.desktop";
   notepadNextCustomMimeType = "text/x-notepadnext-text";
   notepadNextManagedMimeTypes = notepadNextMimeTypes ++ [ notepadNextCustomMimeType ];
@@ -111,6 +111,16 @@ let
     "text/x-matlab"
     "text/x-opencl-src"
   ];
+
+  mimeAppsFile =
+    let
+      joinValues = lib.mapAttrs (_: lib.concatStringsSep ";");
+    in
+    (pkgs.formats.ini { }).generate "mimeapps.list" {
+      "Added Associations" = joinValues config.xdg.mimeApps.associations.added;
+      "Removed Associations" = joinValues config.xdg.mimeApps.associations.removed;
+      "Default Applications" = joinValues config.xdg.mimeApps.defaultApplications;
+    };
 in
 {
   xdg = lib.mkMerge [
@@ -183,6 +193,14 @@ in
         MimeType=${lib.concatStringsSep ";" notepadNextManagedMimeTypes};
       '';
 
+      # Keep the declarative policy in the lower-priority XDG data location.
+      # ~/.config/mimeapps.list is a writable regular file for application and
+      # user overrides, while this file remains the reproducible fallback.
+      dataFile."applications/mimeapps.list" = {
+        force = true;
+        source = mimeAppsFile;
+      };
+
       dataFile."applications/protontricks-launch-mangohud.desktop".text = ''
         [Desktop Entry]
         Type=Application
@@ -204,7 +222,10 @@ in
       '';
 
       mimeApps = {
-        enable = true;
+        # The Home Manager implementation writes a read-only store symlink to
+        # ~/.config/mimeapps.list. Generate the same policy ourselves above so
+        # applications can retain a writable, higher-priority override file.
+        enable = false;
 
         associations.added =
           (lib.genAttrs browserAssociationMimeTypes (_: "zen.desktop"))
@@ -287,7 +308,6 @@ in
       };
 
       configFile = {
-        "mimeapps.list".force = true;
         "user-dirs.conf".force = true;
         "user-dirs.dirs".force = true;
         "user-dirs.locale" = {
@@ -343,10 +363,33 @@ in
     fi
   '';
 
+  home.activation.prepareWritableMimeApps = lib.mkIf cfg.desktopXdg (lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    target="${config.xdg.configHome}/mimeapps.list"
+
+    # Migrate the old Home Manager/store link without touching an existing
+    # regular file containing user or application choices.
+    if [[ -L "$target" ]]; then
+      resolved="$(readlink -f "$target" 2>/dev/null || true)"
+      if [[ "$resolved" == /nix/store/* ]]; then
+        rm -f "$target"
+      fi
+    fi
+
+    install -dm755 "${config.xdg.configHome}"
+    if [[ ! -e "$target" && ! -L "$target" ]]; then
+      install -m644 /dev/null "$target"
+    elif [[ -f "$target" && ! -L "$target" ]]; then
+      chmod u+rw "$target"
+    fi
+  '');
+
   home.activation.materializeDesktopMimeApps = lib.mkIf cfg.desktopXdg (lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    install -dm755 "${config.xdg.dataHome}/applications"
-    rm -f "${config.xdg.dataHome}/applications/mimeapps.list"
-    install -m644 "${config.xdg.configHome}/mimeapps.list" "${config.xdg.dataHome}/applications/mimeapps.list"
+    target="${config.xdg.dataHome}/applications/mimeapps.list"
+    if [[ -L "$target" ]]; then
+      source="$(readlink -f "$target")"
+      rm -f "$target"
+      install -m644 "$source" "$target"
+    fi
   '');
 
   home.activation.updateMimeDatabase = lib.hm.dag.entryAfter [ "materializeDesktopMimeApps" ] ''

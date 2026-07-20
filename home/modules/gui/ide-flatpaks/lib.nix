@@ -20,7 +20,7 @@ let
     ++ (map (path: {
       source = "${xdgConfigHome}/${path}";
       target = "${fakeHomeDir}/.config/${path}";
-    }) desktopResources.config)
+    }) (desktopResources.configReadOnly ++ desktopResources.configWritable))
     ++ (map (path: {
       source = "${xdgDataHome}/${path}";
       target = "${fakeHomeDir}/.local/share/${path}";

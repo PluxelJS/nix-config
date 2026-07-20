@@ -91,7 +91,8 @@ func (v *verifier) run() {
 		v.checkSymlink(".config/fastfetch/config.jsonc")
 	}
 	if v.has("desktopXdg") {
-		v.checkSymlink(".config/mimeapps.list")
+		v.checkWritableRegularFile(".config/mimeapps.list")
+		v.checkRegularPath(".local/share/applications/mimeapps.list", "%s is a materialized MIME policy fallback", "%s should be a regular MIME policy fallback")
 		v.checkSymlink(".config/user-dirs.dirs")
 		v.checkSymlink(".config/user-dirs.locale")
 	}
@@ -582,6 +583,14 @@ func (v *verifier) checkCLion() {
 }
 
 func (v *verifier) checkDesktopRuntime() {
+	if v.has("desktopXdg") {
+		if strings.TrimSpace(commandOutput("xdg-mime", "query", "default", "text/plain")) == "NotepadNext.desktop" {
+			v.pass("Notepad Next is the effective text/plain default")
+		} else {
+			v.fail("Notepad Next is not the effective text/plain default")
+		}
+	}
+
 	if v.has("gui") {
 		kdeglobals := v.path(".config/kdeglobals")
 		if fileLineMatches(kdeglobals, `^Theme=Papirus$`) {
@@ -765,6 +774,15 @@ func (v *verifier) checkRegularPath(rel, okFormat, failFormat string) {
 		v.pass(okFormat, p)
 	} else {
 		v.fail(failFormat, p)
+	}
+}
+
+func (v *verifier) checkWritableRegularFile(rel string) {
+	p := v.path(rel)
+	if isRegular(p) && !isSymlink(p) && isWritable(p) {
+		v.pass("%s is a writable regular file", p)
+	} else {
+		v.fail("%s must be a writable regular file", p)
 	}
 }
 

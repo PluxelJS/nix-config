@@ -3,7 +3,8 @@ let
   desktopResources = import ./flatpak-desktop-resources.nix;
   desktopFilesystems =
     (map (path: "~/${path}:ro") desktopResources.home)
-    ++ (map (path: "xdg-config/${path}:ro") desktopResources.config)
+    ++ (map (path: "xdg-config/${path}:ro") desktopResources.configReadOnly)
+    ++ (map (path: "xdg-config/${path}") desktopResources.configWritable)
     ++ (map (path: "xdg-data/${path}:ro") desktopResources.data);
   globalFilesystems = desktopFilesystems ++ [
     "~/.nix-profile:ro"

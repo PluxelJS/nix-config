@@ -150,7 +150,6 @@ from this flake:
 - `~/.config/git/config`
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
-- `~/.config/mimeapps.list`
 - `~/.config/containers/systemd/verdaccio.container`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
@@ -167,6 +166,7 @@ from this flake:
 - `~/.local/share/icons/Bibata-Modern-Ice`
 - `~/.local/share/icons/Papirus`
 - `~/.local/share/icons/breeze`
+- `~/.local/share/applications/mimeapps.list`
 - `~/.local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender`
 - `~/.local/share/themes/Catppuccin-Macchiato`
 - `~/.gtkrc-2.0`
@@ -176,6 +176,10 @@ from this flake:
 
 Some files remain outside strict Nix ownership on purpose:
 
+- `~/.config/mimeapps.list`
+  This is the writable, higher-priority MIME override layer used by desktop
+  applications and user choices. Nix provides the reproducible fallback in
+  `~/.local/share/applications/mimeapps.list`.
 - `~/.config/ghostty/config-dankcolors`
   DMS still updates this file at runtime.
 - `~/.local/share/flatpak/overrides/<app-id>`
@@ -328,6 +332,9 @@ After a successful switch:
 - `~/.config/fontconfig/fonts.conf` is a regular file, not a store symlink
 - `~/.config/fontconfig/conf.d/*.conf` snippets are regular files, not store
   symlinks
+- `~/.config/mimeapps.list` is a writable regular override file, while
+  `~/.local/share/applications/mimeapps.list` is the materialized Nix fallback
+- `xdg-mime query default text/plain` resolves to `NotepadNext.desktop`
 - `~/.local/share/fonts/custom/` is a regular directory copied from the repo
 - GTK themes, fcitx themes, icon themes, and Flatpak-facing Plasma/GTK assets
   are materialized as regular files or directories

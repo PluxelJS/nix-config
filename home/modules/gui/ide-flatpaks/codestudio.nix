@@ -1,9 +1,23 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   ideLib = import ./lib.nix { inherit config lib; };
 
+  codeStudioDocker = pkgs.writeShellApplication {
+    name = "docker";
+    runtimeInputs = [ pkgs.podman-compose ];
+    text = ''
+      socket="unix://''${XDG_RUNTIME_DIR:?}/podman/podman.sock"
+
+      export CONTAINER_HOST="$socket"
+      export DOCKER_HOST="$socket"
+
+      exec ${pkgs.podman}/bin/podman --remote --url "$socket" "$@"
+    '';
+  };
+
   codeStudioPath =
     lib.concatStringsSep ":" ([
+      "${codeStudioDocker}/bin"
       "${ideLib.codeStudioHomeDir}/.local/share/mise/shims"
     ] ++ ideLib.hostToolHomePathEntries ++ [
       ideLib.profileBinDir
@@ -27,7 +41,9 @@ let
     noFilesystems = [ "host" ];
     devices = [ "kvm" ];
     talkNames = ideLib.sharedSecretTalkNames;
-    filesystems = ideLib.sharedFilesystems;
+    filesystems = ideLib.sharedFilesystems ++ [
+      "xdg-run/podman/podman.sock"
+    ];
     persists = codeStudioPersistDirs;
     env = {
       CODEX_HOME = ideLib.flatpakCodexHome;

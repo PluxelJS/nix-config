@@ -146,6 +146,7 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 		if err := requireSudo(); err != nil {
 			return result, err
 		}
+		opts.sudoReady = true
 	}
 
 	for _, pkg := range a.cfg.Packages.Base {
@@ -220,6 +221,13 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 		}
 	} else {
 		result.printSummary(a.depApplyCommand(opts))
+	}
+
+	if features["localsend"] {
+		fmt.Println()
+		if err := a.runFirewall(firewallOptions{apply: opts.apply, sudoReady: opts.sudoReady}); err != nil {
+			return result, err
+		}
 	}
 
 	return result, nil

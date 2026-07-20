@@ -6,6 +6,7 @@ features = [
   "desktopXdg",
   "fonts",
   "gui",
+  "localsend",
   "portal",
   "flatpak",
   "graphics",
@@ -44,6 +45,7 @@ gui = [
   "dms-shell",
   "zen-browser-bin",
 ]
+localsend = ["ufw"]
 
 [packages.profiles]
 desktop = [

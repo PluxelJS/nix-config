@@ -133,6 +133,9 @@ func (v *verifier) run() {
 		v.checkMaterializedGUI()
 		v.checkRetiredGUIState()
 	}
+	if v.has("localsend") {
+		v.checkLocalSend()
+	}
 
 	if v.has("themeRuntime") {
 		p := v.path(".config/ghostty/config-dankcolors")
@@ -150,6 +153,26 @@ func (v *verifier) run() {
 	v.checkInteractiveShell()
 	v.checkFlatpakApps()
 	v.checkDesktopRuntime()
+}
+
+func (v *verifier) checkLocalSend() {
+	if commandExists("localsend_app") && commandExists("localsend") {
+		v.pass("LocalSend is installed through the Home Manager profile")
+	} else {
+		v.fail("Nix-managed LocalSend launchers are missing")
+	}
+
+	profile := readFile(localSendUFWProfilePath)
+	if strings.Contains(profile, "[LocalSend]") && strings.Contains(profile, "ports=53317/tcp|53317/udp") {
+		v.pass("LocalSend UFW application profile declares TCP/UDP 53317")
+	} else {
+		v.fail("LocalSend UFW application profile is missing or invalid")
+	}
+	if localSendUFWRulesPresent() {
+		v.pass("LocalSend UFW rules allow discovery and transfer on TCP/UDP 53317")
+	} else {
+		v.fail("LocalSend UFW rules are missing TCP/UDP 53317")
+	}
 }
 
 func (v *verifier) checkGUIFiles() {

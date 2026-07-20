@@ -45,6 +45,13 @@ Check or repair only the Arch-side runtime base:
 ~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
 ```
 
+Check or repair the LocalSend UFW application profile and TCP/UDP 53317 rules:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh firewall
+~/.config/nix/bootstrap/cachyos.sh firewall --apply
+```
+
 Install or catch up slower Flatpak app installs after the desktop base is up:
 
 ```bash
@@ -84,12 +91,14 @@ Canonical source files live here:
 - `~/.config/nix/home/modules/gui/fontconfig.nix`
 - `~/.config/nix/home/modules/gui/gtk.nix`
 - `~/.config/nix/home/modules/gui/flatpak.nix`
+- `~/.config/nix/home/modules/gui/localsend.nix`
 - `~/.config/nix/home/modules/podman/`
 - `~/.config/nix/home/modules/xdg.nix`
 - `~/.config/nix/home/modules/profile.nix`
 - `~/.config/nix/docs/shortcut-policy.md`
 - `~/.config/nix/docs/shell-shortcuts.md`
 - `~/.config/nix/docs/gh-auth.md`
+- `~/.config/nix/bootstrap/ufw/localsend`
 
 The files under `~/.config/<tool>/...` and `~/.local/share/...` are runtime
 outputs. They should exist after activation, but they are not the canonical

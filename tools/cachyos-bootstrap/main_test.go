@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +18,42 @@ func TestBundledConfigValidates(t *testing.T) {
 	}
 	if err := validateConfig(cfg); err != nil {
 		t.Fatal(err)
+	}
+
+	desktopFeatures := cfg.Profiles["desktop"].Features
+	if !stringInSlice("localsend", desktopFeatures) {
+		t.Fatal("desktop profile should enable the LocalSend feature")
+	}
+	if got := cfg.Packages.Features["localsend"]; len(got) != 1 || got[0] != "ufw" {
+		t.Fatalf("LocalSend host dependencies = %v, want [ufw]", got)
+	}
+	if stringInSlice("ufw", cfg.Packages.Features["gui"]) {
+		t.Fatal("UFW should follow the LocalSend feature, not the generic GUI feature")
+	}
+}
+
+func TestDetectsLocalSendUFWRules(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "user.rules")
+	rules := `### tuple ### allow udp 53317 0.0.0.0/0 any 0.0.0.0/0 LocalSend - in
+-A ufw-user-input -p udp --dport 53317 -j ACCEPT -m comment --comment 'dapp_LocalSend'
+### tuple ### allow tcp 53317 0.0.0.0/0 any 0.0.0.0/0 LocalSend - in
+-A ufw-user-input -p tcp --dport 53317 -j ACCEPT -m comment --comment 'dapp_LocalSend'
+`
+	if err := os.WriteFile(path, []byte(rules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !ufwRulesFileHasLocalSend(path) {
+		t.Fatal("expected LocalSend TCP/UDP rules to be detected")
+	}
+}
+
+func TestRejectsIncompleteLocalSendUFWRules(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "user.rules")
+	if err := os.WriteFile(path, []byte("allow udp 53317 LocalSend\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if ufwRulesFileHasLocalSend(path) {
+		t.Fatal("expected a UDP-only LocalSend rule to be rejected")
 	}
 }
 
@@ -102,7 +139,7 @@ func TestRootHelpIncludesSubcommands(t *testing.T) {
 	}
 
 	help := out.String()
-	for _, want := range []string{"bootstrap", "deps", "flatpaks", "pull-gui-config", "cleanup", "verify"} {
+	for _, want := range []string{"bootstrap", "deps", "firewall", "flatpaks", "pull-gui-config", "cleanup", "verify"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help output missing %q:\n%s", want, help)
 		}

@@ -6,9 +6,9 @@ Fresh-machine path for recreating this environment on CachyOS/Arch.
 
 Bootstrap prepares three layers:
 
-- **Host packages:** compositor/session runtimes and system integration from
-  CachyOS/Arch repositories, with explicit AUR exceptions only when no reliable
-  repo package is available.
+- **Host packages:** compositor/session runtimes, firewall policy, and system
+  integration from CachyOS/Arch repositories, with explicit AUR exceptions only
+  when no reliable repo package is available.
 - **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
   policy, and user services.
 - **Desktop Flatpaks:** apps currently used on the workstation, including
@@ -23,13 +23,15 @@ The fresh-machine logic is not embedded in large shell scripts. It is split into
 
 - `bootstrap/cachyos.toml`: declarative package, command, profile, and Flatpak
   policy
+- `bootstrap/ufw/`: repo-owned UFW application profiles
 - `bootstrap/bin/cachyos-bootstrap`: committed Linux amd64 binary that can run
   immediately after `git clone`
 - `tools/cachyos-bootstrap/`: Go source for the binary
 - `bootstrap/cachyos.sh`: thin compatibility wrapper
 
-Routine repair, Flatpak catch-up, GUI config import, cleanup, and verification
-are subcommands of the same binary: `bootstrap/cachyos.sh deps`,
+Routine repair, firewall policy, Flatpak catch-up, GUI config import, cleanup,
+and verification are subcommands of the same binary:
+`bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh firewall`,
 `bootstrap/cachyos.sh flatpaks`, `bootstrap/cachyos.sh pull-gui-config`,
 `bootstrap/cachyos.sh cleanup`, and `bootstrap/cachyos.sh verify`.
 
@@ -71,6 +73,7 @@ What it does:
   OpenRazer runtime packages, and selected desktop extras such as CopyQ and
   EasyEffects
 - adds the current user to profile-required groups such as `openrazer`
+- installs LocalSend's UFW profile and allows TCP/UDP port 53317
 - switches the matching Home Manager flake output
 - defers Flathub apps plus the local Code Studio Flatpak package to an
   explicit catch-up command
@@ -96,6 +99,13 @@ Install slower app-layer Flatpaks later with:
 
 Use `--with-flatpaks` only when you explicitly want remote and local Flatpak app
 installation to run in the same foreground bootstrap.
+
+Check or repair only LocalSend's host firewall policy with:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh firewall
+~/.config/nix/bootstrap/cachyos.sh firewall --apply
+```
 
 ## GUI Config Import
 

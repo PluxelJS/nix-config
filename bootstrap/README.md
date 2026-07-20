@@ -4,9 +4,10 @@ Fresh-machine setup lives here.
 
 The primary implementation is the committed Go binary:
 
-- `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/cleanup/verify CLI
+- `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/firewall/cleanup/verify CLI
 - `bootstrap/cachyos.toml`: profile, package, AUR exception, and Flatpak policy
 - `bootstrap/codestudio/`: local Code Studio Flatpak package used by desktop bootstrap
+- `bootstrap/ufw/`: repo-owned host firewall application profiles
 - `tools/cachyos-bootstrap/`: source for rebuilding the binary
 
 The shell entrypoint is intentionally thin:
@@ -16,6 +17,7 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ~/.config/nix/bootstrap/cachyos.sh --apply --minimal
 ~/.config/nix/bootstrap/cachyos.sh deps
+~/.config/nix/bootstrap/cachyos.sh firewall --apply
 ~/.config/nix/bootstrap/cachyos.sh pull-gui-config
 ~/.config/nix/bootstrap/cachyos.sh cleanup
 ~/.config/nix/bootstrap/cachyos.sh verify
@@ -45,6 +47,12 @@ irrelevant here because fresh machines run the committed binary, not `go run`.
 `pull-gui-config` is the explicit reverse-import path for GUI-edited static
 config. It is dry-run by default and only imports whitelisted non-secret files
 with `--apply`.
+
+LocalSend is supplied by Home Manager through the desktop GUI module. Its host
+integration remains on the system side: `bootstrap/cachyos.sh deps --apply`
+installs UFW and applies the repo-owned `LocalSend` application profile for
+TCP/UDP port 53317. The same policy can be checked or repaired independently
+with `bootstrap/cachyos.sh firewall [--apply]`.
 
 Rebuild the committed binary after changing Go code or `go.mod`:
 

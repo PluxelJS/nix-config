@@ -27,6 +27,7 @@ var cleanupGroups = []struct {
 			"ghostty-shell-integration",
 			"ghostty-terminfo",
 			"git",
+			"localsend",
 			"mise",
 			"maplemono-cn",
 			"maplemono-nf-cn",

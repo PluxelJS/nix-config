@@ -14,6 +14,7 @@ Home Manager owns:
 - fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
 - user-scoped services such as the Verdaccio Podman quadlet
+- LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
 
 The host package manager owns:
 
@@ -21,6 +22,7 @@ The host package manager owns:
 - compositor/session runtimes such as MangoWC and DMS
 - graphics, seat, portal runtime, input-method runtime, and polkit system pieces
 - local credentials and app runtime state
+- host firewall state; the bootstrap applies repo-owned UFW profiles
 
 ## Quick Start
 
@@ -74,7 +76,7 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 - `home/default.nix`: shared module root
 - `home/modules/profile.nix`: base profiles plus feature overrides
 - `home/modules/shell/`: shell behavior and CLI tooling
-- `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak
+- `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak, LocalSend
 - `home/modules/podman/`: user-scoped container quadlets
 - `home/files/`: native-format config sources and small runtime seeds
 - `bootstrap/`: fresh-machine binary, config, and thin shell entrypoint

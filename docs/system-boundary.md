@@ -23,6 +23,7 @@ system-layer and kept out of this repo:
 - PAM integration
 - display-manager or greeter startup
 - seat, login-session, or boot-time service wiring
+- host firewall rules
 
 ## System-Layer Examples
 
@@ -81,7 +82,7 @@ Needed from Arch repositories:
 - baseline: `zsh`, `pkgfile`
 - desktop runtime: `fcitx5`, `fcitx5-gtk`, `fcitx5-qt`, `fcitx5-rime`
 - integration: `flatpak`, `podman`, `xdg-desktop-portal`,
-  `xdg-desktop-portal-kde`, `dbus`
+  `xdg-desktop-portal-kde`, `dbus`, `ufw`
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
   `plasma-workspace`, `gtk3`, `python`
 - desktop extras: `ab-download-manager`, `baloo`, `blueman`, `copyq`,
@@ -92,6 +93,11 @@ Needed from Arch repositories:
 - Razer runtime: `linux-cachyos-headers`, `openrazer-daemon`,
   `openrazer-driver-dkms`, `python-openrazer`; the desktop user must be in the
   `openrazer` group
+
+The two indicator libraries are intentionally separate host dependencies:
+`libappindicator` supports Clash Party, Polychromatic, and the ABDM tray, while
+`libayatana-appindicator` keeps Lutris tray support available. Nix-managed
+LocalSend uses its own store closure and does not consume either host package.
 
 AUR packages used by the desktop profile:
 
@@ -125,6 +131,13 @@ large applications they call stay in the host package layer.
 
 Desktop Flatpaks are handled by `bootstrap/cachyos.sh --apply`
 when they are part of the current workflow or validation canaries.
+
+LocalSend is an explicit split-boundary case: Home Manager owns the application
+package and launchers, while the bootstrap owns its UFW application profile and
+the TCP/UDP 53317 host rules. Run `bootstrap/cachyos.sh firewall --apply` to
+repair just that system-layer policy. Both sides follow the desktop profile's
+independent `localsend` feature, so disabling the feature removes LocalSend
+without coupling firewall policy to the rest of the GUI stack.
 
 ## Package-Repair Rule
 

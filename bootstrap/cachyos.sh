@@ -7,7 +7,7 @@ case "${1:-}" in
   -h | --help)
     exec "$repo_dir/bootstrap/bin/cachyos-bootstrap" "$@"
     ;;
-  bootstrap | deps | flatpaks | pull-gui-config | cleanup | verify)
+  bootstrap | deps | firewall | flatpaks | pull-gui-config | cleanup | verify)
     exec "$repo_dir/bootstrap/bin/cachyos-bootstrap" "$@"
     ;;
   *)

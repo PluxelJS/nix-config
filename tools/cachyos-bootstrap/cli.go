@@ -45,7 +45,21 @@ func (a app) newRootCommand() *cobra.Command {
 	}
 	cmd.CompletionOptions.DisableDefaultCmd = true
 	addBootstrapFlags(cmd, &rootOpts)
-	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFlatpaksCommand(), a.newPullGUIConfigCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFirewallCommand(), a.newFlatpaksCommand(), a.newPullGUIConfigCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	return cmd
+}
+
+func (a app) newFirewallCommand() *cobra.Command {
+	opts := firewallOptions{}
+	cmd := &cobra.Command{
+		Use:   "firewall",
+		Short: "Check or apply LocalSend host firewall policy",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.runFirewall(opts)
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install the UFW app profile and allow LocalSend ports")
 	return cmd
 }
 

@@ -1,0 +1,4 @@
+[LocalSend]
+title=LocalSend
+description=LocalSend local network discovery and file transfer
+ports=53317/tcp|53317/udp

@@ -8,6 +8,7 @@ let
     "desktopXdg"
     "fonts"
     "gui"
+    "localsend"
     "portal"
     "flatpak"
     "graphics"
@@ -87,6 +88,7 @@ in
       desktopXdg = lib.mkEnableOption "desktop MIME defaults, user dirs, and terminal registration";
       fonts = lib.mkEnableOption "font packages and fontconfig policy";
       gui = lib.mkEnableOption "desktop theme stack such as GTK, Plasma, and icon assets";
+      localsend = lib.mkEnableOption "LocalSend and its CachyOS host integration";
       portal = lib.mkEnableOption "xdg-desktop-portal integration";
       flatpak = lib.mkEnableOption "global Flatpak host integration";
       graphics = lib.mkEnableOption "nixGL-based graphics wrappers";
@@ -119,6 +121,10 @@ in
       {
         assertion = !cfg.features.portal || cfg.features.gui;
         message = "Portal integration requires the GUI theme stack.";
+      }
+      {
+        assertion = !cfg.features.localsend || (cfg.features.gui && cfg.features.graphics);
+        message = "LocalSend on CachyOS requires the GUI and nixGL graphics features.";
       }
       {
         assertion = !cfg.features.themeRuntime || cfg.features.ghostty;

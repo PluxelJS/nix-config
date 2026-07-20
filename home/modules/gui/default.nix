@@ -11,6 +11,7 @@
     ./fontconfig.nix
     ./gtk.nix
     ./input-method.nix
+    ./localsend.nix
     ./mango.nix
     ./graphics.nix
     ./plasma.nix

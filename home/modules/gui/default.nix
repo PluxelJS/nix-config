@@ -5,6 +5,7 @@
     ./theme-runtime.nix
     ./theme-switching.nix
     ./assets.nix
+    ./desktop-apps.nix
     ./dolphin.nix
     ./flatpak.nix
     ./ide-flatpaks

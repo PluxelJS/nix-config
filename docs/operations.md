@@ -91,6 +91,7 @@ Canonical source files live here:
 - `~/.config/nix/home/modules/gui/fontconfig.nix`
 - `~/.config/nix/home/modules/gui/gtk.nix`
 - `~/.config/nix/home/modules/gui/flatpak.nix`
+- `~/.config/nix/home/modules/gui/desktop-apps.nix`
 - `~/.config/nix/home/modules/gui/localsend.nix`
 - `~/.config/nix/home/modules/podman/`
 - `~/.config/nix/home/modules/xdg.nix`
@@ -155,6 +156,7 @@ from this flake:
 - `~/.config/user-dirs.dirs`
 - `~/.config/user-dirs.locale`
 - `~/.config/xdg-desktop-portal/portals.conf`
+- `~/.config/systemd/user/copyq.service`
 - `~/.config/xdg-terminals.list`
 - `~/.config/xsettingsd/xsettingsd.conf`
 - `~/.config/zsh/.zshenv`
@@ -245,6 +247,10 @@ Keep app-private writable state in the sandbox, for example:
   shared host `~/.codex/config.toml`
 - `.npm`, `.bun`
 - app-local caches, plugin indexes, and editor-specific mutable state
+
+Zed is the native Nix-managed IDE rather than a Flatpak. Its package and
+nixGL wrapper are declared in `home/modules/gui/desktop-apps.nix`; writable
+editor state remains under `~/.config/zed` and `~/.local/share/zed`.
 
 `mise` is intentionally treated as environment/toolchain state rather than as a
 pure shared config surface. Project-level `mise.toml` remains the canonical

@@ -85,7 +85,7 @@ Needed from Arch repositories:
   `xdg-desktop-portal-kde`, `dbus`, `ufw`
 - Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
   `plasma-workspace`, `gtk3`, `python`
-- desktop extras: `ab-download-manager`, `baloo`, `blueman`, `copyq`,
+- desktop extras: `ab-download-manager`, `baloo`, `blueman`,
   `dms-shell`, `dolphin`, `easyeffects`, `flatseal`, `libappindicator`,
   `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
 - workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
@@ -115,8 +115,10 @@ Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
   target started by Mango's `exec-once`
-- `~/.config/mango/startup.conf` owns session apps such as CopyQ, ABDM tray,
-  Mihomo Party, browser warmup, and display helper scripts
+- `copyq.service` is Nix-managed, supervised by systemd, and bound to
+  `mango-session.target`; `~/.config/mango/startup.conf` owns the remaining
+  session apps such as ABDM tray, Mihomo Party, browser warmup, and display
+  helper scripts
 - package-provided XDG autostart entries remain package-owned; stale or
   migrated user overrides under `~/.config/autostart` are removed by activation
 
@@ -124,6 +126,12 @@ Home Manager supplies the user tools and assets listed in `home/modules/`.
 Host packages are still used when a binary is launched by the compositor,
 display/session plumbing, or a root/system-owned service before the Nix profile
 can be assumed.
+
+CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
+pinned to 16.0.0 until nixpkgs catches up because that release line fixes the
+long-running clipboard process leak; meatshell is pinned to the verified
+upstream 0.6.5 release artifact; GPU-backed meatshell and Zed launch through
+the CachyOS nixGL bridge.
 
 Small user glue scripts such as `abdm-launch` and
 `protontricks-launch-mangohud` are Home Manager-owned under `~/.local/bin`; the

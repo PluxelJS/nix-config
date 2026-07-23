@@ -70,7 +70,7 @@ What it does:
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
 - installs desktop helper packages, browser/download-manager packages,
-  OpenRazer runtime packages, and selected desktop extras such as CopyQ and
+  OpenRazer runtime packages, and selected desktop extras such as Dolphin and
   EasyEffects
 - adds the current user to profile-required groups such as `openrazer`
 - installs LocalSend's UFW profile and allows TCP/UDP port 53317

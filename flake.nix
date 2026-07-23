@@ -18,7 +18,15 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-mise, home-manager, ragenix, nixgl, ... }:
+  outputs =
+    {
+      nixpkgs,
+      nixpkgs-mise,
+      home-manager,
+      ragenix,
+      nixgl,
+      ...
+    }:
     let
       system = "x86_64-linux";
       pkgsMise = import nixpkgs-mise {
@@ -32,6 +40,25 @@
           (final: prev: {
             mise = pkgsMise.mise;
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
+            meatshell = final.callPackage ./pkgs/meatshell.nix { };
+            copyq = prev.copyq.overrideAttrs (old: {
+              # CopyQ 15 fixed a leak in the long-running Wayland clipboard
+              # monitor/provider processes. Keep the Nix-managed desktop on
+              # the current release until the pinned nixpkgs catches up.
+              version = "16.0.0";
+              src = final.fetchurl {
+                url = "https://github.com/hluk/CopyQ/releases/download/v16.0.0/CopyQ-16.0.0.tar.gz";
+                hash = "sha256-2dizKZhhiu156Xzy0VLReEUMzR3+xgs/ys0Hs1ME+og=";
+              };
+              buildInputs = old.buildInputs ++ [
+                final.kdePackages.qca
+                final.kdePackages.qtkeychain
+              ];
+              cmakeFlags = old.cmakeFlags ++ [
+                "-DMINIAUDIO_INCLUDE_DIR=${final.miniaudio.dev}/include/miniaudio"
+              ];
+              patches = [ ];
+            });
             songrec = prev.songrec.override {
               # SongRec opens ALSA through libasound at runtime. The plain
               # alsa-lib package in nixpkgs does not include the Pulse/PipeWire
@@ -59,7 +86,8 @@
             }
           ];
         };
-    in {
+    in
+    {
       homeModules.default = ./home/default.nix;
 
       homeConfigurations = {

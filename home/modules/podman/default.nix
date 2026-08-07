@@ -1,7 +1,7 @@
 { config, lib, ... }:
 {
   imports = [
-    ./acode.nix
+    ./proxy-llm.nix
     ./verdaccio.nix
   ];
 

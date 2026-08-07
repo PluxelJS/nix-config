@@ -37,6 +37,33 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 ```
 
+## Proxy LLM Service
+
+The desktop profile generates one `proxy-llm.service` and one secret-free
+compose file in the Nix store. The service runs Proxy-LLM-API, Claude Code Hub,
+PostgreSQL, Dragonfly, and sing-box as one rootless Podman project.
+
+```bash
+systemctl --user status proxy-llm.service
+systemctl --user restart proxy-llm.service
+journalctl --user-unit=proxy-llm.service --follow
+```
+
+Nix owns the service definition, image digests, ports, dependencies, and mount
+layout in `home/modules/podman/proxy-llm.nix`. It does not put credentials or
+mutable data in the Nix store. These stay in `~/.local/state/proxy-llm/`:
+
+- `.env`: Hub and PostgreSQL credentials and application settings
+- `api-config.yaml` and `sing-box.json`: local service configuration
+- `postgres/` and `dragonfly/`: database state
+- `auth/`, `logs/`, and `plugins/`: Proxy-LLM-API runtime state
+
+Back up that directory while `proxy-llm.service` is stopped. Restoring it on
+another machine before applying the desktop profile restores the same local
+service state. The service checks for all three required configuration files,
+so a fresh machine without restored local state fails closed instead of
+starting with placeholder credentials.
+
 Check or repair only the Arch-side runtime base:
 
 ```bash
@@ -178,6 +205,7 @@ from this flake:
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
 - `~/.config/containers/systemd/verdaccio.container`
+- `~/.config/systemd/user/proxy-llm.service`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
 - `~/.config/user-dirs.locale`
@@ -203,6 +231,10 @@ from this flake:
 ## Intentional Manual State
 
 Some files remain outside strict Nix ownership on purpose:
+
+- `~/.local/state/proxy-llm/`
+  Credentials, OAuth tokens, databases, logs, and other state for the
+  Nix-defined rootless Podman stack remain local and writable.
 
 - `~/.config/mimeapps.list`
   This is the writable, higher-priority MIME override layer used by desktop

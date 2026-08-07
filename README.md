@@ -15,7 +15,8 @@ Home Manager owns:
   helpers, KWallet, PolicyKit agent, themes, and portal services
 - fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
-- user-scoped services such as the Verdaccio Podman quadlet
+- user-scoped services such as the Proxy LLM compose stack and Verdaccio
+  Podman quadlet
 - LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
 
 The host package manager owns:
@@ -72,6 +73,11 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 ```
 
+The desktop profile enables `proxy-llm.service`. Nix owns its compose topology
+and pinned images, while machine-local configuration and persistent data stay
+under `~/.local/state/proxy-llm/`. See
+[docs/operations.md](docs/operations.md) for service and backup commands.
+
 ## Structure
 
 - `flake.nix`: top-level Home Manager entrypoints
@@ -79,7 +85,7 @@ nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
 - `home/modules/profile.nix`: base profiles plus feature overrides
 - `home/modules/shell/`: shell behavior and CLI tooling
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak, LocalSend
-- `home/modules/podman/`: user-scoped container quadlets
+- `home/modules/podman/`: user-scoped Podman compose services and quadlets
 - `home/files/`: native-format config sources and small runtime seeds
 - `bootstrap/`: fresh-machine binary, config, and thin shell entrypoint
 - `tools/cachyos-bootstrap/`: Go source for the bootstrap binary

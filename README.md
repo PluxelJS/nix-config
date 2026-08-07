@@ -11,6 +11,8 @@ Home Manager owns:
 
 - shell tools and interactive behavior
 - GUI config under `$HOME`, including Ghostty, Mango, XDG defaults, and portals
+- a coherent Nix-owned KDE user runtime: Dolphin, Ark, KDED, KIO/KService
+  helpers, KWallet, PolicyKit agent, themes, and portal services
 - fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
 - user-scoped services such as the Verdaccio Podman quadlet
@@ -20,7 +22,7 @@ The host package manager owns:
 
 - `/etc`, PAM, display managers, login/session plumbing, and systemd system units
 - compositor/session runtimes such as MangoWC and DMS
-- graphics, seat, portal runtime, input-method runtime, and polkit system pieces
+- graphics, seat, input-method runtime, and PolicyKit/system plumbing
 - local credentials and app runtime state
 - host firewall state; the bootstrap applies repo-owned UFW profiles
 
@@ -105,6 +107,11 @@ Exported configurations:
 
 Activation writes resolved profile metadata to `~/.config/ahdg/`, which the
 bootstrap verifier uses for post-switch checks.
+
+KDE interface files remain writable user state. Home Manager only seeds them
+when missing; it never locks or overwrites existing GUI choices. Use
+`pull-gui-config` to capture live choices back into the repo, and
+`ahdg-kde-config reset ...` only for an explicit backed-up restore.
 
 ## Docs
 

@@ -8,6 +8,9 @@ previewsShown=false
 Places Icons Auto-resize=false
 Places Icons Static Size=22
 
+[MainWindow]
+MenuBar=Disabled
+
 [MainWindow][Toolbar mainToolBar]
 ToolButtonStyle=IconOnly
 

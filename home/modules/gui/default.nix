@@ -6,6 +6,8 @@
     ./theme-switching.nix
     ./assets.nix
     ./desktop-apps.nix
+    ./kde-runtime.nix
+    ./kde-config.nix
     ./dolphin.nix
     ./flatpak.nix
     ./ide-flatpaks

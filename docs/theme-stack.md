@@ -32,10 +32,9 @@ environment by Home Manager:
 - `pkgs.kdePackages.breeze-icons`
 - font packages and fontconfig rules
 
-Darkly is intentionally system-owned (`darkly` on Cachy/Arch/AUR) because it
-provides Qt/KDE style plugins that must match the system Plasma/Qt plugin
-loader. Nix still writes `widgetStyle=Darkly` as policy, but does not provide
-the plugin payload.
+Darkly and Breeze are part of the Nix KDE closure, so their Qt/KDE plugins
+match the Nix application runtime. The host graphics driver is attached with
+nixGL and does not participate in Qt plugin selection.
 
 Nix ownership includes both of these delivery modes:
 
@@ -91,6 +90,9 @@ Portal-specific rule:
 - Do not rely on ad-hoc session import timing as the primary mechanism for
   portal theming, because DBus/systemd user activation can otherwise start the
   same GUI app under a different theme context.
+- Home Manager activation invokes `ahdg-theme` with `--preserve-kde`; it may
+  refresh GTK/session state but cannot overwrite KDE GUI choices. Running
+  `ahdg-theme apply light|dark` directly is an explicit request to update KDE.
 
 ## Current Nix-Managed Theme Surfaces
 
@@ -125,15 +127,15 @@ Practical rule:
 
 ## Grandfathered Exceptions
 
-There are a small number of existing user-config cases where the runtime binary
-is system-owned but the policy/data layer is still intentionally Nix-owned:
+There is one existing user-config case where the runtime binary is system-owned
+but the policy/data layer is still intentionally Nix-owned:
 
 - `fcitx5`: runtime stays on the host side, but Nix owns the config, theme
   assets, Rime baseline payload, and desktop/session environment policy
 
-`dolphin` still reads `~/.config/ahdg/theme/session.env` through its daemon, but
-its GUI preference files are only seeded with defaults and are no longer
-continuously enforced by Home Manager.
+`dolphin` is now Nix-owned and reads `~/.config/ahdg/theme/session.env` through
+its daemon. Its GUI preference files are still only seeded with defaults and
+are never continuously enforced by Home Manager.
 
 These cases are not a reason to expand new app theming to unrelated
 system-installed apps.

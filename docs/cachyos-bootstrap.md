@@ -14,8 +14,9 @@ Bootstrap prepares three layers:
 - **Desktop Flatpaks:** apps currently used on the workstation, including
   keybind targets, MIME defaults, IDE sandboxes, and validation canaries.
 
-This keeps migration fast without forcing MangoWC, DMS, or graphics/session
-integration through Nix on a non-NixOS host.
+MangoWC, DMS, drivers, and system integration stay on CachyOS. KDE applications
+and portal/user services form a coherent Nix-owned user runtime connected to
+the host graphics stack through nixGL.
 
 ## Implementation
 
@@ -70,8 +71,9 @@ What it does:
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
 - installs desktop helper packages, browser/download-manager packages,
-  OpenRazer runtime packages, and selected desktop extras such as Dolphin and
-  EasyEffects
+  OpenRazer runtime packages, and host desktop extras such as EasyEffects;
+  Dolphin, Ark, KDED, KDE utilities, KWallet, PolicyKit agent, and portals come
+  from Home Manager
 - adds the current user to profile-required groups such as `openrazer`
 - installs LocalSend's UFW profile and allows TCP/UDP port 53317
 - switches the matching Home Manager flake output
@@ -117,8 +119,10 @@ source tree with an explicit dry-run first:
 ~/.config/nix/bootstrap/cachyos.sh pull-gui-config --apply
 ```
 
-The import list is intentionally conservative: static Mango, Ghostty, Dolphin,
-and fcitx config files only. Runtime state such as DMS colors, `gh` auth,
+The import list is intentionally conservative: static Mango, Ghostty, KDE
+appearance, Dolphin, Ark, and fcitx config files only. KDE INI files are
+normalized and generated hashes, timestamps, duplicate keys, and recent
+directory history are discarded. Runtime state such as DMS colors, `gh` auth,
 KWallet, user dictionaries, app caches, Flatpak private state, and IDE project
 history stays local.
 

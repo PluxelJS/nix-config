@@ -1,0 +1,169 @@
+[General]
+ColorScheme=CatppuccinMacchiatoLavender
+TerminalApplication=/home/ahdg/.nix-profile/bin/ghostty --gtk-single-instance=true
+XftHintStyle=hintslight
+XftSubPixel=rgb
+fixed=Monospace,13,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+font=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+
+[Icons]
+Theme=Papirus
+
+[KDE]
+AnimationDurationFactor=0.25
+LookAndFeelPackage=Catppuccin-Macchiato-Lavender
+ShowDeleteCommand=false
+contrast=4
+frameContrast=0.2
+widgetStyle=Darkly
+
+[KFileDialog Settings]
+Allow Expansion=false
+Automatically select filename extension=true
+Breadcrumb Navigation=false
+Decoration position=2
+Show Full Path=false
+Show Inline Previews=true
+Show Preview=false
+Show Speedbar=true
+Show hidden files=false
+Sort by=Name
+Sort directories first=true
+Sort hidden files last=false
+Sort reversed=false
+Speedbar Width=89
+View Style=DetailTree
+
+[PreviewSettings]
+EnableRemoteFolderThumbnail=false
+MaximumRemoteSize=0
+
+[WM]
+activeBackground=36, 39, 58
+activeBlend=202, 211, 245
+activeFont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+activeForeground=202, 211, 245
+inactiveBackground=24, 25, 38
+inactiveBlend=165, 173, 203
+inactiveForeground=165, 173, 203
+
+[ColorEffects:Disabled]
+Color=36, 39, 58
+ColorAmount=0.30000000000000004
+ColorEffect=2
+ContrastAmount=0.1
+ContrastEffect=0
+IntensityAmount=-1
+IntensityEffect=0
+
+[ColorEffects:Inactive]
+ChangeSelectionColor=true
+Color=36, 39, 58
+ColorAmount=0.5
+ColorEffect=3
+ContrastAmount=0
+ContrastEffect=0
+Enable=true
+IntensityAmount=0
+IntensityEffect=0
+
+[Colors:Button]
+BackgroundAlternate=183,189,248
+BackgroundNormal=54, 58, 79
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:Complementary]
+BackgroundAlternate=24, 25, 38
+BackgroundNormal=30, 32, 48
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:Header]
+BackgroundAlternate=24, 25, 38
+BackgroundNormal=30, 32, 48
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:Selection]
+BackgroundAlternate=183,189,248
+BackgroundNormal=183,189,248
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundInactive=30, 32, 48
+ForegroundActive=245, 169, 127
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=24, 25, 38
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:Tooltip]
+BackgroundAlternate=27,25,35
+BackgroundNormal=36, 39, 58
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:View]
+BackgroundAlternate=30, 32, 48
+BackgroundNormal=36, 39, 58
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246
+
+[Colors:Window]
+BackgroundAlternate=24, 25, 38
+BackgroundNormal=30, 32, 48
+DecorationFocus=183,189,248
+DecorationHover=54, 58, 79
+ForegroundActive=245, 169, 127
+ForegroundInactive=165, 173, 203
+ForegroundLink=183,189,248
+ForegroundNegative=237, 135, 150
+ForegroundNeutral=238, 212, 159
+ForegroundNormal=202, 211, 245
+ForegroundPositive=166, 218, 149
+ForegroundVisited=198, 160, 246

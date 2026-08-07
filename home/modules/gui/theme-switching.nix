@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   autoSwitchEnabled = config.ahdg.theme.autoSwitch.enable;
   runtime = config.ahdg.theme.runtime;
@@ -15,22 +20,20 @@ let
     )
     + "\n";
 
-  modeCase =
-    name: mode:
-    ''
-      ${name})
-        gtk_theme_name=${lib.escapeShellArg mode.gtk.themeName}
-        gtk_theme_spec=${lib.escapeShellArg mode.gtk.themeSpec}
-        gtk_theme_dir=${lib.escapeShellArg mode.gtk.themeDir}
-        gtk_prefer_dark=${if mode.gtk.preferDark then "1" else "0"}
-        gsettings_color_scheme=${lib.escapeShellArg mode.gsettingsColorScheme}
-        kde_color_scheme=${lib.escapeShellArg mode.kde.colorSchemeName}
-        kde_color_scheme_file=${lib.escapeShellArg mode.kde.colorSchemeFile}
-        kde_look_and_feel=${lib.escapeShellArg mode.kde.lookAndFeelName}
-        kde_widget_style=${lib.escapeShellArg mode.kde.widgetStyle}
-        session_env=${lib.escapeShellArg (envText mode)}
-        ;;
-    '';
+  modeCase = name: mode: ''
+    ${name})
+      gtk_theme_name=${lib.escapeShellArg mode.gtk.themeName}
+      gtk_theme_spec=${lib.escapeShellArg mode.gtk.themeSpec}
+      gtk_theme_dir=${lib.escapeShellArg mode.gtk.themeDir}
+      gtk_prefer_dark=${if mode.gtk.preferDark then "1" else "0"}
+      gsettings_color_scheme=${lib.escapeShellArg mode.gsettingsColorScheme}
+      kde_color_scheme=${lib.escapeShellArg mode.kde.colorSchemeName}
+      kde_color_scheme_file=${lib.escapeShellArg mode.kde.colorSchemeFile}
+      kde_look_and_feel=${lib.escapeShellArg mode.kde.lookAndFeelName}
+      kde_widget_style=${lib.escapeShellArg mode.kde.widgetStyle}
+      session_env=${lib.escapeShellArg (envText mode)}
+      ;;
+  '';
 
   modeCases = lib.concatStringsSep "\n" (lib.mapAttrsToList modeCase modes);
 
@@ -45,10 +48,11 @@ let
       pkgs.gnused
       pkgs.kdePackages.kconfig
       pkgs.systemd
+      config.ahdg.kde.runtime.plasmaWorkspace
     ];
     text = ''
       usage() {
-        printf 'Usage: ahdg-theme apply <light|dark>\n' >&2
+        printf 'Usage: ahdg-theme apply <light|dark> [--preserve-kde]\n' >&2
       }
 
       if [ "''${1:-}" != "apply" ] || [ -z "''${2:-}" ]; then
@@ -57,6 +61,13 @@ let
       fi
 
       mode=$2
+      preserve_kde=0
+      if [ "''${3:-}" = "--preserve-kde" ]; then
+        preserve_kde=1
+      elif [ -n "''${3:-}" ]; then
+        usage
+        exit 2
+      fi
       case "$mode" in
       ${modeCases}
         *)
@@ -74,7 +85,7 @@ let
         "$config_home/xsettingsd" \
         "$data_home/themes"
 
-      printf '%s' "$session_env" > "${themeEnvFile}"
+      printf '%s' "$session_env" > "$config_home/ahdg/theme/session.env"
       printf '%s\n' "$mode" > "$config_home/ahdg/theme/mode"
 
       cat > "$config_home/gtk-3.0/settings.ini" <<EOF
@@ -201,18 +212,23 @@ let
       rm -rf "$config_home/gtk-4.0"
       mv "$tmp_gtk4" "$config_home/gtk-4.0"
 
-      kwriteconfig6 --file "$config_home/kdeglobals" --group General --key ColorScheme "$kde_color_scheme"
-      kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key LookAndFeelPackage "$kde_look_and_feel"
-      kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key widgetStyle "$kde_widget_style"
-      kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme "${runtime.icon.name}"
-      kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorTheme "${runtime.cursor.name}"
-      kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorSize "${toString runtime.cursor.size}"
-      sync_kde_color_sections "$config_home/kdeglobals" "$kde_color_scheme_file"
+      # Home Manager activation calls this command with --preserve-kde. KDE UI
+      # choices remain writable local state and are only changed by an explicit
+      # `ahdg-theme apply` (or an explicitly enabled darkman transition).
+      if [ "$preserve_kde" -eq 0 ]; then
+        kwriteconfig6 --file "$config_home/kdeglobals" --group General --key ColorScheme "$kde_color_scheme"
+        kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key LookAndFeelPackage "$kde_look_and_feel"
+        kwriteconfig6 --file "$config_home/kdeglobals" --group KDE --key widgetStyle "$kde_widget_style"
+        kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme "${runtime.icon.name}"
+        kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorTheme "${runtime.cursor.name}"
+        kwriteconfig6 --file "$config_home/kcminputrc" --group Mouse --key cursorSize "${toString runtime.cursor.size}"
+        sync_kde_color_sections "$config_home/kdeglobals" "$kde_color_scheme_file"
 
-      if command -v plasma-apply-colorscheme >/dev/null 2>&1; then
-        plasma-apply-colorscheme "$kde_color_scheme" >/dev/null 2>&1 || true
+        if command -v plasma-apply-colorscheme >/dev/null 2>&1; then
+          plasma-apply-colorscheme "$kde_color_scheme" >/dev/null 2>&1 || true
+        fi
+        sync_kde_color_sections "$config_home/kdeglobals" "$kde_color_scheme_file"
       fi
-      sync_kde_color_sections "$config_home/kdeglobals" "$kde_color_scheme_file"
 
       if [ -f "$config_home/mango/env.conf" ]; then
         sed -i \
@@ -224,7 +240,7 @@ let
 
       set -a
       # shellcheck source=/dev/null
-      . "${themeEnvFile}"
+      . "$config_home/ahdg/theme/session.env"
       set +a
 
       systemctl --user import-environment \
@@ -235,6 +251,7 @@ let
       systemctl --user try-restart --no-block \
         plasma-dolphin.service \
         plasma-xdg-desktop-portal-kde.service \
+        xdg-desktop-portal-gtk.service \
         xdg-desktop-portal-wlr.service \
         xdg-desktop-portal.service \
         2>/dev/null || true
@@ -267,24 +284,27 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
-  home.activation.applyCurrentThemeRuntimeState = lib.hm.dag.entryAfter [
-    "initializeThemeRuntimeState"
-    "initializeKdeglobalsThemeDefaults"
-    "materializeGtkThemeForFlatpak"
-    "materializePlasmaThemeForFlatpak"
-  ] ''
-    mode="$(cat "${config.xdg.configHome}/ahdg/theme/mode" 2>/dev/null || true)"
+  home.activation.applyCurrentThemeRuntimeState =
+    lib.hm.dag.entryAfter
+      [
+        "initializeThemeRuntimeState"
+        "seedMutableKdeConfig"
+        "materializeGtkThemeForFlatpak"
+        "materializePlasmaThemeForFlatpak"
+      ]
+      ''
+        mode="$(cat "${config.xdg.configHome}/ahdg/theme/mode" 2>/dev/null || true)"
 
-    case "$mode" in
-      light|dark)
-        ;;
-      *)
-        mode="${defaultMode}"
-        ;;
-    esac
+        case "$mode" in
+          light|dark)
+            ;;
+          *)
+            mode="${defaultMode}"
+            ;;
+        esac
 
-    ${applyTheme}/bin/ahdg-theme apply "$mode"
-  '';
+        ${applyTheme}/bin/ahdg-theme apply "$mode" --preserve-kde
+      '';
 
   services.darkman = {
     enable = autoSwitchEnabled;

@@ -31,10 +31,8 @@ Examples on this machine:
 
 - `sddm`
 - `plasma-login-manager`
-- `plasma-workspace`
 - `kwin`
-- system `polkit` integration
-- system portal packaging/runtime selection
+- the system PolicyKit daemon and rules
 
 Display-manager note:
 
@@ -54,6 +52,7 @@ Things that do belong in this repo:
 - user session environment variables
 - user-facing theme assets
 - per-user KDE/GTK settings
+- Nix-owned KDE applications and user services
 - user-scoped systemd services
 - user-scoped Podman quadlets
 - per-user Flatpak override policy for explicitly managed desktop/dev sandboxes
@@ -81,12 +80,10 @@ Needed from Arch repositories:
 
 - baseline: `zsh`, `pkgfile`
 - desktop runtime: `fcitx5`, `fcitx5-gtk`, `fcitx5-qt`, `fcitx5-rime`
-- integration: `flatpak`, `podman`, `xdg-desktop-portal`,
-  `xdg-desktop-portal-kde`, `dbus`, `ufw`
-- Mango/DMS helpers: `wlr-randr`, `kservice`, `polkit-kde-agent`,
-  `plasma-workspace`, `gtk3`, `python`
+- integration: `flatpak`, `podman`, `dbus`, `ufw`
+- Mango/DMS helpers: `wlr-randr`, `gtk3`, `python`
 - desktop extras: `ab-download-manager`, `baloo`, `blueman`,
-  `dms-shell`, `dolphin`, `easyeffects`, `flatseal`, `libappindicator`,
+  `dms-shell`, `easyeffects`, `flatseal`, `libappindicator`,
   `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
 - workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
   `protontricks`, `steam`
@@ -123,9 +120,25 @@ Mango session startup is user-layer and Home Manager-owned:
   migrated user overrides under `~/.config/autostart` are removed by activation
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
-Host packages are still used when a binary is launched by the compositor,
-display/session plumbing, or a root/system-owned service before the Nix profile
-can be assumed.
+The active KDE user stack is deliberately Nix-owned: Dolphin, Ark, KDED,
+KIO/KService helpers, Plasma utilities, Darkly/Breeze, KWallet, the PolicyKit
+agent, and all portal processes are selected from one flake. Explicit user
+units and pinned DBus entries override equivalent Arch units so DBus search
+order cannot silently mix implementations.
+GPU-facing entrypoints use nixGL to reach the CachyOS Mesa/EGL driver without
+virtualization or software-rendering overhead.
+
+This does not move the hardware/session boundary into Home Manager. CachyOS
+still owns the kernel, graphics and input drivers, Wayland compositor,
+PipeWire, systemd/DBus, the system PolicyKit daemon, PAM, and the display
+manager. Arch KDE packages may remain as dependencies or recovery tools, but
+the managed user session does not select their executables.
+
+KDE runtime ownership and KDE preference ownership are intentionally separate.
+Nix owns packages, services, desktop entries, default seeds, and immutable
+theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
+`dolphinui.rc` are writable regular files. A Home Manager switch never replaces
+or rewrites an existing live KDE preference file.
 
 CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
 pinned to 16.0.0 until nixpkgs catches up because that release line fixes the

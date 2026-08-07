@@ -65,6 +65,21 @@ Review GUI-edited config before importing it back into the Nix source tree:
 ~/.config/nix/bootstrap/cachyos.sh pull-gui-config --apply
 ```
 
+KDE defaults are seed-only. Restore them only through the explicit, backed-up
+reset command:
+
+```bash
+ahdg-kde-config reset dolphin
+ahdg-kde-config reset ark
+ahdg-kde-config reset appearance
+ahdg-kde-config reset all
+```
+
+Backups are written under `~/.local/state/ahdg/kde-config-backups/`. Ordinary
+`home-manager switch` runs only `ahdg-kde-config seed`; it creates missing
+files and migrates old Nix-store links to writable files, but never edits an
+existing regular KDE config.
+
 ## Canonical Edit Paths
 
 Canonical source files live here:
@@ -88,6 +103,13 @@ Canonical source files live here:
 - `~/.config/nix/home/files/fcitx5/rime/default.yaml`
 - `~/.config/nix/home/files/fcitx5/rime/custom_phrase.txt`
 - `~/.config/nix/home/files/fcitx5/rime/custom/`
+- `~/.config/nix/home/files/dolphin/dolphinrc`
+- `~/.config/nix/home/files/dolphin/dolphinui.rc`
+- `~/.config/nix/home/files/kde/kdeglobals`
+- `~/.config/nix/home/files/kde/kcminputrc`
+- `~/.config/nix/home/files/kde/arkrc`
+- `~/.config/nix/home/modules/gui/kde-runtime.nix`
+- `~/.config/nix/home/modules/gui/kde-config.nix`
 - `~/.config/nix/home/modules/gui/fontconfig.nix`
 - `~/.config/nix/home/modules/gui/gtk.nix`
 - `~/.config/nix/home/modules/gui/flatpak.nix`
@@ -101,9 +123,13 @@ Canonical source files live here:
 - `~/.config/nix/docs/gh-auth.md`
 - `~/.config/nix/bootstrap/ufw/localsend`
 
-The files under `~/.config/<tool>/...` and `~/.local/share/...` are runtime
-outputs. They should exist after activation, but they are not the canonical
-place to keep config.
+Most files under `~/.config/<tool>/...` and `~/.local/share/...` are runtime
+outputs. KDE GUI preferences are an intentional exception: their live writable
+files are authoritative while applications edit them. Use `pull-gui-config`
+to review and deliberately capture those choices as future-machine seeds.
+KDE INI imports are normalized and omit generated hashes, Dolphin
+version/timestamps, duplicate keys, excess blank lines, and Ark directory
+history; Dolphin's XML toolbar/menu layout is imported as the user saved it.
 
 Stable policy-style desktop config is generated directly in Nix modules for:
 
@@ -184,6 +210,11 @@ Some files remain outside strict Nix ownership on purpose:
   `~/.local/share/applications/mimeapps.list`.
 - `~/.config/ghostty/config-dankcolors`
   DMS still updates this file at runtime.
+- `~/.config/kdeglobals`, `~/.config/kcminputrc`, `~/.config/arkrc`,
+  `~/.config/dolphinrc`, and
+  `~/.local/share/kxmlgui5/dolphin/dolphinui.rc`
+  These are writable KDE UI state. Repo copies are defaults and capture
+  targets, not continuously enforced files. GUI changes survive every switch.
 - `~/.local/share/flatpak/overrides/<app-id>`
   App-specific Flatpak overrides are activation-managed regular files so they
   stay writable outside the Nix store while still following repo policy.
@@ -350,7 +381,16 @@ After a successful switch:
 - `~/.config/autostart/org.fcitx.Fcitx5.desktop` should not exist
 - `~/.config/environment.d/90-dms.conf` is gone
 - `~/.gitconfig` exists as a compatibility entrypoint managed by Home Manager
-- `~/.config/qt5ct` and `~/.config/qt6ct` are gone
+- KDE UI preference files are writable regular files, never store symlinks
+- Dolphin, KDED, the KDE PolicyKit agent, KWallet, and every portal service
+  resolve their `ExecStart` from `/nix/store`
+- `XDG_MENU_PREFIX=plasma-`, and
+  `~/.config/menus/plasma-applications.menu` pins the Nix Plasma menu, so
+  KService cannot fall back to a stale Arch menu prefix
+
+The managed Plasma menu is XDG/KService infrastructure, not a KDE interface
+preference. Appearance, layout, toolbar, mouse, Dolphin, and Ark settings remain
+writable regular files and are not rewritten by `home-manager switch`.
 
 ## Package Cleanup
 

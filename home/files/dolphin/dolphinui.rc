@@ -1,16 +1,87 @@
-<?xml version="1.0"?>
-<!DOCTYPE gui SYSTEM "kpartgui.dtd">
-<gui name="dolphin" version="48">
-  <!--
-    Keep Dolphin on standard GUI tab semantics.
-    Terminal tab bindings live in Ghostty and intentionally differ only where
-    shell editing would otherwise be broken.
-  -->
-  <ActionProperties scheme="Default">
-    <Action name="new_tab" shortcut="Ctrl+T" />
-    <Action name="file_close" shortcut="Ctrl+W" />
-    <Action name="undo_close_tab" shortcut="Ctrl+Shift+T" />
-    <Action name="activate_next_tab" shortcut="Ctrl+PgDown; Ctrl+Tab" />
-    <Action name="activate_prev_tab" shortcut="Ctrl+PgUp; Ctrl+Shift+Tab" />
-  </ActionProperties>
+<!DOCTYPE gui SYSTEM 'kpartgui.dtd'>
+<gui name="dolphin" translationDomain="kxmlgui6" version="48">
+ <MenuBar>
+  <Menu name="file">
+   <text translationDomain="kxmlgui6">&amp;File</text>
+   <Action name="file_new"/>
+   <Separator weakSeparator="1"/>
+   <Action name="file_close"/>
+   <Separator weakSeparator="1"/>
+   <Action name="file_quit"/>
+  </Menu>
+  <Menu name="edit">
+   <text translationDomain="kxmlgui6">&amp;Edit</text>
+   <Action name="edit_undo"/>
+   <Action name="edit_redo"/>
+   <Separator weakSeparator="1"/>
+   <Action name="edit_cut"/>
+   <Action name="edit_copy"/>
+   <Action name="edit_paste"/>
+   <Separator weakSeparator="1"/>
+   <Action name="edit_select_all"/>
+   <Separator weakSeparator="1"/>
+   <Action name="edit_find"/>
+  </Menu>
+  <Menu name="view">
+   <text translationDomain="kxmlgui6">&amp;View</text>
+   <Action name="view_zoom_in"/>
+   <Action name="view_zoom_out"/>
+   <Separator weakSeparator="1"/>
+   <Action name="view_redisplay"/>
+  </Menu>
+  <Menu name="go">
+   <text translationDomain="kxmlgui6">&amp;Go</text>
+   <Action name="go_up"/>
+   <Action name="go_back"/>
+   <Action name="go_forward"/>
+   <Action name="go_home"/>
+  </Menu>
+  <Menu name="settings">
+   <text translationDomain="kxmlgui6">&amp;Settings</text>
+   <Action name="options_show_menubar"/>
+   <Merge name="StandardToolBarMenuHandler"/>
+   <Merge name="KMDIViewActions"/>
+   <Separator weakSeparator="1"/>
+   <Action name="switch_application_language"/>
+   <Action name="options_configure_keybinding"/>
+   <Action name="options_configure_toolbars"/>
+   <Action name="options_configure"/>
+  </Menu>
+  <Separator weakSeparator="1"/>
+  <Menu name="help">
+   <text translationDomain="kxmlgui6">&amp;Help</text>
+   <Action name="help_contents"/>
+   <Action name="help_whats_this"/>
+   <Action name="open_kcommand_bar"/>
+   <Separator weakSeparator="1"/>
+   <Action name="help_report_bug"/>
+   <Separator weakSeparator="1"/>
+   <Action name="help_donate"/>
+   <Separator weakSeparator="1"/>
+   <Action name="help_about_app"/>
+   <Action name="help_about_kde"/>
+  </Menu>
+ </MenuBar>
+ <ToolBar name="mainToolBar">
+  <text translationDomain="kxmlgui6">Main Toolbar</text>
+  <Action name="file_new"/>
+  <Separator weakSeparator="1"/>
+  <Action name="edit_undo"/>
+  <Action name="edit_redo"/>
+  <Action name="edit_cut"/>
+  <Action name="edit_copy"/>
+  <Action name="edit_paste"/>
+  <Separator weakSeparator="1"/>
+  <Action name="edit_find"/>
+  <Separator weakSeparator="1"/>
+  <Action name="go_home"/>
+  <Action name="hamburger_menu"/>
+ </ToolBar>
+ <ActionProperties scheme="Default">
+  <Action name="new_tab" shortcut="Ctrl+T"/>
+  <Action name="file_close" shortcut="Ctrl+W"/>
+  <Action name="undo_close_tab" shortcut="Ctrl+Shift+T"/>
+  <Action name="activate_next_tab" shortcut="Ctrl+PgDown; Ctrl+Tab"/>
+  <Action name="activate_prev_tab" shortcut="Ctrl+PgUp; Ctrl+Shift+Tab"/>
+ </ActionProperties>
 </gui>

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type guiConfigImport struct {
-	title string
-	from  string
-	to    string
+	title     string
+	from      string
+	to        string
+	transform func([]byte) []byte
 }
 
 var guiConfigImports = []guiConfigImport{
@@ -25,8 +27,11 @@ var guiConfigImports = []guiConfigImport{
 	{title: "Mango tag rules", from: ".config/mango/rules/20-tags.conf", to: "home/files/mango/rules/20-tags.conf"},
 	{title: "Mango game rules", from: ".config/mango/rules/90-games.conf", to: "home/files/mango/rules/90-games.conf"},
 	{title: "Ghostty config", from: ".config/ghostty/config", to: "home/files/ghostty/config"},
-	{title: "Dolphin config", from: ".config/dolphinrc", to: "home/files/dolphin/dolphinrc"},
+	{title: "Dolphin config", from: ".config/dolphinrc", to: "home/files/dolphin/dolphinrc", transform: normalizeDolphinConfig},
 	{title: "Dolphin UI", from: ".local/share/kxmlgui5/dolphin/dolphinui.rc", to: "home/files/dolphin/dolphinui.rc"},
+	{title: "KDE global appearance", from: ".config/kdeglobals", to: "home/files/kde/kdeglobals", transform: normalizeKDEGlobals},
+	{title: "KDE cursor settings", from: ".config/kcminputrc", to: "home/files/kde/kcminputrc", transform: normalizeKDEConfig},
+	{title: "Ark config", from: ".config/arkrc", to: "home/files/kde/arkrc", transform: normalizeArkConfig},
 	{title: "fcitx config", from: ".config/fcitx5/config", to: "home/files/fcitx5/config"},
 	{title: "fcitx profile", from: ".config/fcitx5/profile", to: "home/files/fcitx5/profile"},
 	{title: "fcitx classic UI", from: ".config/fcitx5/conf/classicui.conf", to: "home/files/fcitx5/conf/classicui.conf"},
@@ -61,6 +66,9 @@ func (a app) runPullGUIConfig(opts pullGUIConfigOptions) error {
 				continue
 			}
 			return fmt.Errorf("read %s: %w", source, err)
+		}
+		if item.transform != nil {
+			sourceData = item.transform(sourceData)
 		}
 
 		targetData, err := os.ReadFile(target)
@@ -101,4 +109,107 @@ func (a app) runPullGUIConfig(opts pullGUIConfigOptions) error {
 		fmt.Printf("\nApply imports:\n  %s\n", shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "pull-gui-config", "--apply"}))
 	}
 	return nil
+}
+
+func normalizeDolphinConfig(data []byte) []byte {
+	return normalizeKDEConfigIgnoring(data, map[string]map[string]bool{
+		"General": {
+			"Version":            true,
+			"ViewPropsTimestamp": true,
+		},
+	})
+}
+
+func normalizeKDEGlobals(data []byte) []byte {
+	return normalizeKDEConfigIgnoring(data, map[string]map[string]bool{
+		"General": {"ColorSchemeHash": true},
+	})
+}
+
+func normalizeArkConfig(data []byte) []byte {
+	return normalizeKDEConfigIgnoring(data, map[string]map[string]bool{
+		"ExtractDialog": {"DirHistory[$e]": true},
+	})
+}
+
+func normalizeKDEConfig(data []byte) []byte {
+	return normalizeKDEConfigIgnoring(data, nil)
+}
+
+// normalizeKDEConfigIgnoring keeps KDE INI preferences deterministic while
+// preserving section/key order. KConfig rewrites these files eagerly, often
+// adding blank lines, duplicate keys, hashes, timestamps, and recent paths
+// that should not become defaults for another machine.
+func normalizeKDEConfigIgnoring(data []byte, ignored map[string]map[string]bool) []byte {
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	lastKeyLine := make(map[string]int)
+	sectionHasKey := make(map[string]bool)
+	section := ""
+
+	for index, rawLine := range lines {
+		line := strings.TrimSpace(rawLine)
+		if name, ok := kdeSectionName(line); ok {
+			section = name
+			continue
+		}
+		key, _, ok := strings.Cut(line, "=")
+		key = strings.TrimSpace(key)
+		if !ok || key == "" || isIgnoredKDEKey(ignored, section, key) {
+			continue
+		}
+		lastKeyLine[section+"\x00"+key] = index
+		sectionHasKey[section] = true
+	}
+
+	result := make([]string, 0, len(lines))
+	section = ""
+	emitSection := true
+	for index, rawLine := range lines {
+		line := strings.TrimSpace(rawLine)
+		if line == "" {
+			continue
+		}
+		if name, ok := kdeSectionName(line); ok {
+			section = name
+			emitSection = sectionHasKey[name]
+			if !emitSection {
+				continue
+			}
+			if len(result) > 0 && result[len(result)-1] != "" {
+				result = append(result, "")
+			}
+			result = append(result, line)
+			continue
+		}
+
+		key, value, ok := strings.Cut(line, "=")
+		key = strings.TrimSpace(key)
+		if ok && key != "" {
+			if !emitSection || isIgnoredKDEKey(ignored, section, key) || lastKeyLine[section+"\x00"+key] != index {
+				continue
+			}
+			result = append(result, key+"="+strings.TrimSpace(value))
+			continue
+		}
+		if emitSection {
+			result = append(result, line)
+		}
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return []byte(strings.Join(result, "\n") + "\n")
+}
+
+func kdeSectionName(line string) (string, bool) {
+	if len(line) < 2 || line[0] != '[' || line[len(line)-1] != ']' {
+		return "", false
+	}
+	return strings.TrimSpace(line[1 : len(line)-1]), true
+}
+
+func isIgnoredKDEKey(ignored map[string]map[string]bool, section, key string) bool {
+	return ignored != nil && ignored[section] != nil && ignored[section][key]
 }

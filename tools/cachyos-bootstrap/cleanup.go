@@ -50,6 +50,16 @@ var cleanupGroups = []struct {
 		packages: []string{"kvantum", "kvantum-qt5"},
 	},
 	{
+		title: "KDE user applications replaced by Nix",
+		packages: []string{
+			"ark",
+			"darkly",
+			"dolphin",
+			"polkit-kde-agent",
+			"xdg-desktop-portal-kde",
+		},
+	},
+	{
 		title: "Retired fish shell stack",
 		packages: []string{
 			"cachyos-fish-config",

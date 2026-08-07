@@ -46,7 +46,8 @@ irrelevant here because fresh machines run the committed binary, not `go run`.
 
 `pull-gui-config` is the explicit reverse-import path for GUI-edited static
 config. It is dry-run by default and only imports whitelisted non-secret files
-with `--apply`.
+with `--apply`. KDE live preferences stay writable and are used only as future
+seed sources after an explicit import.
 
 LocalSend is supplied by Home Manager through the desktop GUI module. Its host
 integration remains on the system side: `bootstrap/cachyos.sh deps --apply`

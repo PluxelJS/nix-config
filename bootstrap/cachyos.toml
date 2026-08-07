@@ -26,7 +26,9 @@ base = ["zsh", "pkgfile", "github-cli"]
 
 [packages.features]
 flatpak = ["desktop-file-utils", "flatpak", "flatpak-builder"]
-portal = ["xdg-desktop-portal", "xdg-desktop-portal-kde"]
+# Portal frontend/backends and the KDE user runtime are Home Manager-owned.
+# CachyOS still supplies DBus/systemd, graphics drivers, PipeWire, and Wayland.
+portal = []
 gui = [
   "ab-download-manager",
   "fcitx5",
@@ -38,9 +40,6 @@ gui = [
   "libayatana-appindicator",
   "python",
   "wlr-randr",
-  "kservice",
-  "polkit-kde-agent",
-  "plasma-workspace",
   "dbus",
   "dms-shell",
   "zen-browser-bin",
@@ -64,7 +63,7 @@ desktop = [
 ]
 
 [packages.extras]
-gui = ["baloo", "blueman", "dolphin", "easyeffects", "flatseal", "pavucontrol"]
+gui = ["baloo", "blueman", "easyeffects", "flatseal", "pavucontrol"]
 
 [aurCommands]
 mangowm-git = ["mango", "mmsg"]
@@ -72,7 +71,6 @@ mangowm-git = ["mango", "mmsg"]
 [aurPackages]
 desktop = [
   "clash-party-bin",
-  "darkly",
   "notepadnext-bin",
   "peazip-qt-bin",
   "polychromatic",

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   guiLib = import ./lib.nix { inherit lib; };
   catppuccinFcitx5Dir = "${pkgs.catppuccin-fcitx5}/share/fcitx5/themes";
@@ -24,21 +29,24 @@ let
     hash = "sha256-DRnxrj9nZW3x+LIHoULuEIyPa2bjZ4cgIiG7k3w++Cw=";
   };
 
-  rimeStaticPayload = pkgs.runCommandLocal "ahdg-rime-static-payload" {
-    nativeBuildInputs = [ pkgs.unzip ];
-  } ''
-    mkdir -p "$out"
+  rimeStaticPayload =
+    pkgs.runCommandLocal "ahdg-rime-static-payload"
+      {
+        nativeBuildInputs = [ pkgs.unzip ];
+      }
+      ''
+        mkdir -p "$out"
 
-    unzip -q ${wanxiangBase} -d "$out"
-    cp ${wanxiangGrammar} "$out/wanxiang-lts-zh-hans.gram"
+        unzip -q ${wanxiangBase} -d "$out"
+        cp ${wanxiangGrammar} "$out/wanxiang-lts-zh-hans.gram"
 
-    cp ${../../files/fcitx5/rime/default.yaml} "$out/default.yaml"
-    cp ${../../files/fcitx5/rime/custom_phrase.txt} "$out/custom_phrase.txt"
-    cp ${../../files/fcitx5/rime/custom/wanxiang.custom.yaml} "$out/custom/wanxiang.custom.yaml"
-    cp ${../../files/fcitx5/rime/custom/wanxiang_english.custom.yaml} "$out/custom/wanxiang_english.custom.yaml"
-    cp ${../../files/fcitx5/rime/custom/wanxiang_mixedcode.custom.yaml} "$out/custom/wanxiang_mixedcode.custom.yaml"
-    cp ${../../files/fcitx5/rime/custom/wanxiang_reverse.custom.yaml} "$out/custom/wanxiang_reverse.custom.yaml"
-  '';
+        cp ${../../files/fcitx5/rime/default.yaml} "$out/default.yaml"
+        cp ${../../files/fcitx5/rime/custom_phrase.txt} "$out/custom_phrase.txt"
+        cp ${../../files/fcitx5/rime/custom/wanxiang.custom.yaml} "$out/custom/wanxiang.custom.yaml"
+        cp ${../../files/fcitx5/rime/custom/wanxiang_english.custom.yaml} "$out/custom/wanxiang_english.custom.yaml"
+        cp ${../../files/fcitx5/rime/custom/wanxiang_mixedcode.custom.yaml} "$out/custom/wanxiang_mixedcode.custom.yaml"
+        cp ${../../files/fcitx5/rime/custom/wanxiang_reverse.custom.yaml} "$out/custom/wanxiang_reverse.custom.yaml"
+      '';
 in
 lib.mkIf config.ahdg.features.gui {
   # Keep fcitx runtime ownership on the Arch side. Nix owns the policy layer:
@@ -181,40 +189,25 @@ lib.mkIf config.ahdg.features.gui {
     done < <(find "$source" -mindepth 1 -print0)
   '';
 
-  home.activation.alignKdeInputMethodDesktop = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    kwinrc="${config.xdg.configHome}/kwinrc"
-    if [[ -f "$kwinrc" ]]; then
-      input_method_entry='InputMethod[$e]=/usr/share/applications/org.fcitx.Fcitx5.desktop'
-      if grep -q '^\[Wayland\]' "$kwinrc"; then
-        if grep -q '^\[Wayland\]' "$kwinrc" && grep -q '^InputMethod\[\$e\]=' "$kwinrc"; then
-          sed -i \
-            -e '/^\[Wayland\]/,/^\[/{s#^InputMethod\[\$e\]=.*#'"$input_method_entry"'#;}' \
-            "$kwinrc"
-        else
-          printf '\n[Wayland]\n%s\n' "$input_method_entry" >> "$kwinrc"
+  home.activation.transitionInputMethodRuntimeBackToSystem =
+    lib.hm.dag.entryAfter [ "reloadSystemd" ]
+      ''
+        managed_service_path="${config.xdg.configHome}/systemd/user/fcitx5-daemon.service"
+        current_fragment="$(systemctl --user show fcitx5-daemon.service -p FragmentPath --value 2>/dev/null || true)"
+
+        if [[ "$current_fragment" == "$managed_service_path" ]]; then
+          systemctl --user stop fcitx5-daemon.service >/dev/null 2>&1 || true
+          systemctl --user reset-failed fcitx5-daemon.service >/dev/null 2>&1 || true
         fi
-      else
-        printf '\n[Wayland]\n%s\n' "$input_method_entry" >> "$kwinrc"
-      fi
-    fi
-  '';
 
-  home.activation.transitionInputMethodRuntimeBackToSystem = lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
-    managed_service_path="${config.xdg.configHome}/systemd/user/fcitx5-daemon.service"
-    current_fragment="$(systemctl --user show fcitx5-daemon.service -p FragmentPath --value 2>/dev/null || true)"
-
-    if [[ "$current_fragment" == "$managed_service_path" ]]; then
-      systemctl --user stop fcitx5-daemon.service >/dev/null 2>&1 || true
-      systemctl --user reset-failed fcitx5-daemon.service >/dev/null 2>&1 || true
-    fi
-
-    if [[ -x /usr/bin/fcitx5 ]] && ! busctl --user status org.fcitx.Fcitx5 >/dev/null 2>&1; then
-      /usr/bin/fcitx5 -d >/dev/null 2>&1 &
-    fi
-  '';
+        if [[ -x /usr/bin/fcitx5 ]] && ! busctl --user status org.fcitx.Fcitx5 >/dev/null 2>&1; then
+          /usr/bin/fcitx5 -d >/dev/null 2>&1 &
+        fi
+      '';
 
   xdg.configFile = lib.listToAttrs (
-    map (relPath:
+    map (
+      relPath:
       lib.nameValuePair "fcitx5/${relPath}" {
         force = true;
         source = ../../files/fcitx5 + "/${relPath}";

@@ -98,7 +98,7 @@ func (v *verifier) run() {
 	}
 	if v.has("gui") {
 		v.checkGUIFiles()
-		v.checkKDERuntimeTheme()
+		v.checkMutableKDEConfig()
 	}
 	if v.has("portal") {
 		v.checkSymlink(".config/xdg-desktop-portal/portals.conf")
@@ -207,6 +207,7 @@ func (v *verifier) checkGUIFiles() {
 	}
 	for _, rel := range []string{
 		".config/systemd/user/mango-session.target",
+		".config/menus/plasma-applications.menu",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
 		".local/share/plasma/look-and-feel/Catppuccin-Latte-Lavender",
 		".local/share/aurorae/themes/CatppuccinMacchiato-Modern",
@@ -216,26 +217,15 @@ func (v *verifier) checkGUIFiles() {
 	}
 }
 
-func (v *verifier) checkKDERuntimeTheme() {
-	mode := strings.TrimSpace(readFile(v.path(".config/ahdg/theme/mode")))
-	expectedScheme := ""
-	expectedViewBG := ""
-	switch mode {
-	case "light":
-		expectedScheme = "CatppuccinLatteLavender"
-		expectedViewBG = "239, 241, 245"
-	case "dark":
-		expectedScheme = "CatppuccinMacchiatoLavender"
-		expectedViewBG = "36, 39, 58"
-	}
-
-	kdeglobals := v.path(".config/kdeglobals")
-	if expectedScheme != "" &&
-		fileLineMatches(kdeglobals, "^ColorScheme="+regexp.QuoteMeta(expectedScheme)+"$") &&
-		kdeViewBackground(kdeglobals) == expectedViewBG {
-		v.pass("KDE runtime color sections match the active theme mode")
-	} else {
-		v.fail("KDE runtime color sections do not match the active theme mode")
+func (v *verifier) checkMutableKDEConfig() {
+	for _, rel := range []string{
+		".config/arkrc",
+		".config/dolphinrc",
+		".config/kcminputrc",
+		".config/kdeglobals",
+		".local/share/kxmlgui5/dolphin/dolphinui.rc",
+	} {
+		v.checkWritableRegularFile(rel)
 	}
 }
 
@@ -592,27 +582,44 @@ func (v *verifier) checkDesktopRuntime() {
 	}
 
 	if v.has("gui") {
-		kdeglobals := v.path(".config/kdeglobals")
-		if fileLineMatches(kdeglobals, `^Theme=Papirus$`) {
-			v.pass("KDE icon theme is aligned to the Nix-managed Papirus set")
+		userEnvironment := commandOutput("systemctl", "--user", "show-environment")
+		if regexp.MustCompile(`(?m)^XDG_MENU_PREFIX=plasma-$`).MatchString(userEnvironment) &&
+			regexp.MustCompile(`(?m)^XDG_CONFIG_DIRS=/nix/store/.*/etc/xdg:/etc/xdg$`).MatchString(userEnvironment) {
+			v.pass("systemd user environment selects the Nix Plasma application menu")
 		} else {
-			v.fail("KDE icon theme is not aligned to Papirus")
-		}
-		if fileLineMatches(kdeglobals, `^TerminalApplication=.*/bin/ghostty --gtk-single-instance=true$`) {
-			v.pass("KDE terminal launcher points at the Nix-managed Ghostty binary")
-		} else {
-			v.fail("KDE terminal launcher is still pointing at a non-Nix Ghostty path")
-		}
-		if fileLineMatches(v.path(".config/kwinrc"), `^InputMethod\[\$e\]=/usr/share/applications/org\.fcitx\.Fcitx5\.desktop$`) {
-			v.pass("KDE Wayland input-method entry points at the system fcitx desktop file")
-		} else {
-			v.fail("KDE Wayland input-method entry is not aligned to the system fcitx desktop file")
+			v.fail("systemd user environment does not select the Nix Plasma application menu")
 		}
 		dolphinUnit := commandOutput("systemctl", "--user", "cat", "plasma-dolphin.service")
-		if dolphinUnit != "" && strings.Contains(dolphinUnit, ".config/ahdg/theme/session.env") {
-			v.pass("Dolphin FileManager1 daemon reads the Nix-managed dynamic theme environment")
+		if dolphinUnit != "" && strings.Contains(dolphinUnit, ".config/ahdg/theme/session.env") && strings.Contains(dolphinUnit, "/nix/store/") {
+			v.pass("Dolphin FileManager1 daemon uses the Nix KDE runtime and dynamic environment")
 		} else {
-			v.fail("Dolphin FileManager1 daemon is missing the Nix-managed dynamic theme environment")
+			v.fail("Dolphin FileManager1 daemon is not fully Nix-owned")
+		}
+		dolphinLauncher, dolphinErr := exec.LookPath("dolphin")
+		dolphinLauncherText := readFile(dolphinLauncher)
+		pluginPathMatch := regexp.MustCompile(`(?m)^export QT_PLUGIN_PATH=([^:\n]+)`).FindStringSubmatch(dolphinLauncherText)
+		if dolphinErr == nil && len(pluginPathMatch) == 2 &&
+			strings.Contains(dolphinLauncherText, "export QT_QPA_PLATFORMTHEME=kde") &&
+			strings.Contains(dolphinLauncherText, "export QT_QPA_PLATFORMTHEME_QT6=kde") &&
+			isRegular(filepath.Join(pluginPathMatch[1], "platformthemes", "KDEPlasmaPlatformTheme6.so")) &&
+			isRegular(filepath.Join(pluginPathMatch[1], "styles", "darkly6.so")) &&
+			isRegular(filepath.Join(pluginPathMatch[1], "styles", "breeze6.so")) {
+			v.pass("Dolphin can load the Nix KDE platform theme and Darkly/Breeze styles")
+		} else {
+			v.fail("Dolphin is missing the Nix KDE platform theme or Darkly/Breeze styles")
+		}
+		kdedUnit := commandOutput("systemctl", "--user", "cat", "plasma-kded6.service")
+		if kdedUnit != "" && strings.Contains(kdedUnit, "XDG_MENU_PREFIX=plasma-") && strings.Contains(kdedUnit, "/nix/store/") &&
+			regexp.MustCompile(`(?m)^Exe=/nix/store/.*/bin/(\.kded6-wrapped|kded6)$`).MatchString(commandOutput("busctl", "--user", "status", "org.kde.kded6")) {
+			v.pass("KDED uses the Nix KDE runtime and Plasma application menu")
+		} else {
+			v.fail("KDED is not fully Nix-owned")
+		}
+		polkitUnit := commandOutput("systemctl", "--user", "cat", "plasma-polkit-agent.service")
+		if polkitUnit != "" && strings.Contains(polkitUnit, "/nix/store/") {
+			v.pass("KDE PolicyKit agent uses the Nix runtime")
+		} else {
+			v.fail("KDE PolicyKit agent is not Nix-owned")
 		}
 		if regexp.MustCompile(`(?m)^Exe=/usr/bin/fcitx5$`).MatchString(commandOutput("busctl", "--user", "status", "org.fcitx.Fcitx5")) {
 			v.pass("fcitx runtime ownership is back on the system fcitx5 binary")
@@ -656,10 +663,24 @@ func (v *verifier) checkDesktopRuntime() {
 		}
 		kdePortalUnit := commandOutput("systemctl", "--user", "cat", "plasma-xdg-desktop-portal-kde.service")
 		kwalletUnit := commandOutput("systemctl", "--user", "cat", "kwalletd6.service")
-		if kdePortalUnit != "" && strings.Contains(kdePortalUnit, ".config/ahdg/theme/session.env") {
-			v.pass("KDE portal backend reads the Nix-managed dynamic theme environment")
+		if kdePortalUnit != "" && strings.Contains(kdePortalUnit, ".config/ahdg/theme/session.env") && strings.Contains(kdePortalUnit, "/nix/store/") {
+			v.pass("KDE portal backend uses the nixGL-bridged Nix runtime")
 		} else {
-			v.fail("KDE portal backend is missing the Nix-managed dynamic theme environment")
+			v.fail("KDE portal backend is not fully Nix-owned")
+		}
+		for _, unit := range []string{
+			"xdg-desktop-portal.service",
+			"xdg-document-portal.service",
+			"xdg-permission-store.service",
+			"xdg-desktop-portal-gtk.service",
+			"xdg-desktop-portal-wlr.service",
+		} {
+			unitText := commandOutput("systemctl", "--user", "cat", unit)
+			if unitText != "" && strings.Contains(unitText, "/nix/store/") {
+				v.pass("%s uses the Nix runtime", unit)
+			} else {
+				v.fail("%s is not Nix-owned", unit)
+			}
 		}
 		if fileLineMatches(v.path(".config/xdg-desktop-portal/portals.conf"), `^org\.freedesktop\.impl\.portal\.Settings=darkman;gtk;kde;\*$`) {
 			v.pass("portal Settings prefers darkman for system color-scheme")
@@ -673,10 +694,10 @@ func (v *verifier) checkDesktopRuntime() {
 		} else {
 			v.fail("portal Secret does not prefer KWallet")
 		}
-		if kwalletUnit != "" && strings.Contains(kwalletUnit, "ExecStart=") && strings.Contains(kwalletUnit, "kwalletd6") {
-			v.pass("kwalletd6 user unit is installed")
+		if kwalletUnit != "" && strings.Contains(kwalletUnit, "ExecStart=") && strings.Contains(kwalletUnit, "kwalletd6") && strings.Contains(kwalletUnit, "/nix/store/") {
+			v.pass("kwalletd6 user unit uses the Nix runtime")
 		} else {
-			v.fail("kwalletd6 user unit is missing")
+			v.fail("kwalletd6 user unit is not Nix-owned")
 		}
 		if regexp.MustCompile(`interface org\.freedesktop\.portal\.Secret`).MatchString(commandOutput("gdbus", "introspect", "--session", "--dest", "org.freedesktop.portal.Desktop", "--object-path", "/org/freedesktop/portal/desktop")) {
 			v.pass("xdg-desktop-portal exposes the Secret interface")

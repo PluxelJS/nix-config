@@ -161,6 +161,8 @@ when missing; it never locks or overwrites existing GUI choices. Use
 - [docs/operations.md](docs/operations.md):
   switch commands, cleanup, validation, runtime expectations, canonical edit
   paths
+- [docs/reproducibility.md](docs/reproducibility.md):
+  locked resources, Rime model integrity, rolling host boundaries, and local state
 - [docs/shortcut-policy.md](docs/shortcut-policy.md):
   shortcut rules and cross-app decisions
 - [docs/shell-shortcuts.md](docs/shell-shortcuts.md):

@@ -1,6 +1,6 @@
 app-id: io.github.trumank.CodeStudio
 runtime: org.freedesktop.Sdk
-runtime-version: "24.08"
+runtime-version: "25.08"
 sdk: org.freedesktop.Sdk
 command: code-studio
 build-options:
@@ -29,8 +29,8 @@ modules:
       - /share/info
     sources:
       - type: archive
-        url: https://www.zsh.org/pub/zsh-5.9.1.tar.xz
-        sha256: 5d20bec03f981dc4e9a09ec245e7415388ff641f79c5c5c416b5042e58d8280d
+        url: https://www.zsh.org/pub/zsh-5.9.2.tar.xz
+        sha256: 36fa734374b44783582cec09bcd67822e2f992c779ec1624ab5596df078d2f81
 
   - name: code-studio
     buildsystem: simple
@@ -76,9 +76,7 @@ modules:
       - type: file
         path: modio-cog-blue.png
       - type: file
-        # VS Code 1.116.0 is pinned because newer 1.124.x / Electron 42 builds
-        # render fonts blurrier on this Wayland setup despite equivalent
-        # fontconfig visibility and settings.
-        url: https://vscode.download.prss.microsoft.com/dbazure/download/stable/560a9dba96f961efea7b1612916f89e5d5d4d679/code-stable-x64-1776214075.tar.gz
+        # Official stable 1.132.0 x86_64 archive, pinned by commit URL and hash.
+        url: https://vscode.download.prss.microsoft.com/dbazure/download/stable/df53daabb18cd157bdb08c7f01c34df936cf12f4/code-stable-x64-1785859845.tar.gz
         dest-filename: code-stable-x64.tar.gz
-        sha256: ce87b613dc65a40304e100fc21a82271b023ef5837700f5797299041030524ba
+        sha256: acdaf0fa557bda1720956ff65ca0de0965e92d68f97e2db22341984400937aed

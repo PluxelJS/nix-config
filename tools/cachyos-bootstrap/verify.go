@@ -108,6 +108,7 @@ func (v *verifier) run() {
 	if v.has("gui") {
 		v.checkGUIFiles()
 		v.checkMutableKDEConfig()
+		v.checkRimeStaticPayload()
 	}
 	if v.has("portal") {
 		v.checkSymlink(".config/xdg-desktop-portal/portals.conf")
@@ -185,6 +186,7 @@ func (v *verifier) checkGUIFiles() {
 		".local/share/fcitx5/themes/catppuccin-macchiato-lavender/theme.conf",
 		".local/share/fcitx5/themes/catppuccin-mocha-lavender/theme.conf",
 		".local/share/fcitx5/rime/default.yaml",
+		".local/share/fcitx5/rime/.nix-resource-manifest.sha256",
 		".local/share/fcitx5/rime/wanxiang.schema.yaml",
 		".local/share/fcitx5/rime/wanxiang-lts-zh-hans.gram",
 		".config/gtk-3.0/settings.ini",
@@ -213,6 +215,26 @@ func (v *verifier) checkGUIFiles() {
 		".local/share/aurorae/themes/CatppuccinLatte-Modern",
 	} {
 		v.checkSymlink(rel)
+	}
+}
+
+func (v *verifier) checkRimeStaticPayload() {
+	rimeDir := v.path(".local/share/fcitx5/rime")
+	manifest := filepath.Join(rimeDir, ".nix-resource-manifest.sha256")
+	cmd := exec.Command("sha256sum", "--check", "--quiet", filepath.Base(manifest))
+	cmd.Dir = rimeDir
+	if out, err := cmd.CombinedOutput(); err == nil {
+		v.pass("Rime static payload matches the Nix-built resource manifest")
+	} else {
+		v.fail("Rime static payload failed its resource manifest check: %s", strings.TrimSpace(string(out)))
+	}
+
+	schema := readFile(filepath.Join(rimeDir, "wanxiang.schema.yaml"))
+	if regexp.MustCompile(`(?m)^grammar:\s*$`).MatchString(schema) &&
+		regexp.MustCompile(`(?m)^\s+language:\s*wanxiang-lts-zh-hans\s*$`).MatchString(schema) {
+		v.pass("Wanxiang schema selects the pinned zh-Hans grammar model")
+	} else {
+		v.fail("Wanxiang schema does not select the pinned zh-Hans grammar model")
 	}
 }
 

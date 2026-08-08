@@ -19,13 +19,30 @@ let
     "conf/wayland.conf"
     "conf/waylandim.conf"
   ];
-  wanxiangRelease = "v15.13.0";
   wanxiangBase = pkgs.fetchurl {
-    url = "https://github.com/amzxyz/rime-wanxiang/releases/download/${wanxiangRelease}/rime-wanxiang-base.zip";
-    hash = "sha256-qCQupP57D66XPSbEWYhHjhw+d8b9LhtiXMZerQKTGqg=";
+    # Asset 504043698 is the exact v17.2.4 base bundle. Pinning its immutable
+    # release object avoids following a mutable release download name.
+    url = "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/504043698";
+    name = "rime-wanxiang-base.zip";
+    curlOptsList = [
+      "-H"
+      "Accept: application/octet-stream"
+      "-H"
+      "X-GitHub-Api-Version: 2022-11-28"
+    ];
+    hash = "sha256-ZCe9Ypx8yfNtNPhkQHRjFF3SK0KlBPhmkmK+xAHvpks=";
   };
   wanxiangGrammar = pkgs.fetchurl {
-    url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
+    # Asset 506440692 identifies this exact 420255788-byte object. Unlike the
+    # mutable LTS download alias, replacing the release asset creates a new ID.
+    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/506440692";
+    name = "wanxiang-lts-zh-hans.gram";
+    curlOptsList = [
+      "-H"
+      "Accept: application/octet-stream"
+      "-H"
+      "X-GitHub-Api-Version: 2022-11-28"
+    ];
     hash = "sha256-MW285vytIy2GebvKOdWmggyHCz/pVKW5jkg4remyqDE=";
   };
 
@@ -46,6 +63,25 @@ let
         cp ${../../files/fcitx5/rime/custom/wanxiang_english.custom.yaml} "$out/custom/wanxiang_english.custom.yaml"
         cp ${../../files/fcitx5/rime/custom/wanxiang_mixedcode.custom.yaml} "$out/custom/wanxiang_mixedcode.custom.yaml"
         cp ${../../files/fcitx5/rime/custom/wanxiang_reverse.custom.yaml} "$out/custom/wanxiang_reverse.custom.yaml"
+
+        # Keep the derivation output identical to the deployed static baseline;
+        # upstream documentation, archives, and illustrations are not runtime
+        # resources and therefore must not enter the integrity manifest.
+        rm -f \
+          "$out/README.md" \
+          "$out/base-dicts.zip" \
+          "$out/rime-wanxiang-base.zip" \
+          "$out/version.txt"
+        find "$out/custom" -maxdepth 1 -type f \
+          \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.md' \) \
+          -delete
+
+        (
+          cd "$out"
+          find . -type f ! -name .nix-resource-manifest.sha256 -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > .nix-resource-manifest.sha256
+        )
       '';
 in
 lib.mkIf config.ahdg.features.gui {

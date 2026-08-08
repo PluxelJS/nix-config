@@ -17,13 +17,13 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "mark-shot";
-  version = "0.1.25";
+  version = "0.1.45";
 
   src = fetchFromGitHub {
     owner = "jswysnemc";
     repo = "mark-shot";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-hFR2PvGBsO1kQCqM913TbKHZyx2RRZpjtgOBTa5wvA8=";
+    hash = "sha256-/MeGN7jq576psIc2P6Hr1L0n9v/XhdyKpM1hP06+DKk=";
   };
 
   nativeBuildInputs = [
@@ -50,12 +50,14 @@ stdenv.mkDerivation (finalAttrs: {
 
   preFixup = ''
     qtWrapperArgs+=(
-      --prefix PATH : "$out/bin:${lib.makeBinPath [
-        grim
-        wl-clipboard
-        xclip
-        python3
-      ]}"
+      --prefix PATH : "$out/bin:${
+        lib.makeBinPath [
+          grim
+          wl-clipboard
+          xclip
+          python3
+        ]
+      }"
     )
   '';
 

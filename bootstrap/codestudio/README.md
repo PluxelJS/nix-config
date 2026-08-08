@@ -38,10 +38,10 @@ only the shared desktop integration allowlist.
 
 ## Version Pin
 
-Code Studio currently pins VS Code `1.116.0`
-(`560a9dba96f961efea7b1612916f89e5d5d4d679`). Newer tested VS Code `1.124.x`
-builds rendered editor text visibly blurrier on this Wayland setup, including
-with equivalent fontconfig visibility and settings.
+Code Studio currently pins VS Code `1.132.0`
+(`df53daabb18cd157bdb08c7f01c34df936cf12f4`) and the Freedesktop `25.08`
+runtime. Both archives and runtime branches remain explicit so a rebuild does
+not silently change its editor or SDK.
 
 When bumping the editor, update `io.github.trumank.CodeStudio.yml`, keep the
 sha256 pinned, and compare font clarity against the host editor before shipping.
@@ -65,7 +65,7 @@ Prerequisites are declared in `bootstrap/cachyos.toml`:
 - `flatpak`
 - `flatpak-builder`
 - `desktop-file-utils`
-- `org.freedesktop.Sdk//24.08` from Flathub
+- `org.freedesktop.Sdk//25.08` from Flathub
 
 The VS Code tarball is downloaded by `flatpak-builder` from the pinned URL in
 the manifest; it is intentionally not committed to git.

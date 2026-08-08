@@ -15,7 +15,7 @@ in
 
     image = lib.mkOption {
       type = lib.types.str;
-      default = "docker.io/verdaccio/verdaccio:6";
+      default = "docker.io/verdaccio/verdaccio@sha256:5a13d03808135726efde69a5a16fce1e1f724a961d6d647177c22da83c0af5cd";
       description = "Container image used by the Verdaccio quadlet.";
     };
 

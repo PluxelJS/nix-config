@@ -143,7 +143,7 @@ or rewrites an existing live KDE preference file.
 CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
 pinned to 16.0.0 until nixpkgs catches up because that release line fixes the
 long-running clipboard process leak; meatshell is pinned to the verified
-upstream 0.6.5 release artifact; GPU-backed meatshell and Zed launch through
+upstream 0.6.10 release artifact; GPU-backed meatshell and Zed launch through
 the CachyOS nixGL bridge.
 
 Small user glue scripts such as `abdm-launch` and

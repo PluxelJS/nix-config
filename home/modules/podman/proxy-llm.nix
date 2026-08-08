@@ -11,7 +11,7 @@ let
   composeFile = pkgs.writeText "proxy-llm-compose.yaml" ''
     services:
       postgres:
-        image: docker.io/library/postgres@sha256:d93de42662696f278fb34354b06fdaa90ad7ca3106d6f72fbd01d16da006d2cf
+        image: docker.io/library/postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
         restart: unless-stopped
         environment:
           POSTGRES_USER: ''${DB_USER:-postgres}
@@ -26,7 +26,7 @@ let
           - /var/lib/postgresql
 
       dragonfly:
-        image: docker.dragonflydb.io/dragonflydb/dragonfly@sha256:747a83c18bc5e42ed4748f8ab310cc3d437939e5eed4c716227be1945ff1099e
+        image: docker.dragonflydb.io/dragonflydb/dragonfly@sha256:ebf3c6c213e82fb51b4521660cca13f06f3421dc5b1ed14f2f474c50b5e29986
         restart: unless-stopped
         ulimits:
           memlock: -1
@@ -42,7 +42,7 @@ let
           - --default_lua_flags=allow-undeclared-keys
 
       sing-box:
-        image: ghcr.io/sagernet/sing-box@sha256:55e48640b7587698910a277779f91c85d98d51496106e2568decc6922b1b4b97
+        image: ghcr.io/sagernet/sing-box@sha256:ba3a37088461712e8438de1d18d817a6b9964fe8c7bc7dd10218f6fd18214303
         restart: unless-stopped
         command: [ "-D", "/var/lib/sing-box", "-C", "/etc/sing-box", "run" ]
         volumes:
@@ -50,7 +50,7 @@ let
           - ${cfg.stateDir}/sing-box:/var/lib/sing-box
 
       api:
-        image: ghcr.io/pluxeljs/proxy-llm-api@sha256:5beed26cffef4fe712e585e6448f03a826745af6ce32ad660dfcef75f2444070
+        image: ghcr.io/pluxeljs/proxy-llm-api@sha256:6dda40f3538b50f4fbb51c36e1c9147ca1169e0f72daa88b6463c1dca935e3b1
         restart: unless-stopped
         user: "0:0"
         depends_on:
@@ -82,7 +82,7 @@ let
           - ${cfg.stateDir}/plugins:/CLIProxyAPI/plugins
 
       hub:
-        image: ghcr.io/ding113/claude-code-hub@sha256:139bd43b920911bfc8cda74261a0f9cb1b045936a294e8e0ee6d12c788e00e29
+        image: ghcr.io/ding113/claude-code-hub@sha256:4ae48e6e88b0cc2ce6949a6e13e390dafe35e37066e8b6280140b5368e5c5079
         restart: unless-stopped
         depends_on:
           postgres:
@@ -145,18 +145,21 @@ in
       ${pkgs.coreutils}/bin/chmod 0700 ${lib.escapeShellArg cfg.stateDir}
     '';
 
-    home.activation.ensureProxyLlmService = lib.hm.dag.entryAfter [
-      "ensurePodmanSocket"
-      "linkGeneration"
-      "prepareProxyLlmState"
-    ] ''
-      if command -v systemctl >/dev/null 2>&1 && command -v podman >/dev/null 2>&1; then
-        systemctl --user daemon-reload >/dev/null 2>&1 || true
-        ${lib.optionalString cfg.autoStart ''
-          systemctl --user enable --now ${serviceName} >/dev/null 2>&1 || true
-        ''}
-      fi
-    '';
+    home.activation.ensureProxyLlmService =
+      lib.hm.dag.entryAfter
+        [
+          "ensurePodmanSocket"
+          "linkGeneration"
+          "prepareProxyLlmState"
+        ]
+        ''
+          if command -v systemctl >/dev/null 2>&1 && command -v podman >/dev/null 2>&1; then
+            systemctl --user daemon-reload >/dev/null 2>&1 || true
+            ${lib.optionalString cfg.autoStart ''
+              systemctl --user enable --now ${serviceName} >/dev/null 2>&1 || true
+            ''}
+          fi
+        '';
 
     xdg.configFile."systemd/user/${serviceName}".text = ''
       [Unit]

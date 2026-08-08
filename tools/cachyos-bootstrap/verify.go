@@ -119,7 +119,7 @@ func (v *verifier) run() {
 		v.checkFonts()
 	}
 
-	v.checkSymlink(".gitconfig")
+	v.checkWritableRegularFile(".gitconfig")
 
 	if v.has("fonts") {
 		v.checkRegularPath(".config/fontconfig/fonts.conf", "%s is materialized for Flatpak", "%s should be a regular file for Flatpak compatibility")

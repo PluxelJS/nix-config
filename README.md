@@ -66,6 +66,14 @@ validate:
 ~/.config/nix/setup --verify
 ```
 
+Git author identity is intentionally machine-local and is never copied from
+this repository. Configure it once on a new account:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
 Switch configurations:
 
 ```bash
@@ -124,10 +132,9 @@ Exported configurations:
 - `current`, `current-shell`, `current-container`: portable outputs for the
   invoking account; use them with `--impure`
 
-The portable outputs still carry this repository owner's Git author identity
-and opinionated desktop/app selection. That is appropriate for moving the same
-person to a differently named account; change `home/modules/git.nix` and review
-`bootstrap/cachyos.toml` before giving the setup to another person.
+The portable outputs do not carry a Linux account or Git author identity. The
+desktop/app selection remains opinionated, so review `bootstrap/cachyos.toml`
+before giving the full desktop profile to another person.
 
 Before publishing or handing the repo to someone else, also review the Rime
 custom phrase files, custom font redistribution terms, enabled Podman services,

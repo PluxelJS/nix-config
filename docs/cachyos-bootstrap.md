@@ -134,6 +134,11 @@ Then run:
 
 Verification covers the active deployment and enabled services.
 
+Git author identity is not stored in the repository. Configure it once per
+account with `git config --global user.name ...` and
+`git config --global user.email ...`; bootstrap prints this reminder when
+either value is missing.
+
 Expected first-run notes:
 
 - `nix-users` membership may require a new login before Nix daemon operations

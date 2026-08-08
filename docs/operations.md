@@ -234,6 +234,11 @@ from this flake:
 
 Some files remain outside strict Nix ownership on purpose:
 
+- `~/.gitconfig`
+  Git author name and email are machine-local. Activation only creates the
+  writable file when missing and adds an include for the Nix-managed generic
+  policy under `~/.config/git/config`.
+
 - `~/.local/state/proxy-llm/`
   Credentials, OAuth tokens, databases, logs, and other state for the
   Nix-defined rootless Podman stack remain local and writable.
@@ -412,7 +417,7 @@ After a successful switch:
   are materialized as regular files or directories
 - `~/.local/share/fcitx5/rime/` contains a Nix-refreshed Wanxiang baseline plus
   writable runtime subtrees such as `build/`, `sync`, and `*.userdb/`
-- `~/.gitconfig` exists as a compatibility entrypoint managed by Home Manager
+- `~/.gitconfig` is a writable machine-local identity and compatibility file
 - KDE UI preference files are writable regular files, never store symlinks
 - Dolphin, KDED, the KDE PolicyKit agent, KWallet, and every portal service
   resolve their `ExecStart` from `/nix/store`

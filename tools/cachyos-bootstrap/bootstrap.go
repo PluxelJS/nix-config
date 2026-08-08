@@ -91,6 +91,13 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 	}
 	fmt.Printf("\nNext checks after reboot/login:\n  %s %s\n",
 		shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify"}), opts.profile)
+	if opts.apply && (strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.name")) == "" ||
+		strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.email")) == "") {
+		fmt.Println(`
+Git author identity is intentionally machine-local. Configure it once:
+  git config --global user.name "Your Name"
+  git config --global user.email "you@example.com"`)
+	}
 	return nil
 }
 

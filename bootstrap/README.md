@@ -44,6 +44,9 @@ The shell entrypoint is intentionally thin:
 `verify` checks the active deployment. Add `--verbose` only when individual
 successful checks are useful for diagnosis.
 
+Git author name and email remain in the user's writable `~/.gitconfig`; they
+are intentionally not declared by Nix or copied between accounts.
+
 Use [docs/cachyos-bootstrap.md](../docs/cachyos-bootstrap.md) for the complete
 pure-CachyOS deployment flow.
 

@@ -1,7 +1,9 @@
-{ config, pkgs, ... }:
-let
-  githubNoReplyEmail = "36436808+ahdg6@users.noreply.github.com";
-in
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   programs.bat = {
     enable = true;
@@ -12,19 +14,25 @@ in
     };
   };
 
-  # Keep XDG as the canonical Git config location, but expose ~/.gitconfig as a
-  # compatibility entrypoint for tools and Flatpak IDEs that expect this path.
-  home.file.".gitconfig" = {
-    force = true;
-    text = ''
-      [user]
-        name = ahdg6
-        email = ${githubNoReplyEmail}
+  # Home Manager owns generic Git behavior under XDG_CONFIG_HOME. Author
+  # identity stays in the writable, machine-local ~/.gitconfig so a shared
+  # checkout never assigns the repository owner's identity to another user.
+  home.activation.ensureLocalGitConfig = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    target="${config.home.homeDirectory}/.gitconfig"
+    managed_config="${config.xdg.configHome}/git/config"
 
-      [include]
-        path = ${config.xdg.configHome}/git/config
-    '';
-  };
+    if [[ ! -e "$target" && ! -L "$target" ]]; then
+      install -m600 /dev/null "$target"
+    fi
+
+    if [[ -f "$target" && ! -L "$target" ]]; then
+      chmod u+rw "$target"
+      if ! ${pkgs.git}/bin/git config --file "$target" --get-all include.path \
+        | ${pkgs.gnugrep}/bin/grep -Fqx "$managed_config"; then
+        ${pkgs.git}/bin/git config --file "$target" --add include.path "$managed_config"
+      fi
+    fi
+  '';
 
   home.packages = [
     pkgs.git
@@ -35,11 +43,6 @@ in
     signing.format = "openpgp";
 
     settings = {
-      user = {
-        name = "ahdg6";
-        email = githubNoReplyEmail;
-      };
-
       init.defaultBranch = "main";
       pull.rebase = false;
       push.autoSetupRemote = true;

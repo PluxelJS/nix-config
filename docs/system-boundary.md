@@ -116,8 +116,8 @@ Mango session startup is user-layer and Home Manager-owned:
   `mango-session.target`; `~/.config/mango/startup.conf` owns the remaining
   session apps such as ABDM tray, Mihomo Party, browser warmup, and display
   helper scripts
-- package-provided XDG autostart entries remain package-owned; stale or
-  migrated user overrides under `~/.config/autostart` are removed by activation
+- package-provided XDG autostart entries and user overrides remain host/user
+  state; this flake does not delete unrelated entries under `~/.config/autostart`
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 The active KDE user stack is deliberately Nix-owned: Dolphin, Ark, KDED,

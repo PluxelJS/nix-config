@@ -149,22 +149,6 @@ lib.mkIf config.ahdg.features.gui {
     fi
   '';
 
-  home.activation.removeMigratedMangoAutostart =
-    lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ]
-      ''
-        autostart_dir="${config.xdg.configHome}/autostart"
-        for entry in \
-          abdownloader.desktop \
-          cachyos-hello.desktop \
-          jetbrains-toolbox.desktop \
-          mihomo-party.desktop \
-          razer.desktop \
-          后台启动浏览器.desktop
-        do
-          rm -f "$autostart_dir/$entry"
-        done
-      '';
-
   xdg.configFile."systemd/user/mango-session.target" = {
     force = true;
     text = ''
@@ -185,8 +169,7 @@ lib.mkIf config.ahdg.features.gui {
     };
 
     Service = {
-      # Retire a pre-migration compositor-launched server and its detached
-      # Wayland providers before systemd takes ownership of the process group.
+      # Ensure systemd owns the only CopyQ server and its Wayland providers.
       ExecStartPre = copyqPreStart;
       ExecStart = "${lib.getExe pkgs.copyq} --start-server";
       Type = "forking";

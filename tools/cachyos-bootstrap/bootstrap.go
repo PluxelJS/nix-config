@@ -26,10 +26,6 @@ type depResult struct {
 }
 
 func (a app) runBootstrap(opts bootstrapOptions) error {
-	if opts.noFlatpaks && opts.withFlatpaks {
-		return errors.New("--no-flatpaks and --with-flatpaks cannot be used together")
-	}
-
 	profile, ok := a.cfg.Profiles[opts.profile]
 	if !ok {
 		return fmt.Errorf("unsupported profile: %s", opts.profile)
@@ -75,9 +71,8 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		}
 	}
 
-	if opts.noFlatpaks {
-		warn("remote and local Flatpak app installs skipped by --no-flatpaks")
-	} else if opts.withFlatpaks {
+	hasFlatpakApps := len(a.cfg.Flatpaks[opts.profile]) > 0 || len(a.cfg.LocalFlatpaks[opts.profile]) > 0
+	if opts.withFlatpaks {
 		if err := a.runFlatpaks(flatpakOptions{
 			apply:   opts.apply,
 			minimal: opts.minimal,
@@ -85,12 +80,12 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		}); err != nil {
 			return err
 		}
-	} else {
+	} else if hasFlatpakApps {
 		warn("remote and local Flatpak app installs deferred; desktop base is applied first")
 	}
 
-	fmt.Printf("\nDesktop base flow complete.\n")
-	if !opts.withFlatpaks && !opts.noFlatpaks && !opts.minimal && (len(a.cfg.Flatpaks[opts.profile]) > 0 || len(a.cfg.LocalFlatpaks[opts.profile]) > 0) {
+	fmt.Printf("\nBase setup flow complete.\n")
+	if !opts.withFlatpaks && !opts.minimal && hasFlatpakApps {
 		fmt.Printf("\nOptional Flatpak app catch-up:\n  %s\n",
 			shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "flatpaks", "--apply", "--profile", opts.profile}))
 	}
@@ -587,14 +582,15 @@ func (a app) installLocalFlatpak(appID string) error {
 
 func (a app) runHomeManager(opts bootstrapOptions) error {
 	flakeRef := fmt.Sprintf("%s#%s", a.repo, opts.flake)
+	hmArgs := []string{"run", "--impure", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix", "--impure"}
 	if !opts.apply {
-		fmt.Printf("\nHome Manager switch command:\n  nix run github:nix-community/home-manager -- switch --flake %s -b pre-nix\n", flakeRef)
+		fmt.Printf("\nHome Manager switch command:\n  %s\n", shellJoin(append([]string{"nix"}, hmArgs...)))
 		return nil
 	}
 
 	env := os.Environ()
 	env = append(env, "NIX_CONFIG=experimental-features = nix-command flakes\naccept-flake-config = true")
-	if err := runEnv(env, "nix", "run", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix"); err != nil {
+	if err := runEnv(env, "nix", hmArgs...); err != nil {
 		return err
 	}
 	return nil

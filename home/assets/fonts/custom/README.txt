@@ -4,7 +4,7 @@ This directory is the canonical source for non-nixpkgs fonts in this setup.
 
 Workflow:
 - add font files or font directories here
-- run `home-manager switch --flake ~/.config/nix#ahdg`
+- run `home-manager switch --flake ~/.config/nix#current --impure`
 - Home Manager will sync them to `~/.local/share/fonts/custom/`
 
 Fonts from nixpkgs are provided by the Home Manager profile; do not duplicate

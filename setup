@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]] || ! command -v pacman >/dev/null 2>&1; then
+  echo "This setup currently supports x86_64 CachyOS/Arch hosts." >&2
+  exit 1
+fi
+if [[ "$(id -u)" -eq 0 ]]; then
+  echo "Run setup as the desktop user, not with sudo." >&2
+  exit 1
+fi
+if [[ -z "${HOME:-}" || ! -d "$HOME" ]]; then
+  echo "The desktop user's HOME is missing or unavailable." >&2
+  exit 1
+fi
+export USER="$(id -un)"
+
+for arg in "$@"; do
+  if [[ "$arg" == --apply ]]; then
+    exec "$repo_dir/bootstrap/cachyos.sh" "$@"
+  fi
+done
+
+case "${1:-}" in
+  -h | --help)
+    cat <<'EOF'
+Usage:
+  ./setup                 Install the default desktop profile
+  ./setup --check         Preview without changing the machine
+  ./setup --flatpaks      Install the deferred Flatpak app list
+  ./setup --verify        Validate the resulting desktop
+  ./setup [bootstrap options]
+
+Common options:
+  --minimal               Skip desktop extras and Flatpak apps
+  --with-flatpaks         Also install the optional Flatpak app list
+  --profile shell         Install the shell profile instead
+
+Advanced maintenance commands remain under bootstrap/cachyos.sh.
+EOF
+    ;;
+  --check)
+    shift
+    exec "$repo_dir/bootstrap/cachyos.sh" "$@"
+    ;;
+  --flatpaks)
+    shift
+    exec "$repo_dir/bootstrap/cachyos.sh" flatpaks --apply "$@"
+    ;;
+  --verify)
+    shift
+    exec "$repo_dir/bootstrap/cachyos.sh" verify "$@"
+    ;;
+  *)
+    exec "$repo_dir/bootstrap/cachyos.sh" --apply "$@"
+    ;;
+esac

@@ -27,13 +27,6 @@ let
   '';
 in
 lib.mkIf config.ahdg.features.flatpak {
-  home.activation.removeLegacyFlatpakGlobalOverride = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    target="${config.xdg.dataHome}/flatpak/overrides/global"
-    if [[ -f "$target" ]] && [[ ! -L "$target" ]]; then
-      rm -f "$target"
-    fi
-  '';
-
   xdg.dataFile."flatpak/overrides/global" = {
     force = true;
     text = globalOverrideText;

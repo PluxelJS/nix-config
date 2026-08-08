@@ -13,18 +13,6 @@ let
     modes.dark
     modes.light
   ];
-  colorSchemeName = runtime.kde.colorSchemeName;
-  lookAndFeelName = runtime.kde.lookAndFeelName;
-  auroraeThemeName = runtime.kde.auroraeThemeName;
-  legacyPlasmaArtifacts = [
-    "${config.xdg.configHome}/color-schemes/${colorSchemeName}.colors"
-    "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors"
-    "${config.xdg.dataHome}/plasma/look-and-feel/${lookAndFeelName}"
-    "${config.xdg.dataHome}/kpackage/generic/${lookAndFeelName}"
-    "${config.xdg.dataHome}/aurorae/themes/${auroraeThemeName}"
-    "${config.xdg.dataHome}/icons/Papirus-kanagawa"
-    "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Lavender-Cursors"
-  ];
   materializedColorSchemeTargets = lib.concatMap (mode: [
     "${config.xdg.configHome}/color-schemes/${mode.kde.colorSchemeName}.colors"
     "${config.xdg.dataHome}/color-schemes/${mode.kde.colorSchemeName}.colors"
@@ -51,17 +39,14 @@ let
     ) themeModes;
 in
 lib.mkIf config.ahdg.features.gui {
-  home.activation.removeLegacyPlasmaThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    for target in ${lib.escapeShellArgs legacyPlasmaArtifacts}; do
+  home.activation.prepareManagedPlasmaAssets = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    # The previous generation materializes these store links for Flatpak.
+    # Remove only those declared targets before Home Manager links the next one.
+    for target in ${lib.escapeShellArgs materializedColorSchemeTargets}; do
       if [[ -e "$target" ]] && [[ ! -L "$target" ]]; then
         rm -rf "$target"
       fi
     done
-  '';
-
-  home.activation.removeDeprecatedPlasmaThemeArtifacts = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    rm -rf \
-      "${config.xdg.dataHome}/kpackage/generic/${lookAndFeelName}"
   '';
 
   home.activation.materializePlasmaThemeForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''

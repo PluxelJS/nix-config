@@ -3,38 +3,40 @@
 This document is the operator-facing reference for switching, cleanup,
 validation, and runtime-state expectations.
 
-## Switch Commands
+## Normal Workflow
 
-Fresh CachyOS bootstrap:
+For both the first install and later idempotent reconciliation, use the root
+entrypoint:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/bootstrap/cachyos.sh --apply
+~/.config/nix/setup
 ```
 
-The bootstrap path installs or checks Nix, `paru`, host runtime dependencies,
-and then runs the matching Home Manager switch. See
-[docs/cachyos-bootstrap.md](cachyos-bootstrap.md)
-for the full fresh-machine flow.
+Useful companion operations are `setup --check`, `setup --flatpaks`, and
+`setup --verify`. The setup path installs or checks Nix, `paru`, host runtime
+dependencies, and then runs the matching Home Manager switch. See
+[docs/cachyos-bootstrap.md](cachyos-bootstrap.md) for the full flow.
+
+## Direct Switch Commands
 
 Routine Home Manager switches:
 
 ```bash
-home-manager switch --flake ~/.config/nix#ahdg
-home-manager switch --flake ~/.config/nix#ahdg-shell
-home-manager switch --flake ~/.config/nix#ahdg-container
+home-manager switch --flake ~/.config/nix#current --impure
+home-manager switch --flake ~/.config/nix#current-shell --impure
+home-manager switch --flake ~/.config/nix#current-container --impure
 ```
 
 If `home-manager` is not installed globally:
 
 ```bash
-nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#ahdg -b pre-nix
+nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
 ```
 
 Build activation package only:
 
 ```bash
-nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
+nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
 ## Proxy LLM Service
@@ -253,7 +255,8 @@ Some files remain outside strict Nix ownership on purpose:
 - `gh` keyring entries or fallback `~/.config/gh/hosts.yml`
   `gh` login remains local runtime state.
 - `~/.local/share/fonts/`
-  The `nix/` subtree is Nix-managed; extra manual fonts remain manual.
+  The `custom/` subtree is refreshed from the repo; extra manual fonts remain
+  manual. Nixpkgs fonts are exposed through the Home Manager profile.
 - `~/.local/share/fcitx5/rime/build/`
 - `~/.local/share/fcitx5/rime/sync/`
 - `~/.local/share/fcitx5/rime/*.userdb/`
@@ -409,9 +412,6 @@ After a successful switch:
   are materialized as regular files or directories
 - `~/.local/share/fcitx5/rime/` contains a Nix-refreshed Wanxiang baseline plus
   writable runtime subtrees such as `build/`, `sync`, and `*.userdb/`
-- `~/.config/gtk-3.0/gtk.css` and `~/.config/gtk-3.0/dank-colors.css` are gone
-- `~/.config/autostart/org.fcitx.Fcitx5.desktop` should not exist
-- `~/.config/environment.d/90-dms.conf` is gone
 - `~/.gitconfig` exists as a compatibility entrypoint managed by Home Manager
 - KDE UI preference files are writable regular files, never store symlinks
 - Dolphin, KDED, the KDE PolicyKit agent, KWallet, and every portal service
@@ -460,3 +460,5 @@ Or target a specific deployment explicitly:
 
 The verifier decides most checks from
 `~/.config/ahdg/enabled-features`, so custom feature mixes remain valid.
+Successful checks are summarized by default; use `verify --verbose` when
+diagnosing a machine and you need every individual result.

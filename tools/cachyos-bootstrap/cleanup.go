@@ -100,7 +100,7 @@ func (a app) runCleanup(opts cleanupOptions) error {
 	}
 
 	if len(safe) == 0 && len(blocked) == 0 {
-		fmt.Println(`No cleanup candidates from the migrated shell set are currently installed.
+		fmt.Println(`No duplicate host-package cleanup candidates are currently installed.
 
 Still kept on purpose:
   zsh
@@ -115,7 +115,7 @@ Reason:
 			fmt.Println("Everything detected is still required by other pacman/AUR packages.")
 			return nil
 		}
-		fmt.Println("Removing pacman packages that are now replaced by Nix or retired stacks...")
+		fmt.Println("Removing pacman packages that are replaced by the declared Nix stack...")
 		fmt.Println("Keeping zsh installed because the login shell is still /usr/bin/zsh.")
 		if err := requireSudo(); err != nil {
 			return err

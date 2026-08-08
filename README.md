@@ -1,6 +1,7 @@
 # Home Manager Config
 
-User-layer Home Manager flake for `ahdg` on `CachyOS/Arch`.
+User-layer Home Manager flake for a `CachyOS/Arch` workstation. The portable
+outputs resolve the current username and home directory at evaluation time.
 
 It makes shell, desktop config, themes, Flatpak integration, and selected user
 services reproducible. It intentionally does not manage the whole host.
@@ -29,20 +30,32 @@ The host package manager owns:
 
 ## Quick Start
 
-Fresh CachyOS machine:
+After the normal x86_64 CachyOS + KDE installer has created your desktop user,
+open a terminal as that user and run:
 
 ```bash
-sudo pacman -S --needed git
-git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
-~/.config/nix/bootstrap/cachyos.sh
-~/.config/nix/bootstrap/cachyos.sh --apply
+git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+```
+
+`setup` is idempotent, defaults to the desktop profile, and may be rerun after
+config updates. To inspect the planned work first:
+
+```bash
+~/.config/nix/setup --check
+```
+
+If Git is not installed yet, install it with `sudo pacman -S --needed git`.
+An optional remote installer that installs Git and performs the shallow clone is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PluxelJS/nix-config/main/bootstrap/install.sh | bash
 ```
 
 The default apply path prioritizes the usable desktop base and defers slower
 Flatpak app downloads. Catch up those apps later:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh flatpaks --apply
+~/.config/nix/setup --flatpaks
 ```
 
 Then log out and back in if the bootstrap added `nix-users` or hardware access
@@ -50,27 +63,27 @@ groups such as `openrazer`, reboot if DKMS/kernel modules were installed, and
 validate:
 
 ```bash
-~/.config/nix/bootstrap/cachyos.sh verify desktop
+~/.config/nix/setup --verify
 ```
 
 Switch configurations:
 
 ```bash
-home-manager switch --flake ~/.config/nix#ahdg
-home-manager switch --flake ~/.config/nix#ahdg-shell
-home-manager switch --flake ~/.config/nix#ahdg-container
+home-manager switch --flake ~/.config/nix#current --impure
+home-manager switch --flake ~/.config/nix#current-shell --impure
+home-manager switch --flake ~/.config/nix#current-container --impure
 ```
 
 If `home-manager` is not installed globally:
 
 ```bash
-nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#ahdg -b pre-nix
+nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
 ```
 
 Build activation package only:
 
 ```bash
-nix build ~/.config/nix#homeConfigurations.ahdg.activationPackage
+nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
 The desktop profile enables `proxy-llm.service`. Nix owns its compose topology
@@ -87,7 +100,8 @@ under `~/.local/state/proxy-llm/`. See
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak, LocalSend
 - `home/modules/podman/`: user-scoped Podman compose services and quadlets
 - `home/files/`: native-format config sources and small runtime seeds
-- `bootstrap/`: fresh-machine binary, config, and thin shell entrypoint
+- `setup`: clone-and-run entrypoint for the normal CachyOS KDE scenario
+- `bootstrap/`: advanced fresh-machine binary, config, and shell entrypoint
 - `tools/cachyos-bootstrap/`: Go source for the bootstrap binary
 - `docs/`: policy and operator docs
 
@@ -107,9 +121,19 @@ Feature control lives in `home/modules/profile.nix`:
 
 Exported configurations:
 
-- `ahdg`
-- `ahdg-shell`
-- `ahdg-container`
+- `current`, `current-shell`, `current-container`: portable outputs for the
+  invoking account; use them with `--impure`
+
+The portable outputs still carry this repository owner's Git author identity
+and opinionated desktop/app selection. That is appropriate for moving the same
+person to a differently named account; change `home/modules/git.nix` and review
+`bootstrap/cachyos.toml` before giving the setup to another person.
+
+Before publishing or handing the repo to someone else, also review the Rime
+custom phrase files, custom font redistribution terms, enabled Podman services,
+hardware packages/groups, and proprietary/AUR/Flatpak app lists. Credentials,
+KWallet, GitHub auth, databases, and other runtime state are intentionally not
+stored here.
 
 Activation writes resolved profile metadata to `~/.config/ahdg/`, which the
 bootstrap verifier uses for post-switch checks.

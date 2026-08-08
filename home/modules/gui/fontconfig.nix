@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   guiLib = import ./lib.nix { inherit lib; };
   customFontSourceDir = ../../assets/fonts/custom;
@@ -18,17 +23,17 @@ let
     ];
     emoji = [ "Noto Color Emoji" ];
   };
-  mkStringElements = families:
-    lib.concatMapStringsSep "\n" (family: "        <string>${family}</string>") families;
+  mkStringElements =
+    families: lib.concatMapStringsSep "\n" (family: "        <string>${family}</string>") families;
   mkGenericMapping = genericFamily: preferredFamilies: ''
-    <match target="pattern">
-      <test name="family" qual="any">
-        <string>${genericFamily}</string>
-      </test>
-      <edit name="family" mode="assign" binding="same">
-${mkStringElements preferredFamilies}
-      </edit>
-    </match>
+        <match target="pattern">
+          <test name="family" qual="any">
+            <string>${genericFamily}</string>
+          </test>
+          <edit name="family" mode="assign" binding="same">
+    ${mkStringElements preferredFamilies}
+          </edit>
+        </match>
   '';
   fontconfigEntrypointText = ''
     <?xml version='1.0' encoding='UTF-8'?>
@@ -56,21 +61,15 @@ ${mkStringElements preferredFamilies}
   '';
 in
 lib.mkIf config.ahdg.features.fonts {
-  home.activation.removeLegacyFontconfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    legacy_fontconfig="${config.xdg.configHome}/fontconfig/fonts.conf"
-    legacy_fontconfig_dir="${config.xdg.configHome}/fontconfig/conf.d"
-    managed_font_dir="${config.xdg.dataHome}/fonts/nix"
-    if [[ -f "$legacy_fontconfig" ]] && [[ ! -L "$legacy_fontconfig" ]]; then
-      rm -f "$legacy_fontconfig"
+  home.activation.prepareManagedFontconfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    managed_fontconfig="${config.xdg.configHome}/fontconfig/fonts.conf"
+    managed_fontconfig_dir="${config.xdg.configHome}/fontconfig/conf.d"
+    if [[ -f "$managed_fontconfig" ]] && [[ ! -L "$managed_fontconfig" ]]; then
+      rm -f "$managed_fontconfig"
     fi
 
-    if [[ -d "$legacy_fontconfig_dir" ]]; then
-      find "$legacy_fontconfig_dir" -maxdepth 1 -type f -name '*-hm-*.conf' -delete
-    fi
-
-    if [[ -e "$managed_font_dir" ]] || [[ -L "$managed_font_dir" ]]; then
-      chmod -R u+w "$managed_font_dir" 2>/dev/null || true
-      rm -rf "$managed_font_dir"
+    if [[ -d "$managed_fontconfig_dir" ]]; then
+      find "$managed_fontconfig_dir" -maxdepth 1 -type f -name '*-hm-*.conf' -delete
     fi
   '';
 
@@ -98,23 +97,26 @@ lib.mkIf config.ahdg.features.fonts {
     done < <(find "${config.xdg.configHome}/fontconfig/conf.d" -maxdepth 1 -type l -name '*-hm-*.conf' 2>/dev/null | sort)
   '';
 
-  home.activation.refreshFontconfigCaches = lib.hm.dag.entryAfter [
-    "installPackages"
-    "materializeFontconfigForFlatpak"
-    "syncCustomFontDropDir"
-  ] ''
-    rm -rf "${config.xdg.cacheHome}/fontconfig"
+  home.activation.refreshFontconfigCaches =
+    lib.hm.dag.entryAfter
+      [
+        "installPackages"
+        "materializeFontconfigForFlatpak"
+        "syncCustomFontDropDir"
+      ]
+      ''
+        rm -rf "${config.xdg.cacheHome}/fontconfig"
 
-    if [[ -d "${config.home.homeDirectory}/.var/app" ]]; then
-      find "${config.home.homeDirectory}/.var/app" \
-        -mindepth 2 \
-        -maxdepth 3 \
-        -path '*/cache/fontconfig' \
-        -exec rm -rf {} + 2>/dev/null || true
-    fi
+        if [[ -d "${config.home.homeDirectory}/.var/app" ]]; then
+          find "${config.home.homeDirectory}/.var/app" \
+            -mindepth 2 \
+            -maxdepth 3 \
+            -path '*/cache/fontconfig' \
+            -exec rm -rf {} + 2>/dev/null || true
+        fi
 
-    ${pkgs.fontconfig}/bin/fc-cache -r -f >/dev/null 2>&1 || true
-  '';
+        ${pkgs.fontconfig}/bin/fc-cache -r -f >/dev/null 2>&1 || true
+      '';
 
   xdg.configFile."fontconfig/fonts.conf" = {
     force = true;

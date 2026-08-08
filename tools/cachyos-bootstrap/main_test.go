@@ -71,7 +71,6 @@ func TestBootstrapFlags(t *testing.T) {
 	cmd.SetArgs([]string{
 		"--apply",
 		"--profile", "shell",
-		"--no-flatpaks",
 		"--with-flatpaks",
 		"--no-install-nix",
 		"--no-install-paru",
@@ -87,9 +86,6 @@ func TestBootstrapFlags(t *testing.T) {
 	}
 	if opts.profile != "shell" {
 		t.Fatalf("profile = %q, want shell", opts.profile)
-	}
-	if !opts.noFlatpaks {
-		t.Fatal("expected --no-flatpaks to set noFlatpaks")
 	}
 	if !opts.withFlatpaks {
 		t.Fatal("expected --with-flatpaks to set withFlatpaks")

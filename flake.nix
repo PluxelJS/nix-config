@@ -1,5 +1,5 @@
 {
-  description = "Home Manager setup for ahdg's core shell environment on Arch";
+  description = "Portable Home Manager setup for an Arch-family workstation";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -70,7 +70,11 @@
         ];
       };
       mkHome =
-        profile:
+        {
+          profile,
+          username,
+          homeDirectory,
+        }:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           extraSpecialArgs = {
@@ -81,19 +85,34 @@
             ./home/default.nix
             ./home/profiles/${profile}.nix
             {
-              home.username = "ahdg";
-              home.homeDirectory = "/home/ahdg";
+              home = {
+                inherit username homeDirectory;
+              };
             }
           ];
+        };
+      requiredEnv =
+        name:
+        let
+          value = builtins.getEnv name;
+        in
+        if value != "" then value else throw "portable outputs require --impure so ${name} is available";
+      mkCurrentHome =
+        profile:
+        mkHome {
+          inherit profile;
+          username = requiredEnv "USER";
+          homeDirectory = requiredEnv "HOME";
         };
     in
     {
       homeModules.default = ./home/default.nix;
 
       homeConfigurations = {
-        ahdg = mkHome "desktop";
-        ahdg-shell = mkHome "shell";
-        ahdg-container = mkHome "container";
+        # Resolve the invoking account with `--impure`.
+        current = mkCurrentHome "desktop";
+        current-shell = mkCurrentHome "shell";
+        current-container = mkCurrentHome "container";
       };
     };
 }

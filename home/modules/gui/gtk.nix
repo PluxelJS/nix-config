@@ -12,53 +12,6 @@ let
   iconThemeName = runtime.icon.name;
   cursorThemeName = runtime.cursor.name;
   gtkFontName = runtime.gtk.fontName;
-  legacyGtkArtifacts = [
-    "${config.home.homeDirectory}/.gtkrc-2.0.mine"
-    "${config.xdg.configHome}/gtkrc"
-    "${config.xdg.configHome}/gtk-3.0/gtk.css"
-    "${config.xdg.configHome}/gtk-3.0/dank-colors.css"
-    "${config.xdg.dataHome}/themes/Abyssal-Wave"
-    "${config.xdg.dataHome}/themes/Catppuccin-Macchiato"
-    "${config.xdg.dataHome}/themes/Catppuccin-Latte"
-    "${config.xdg.dataHome}/themes/Catppuccin-Mocha"
-    "${config.xdg.dataHome}/themes/Decay-Green"
-    "${config.xdg.dataHome}/themes/Edge-Runner"
-    "${config.xdg.dataHome}/themes/Everforest-Dark"
-    "${config.xdg.dataHome}/themes/Frosted-Glass"
-    "${config.xdg.dataHome}/themes/Graphite-Mono"
-    "${config.xdg.dataHome}/themes/Gruvbox-Retro"
-    "${config.xdg.dataHome}/themes/Material-Sakura"
-    "${config.xdg.dataHome}/themes/Nordic-Blue"
-    "${config.xdg.dataHome}/themes/Rose-Pine"
-    "${config.xdg.dataHome}/themes/Synth-Wave"
-    "${config.xdg.dataHome}/themes/Tokyo-Night"
-    "${config.xdg.dataHome}/themes/Wallbash-Gtk"
-    "${config.xdg.dataHome}/icons/BeautyLine"
-    "${config.xdg.dataHome}/icons/Gruvbox-Plus-Dark"
-    "${config.xdg.dataHome}/icons/Gruvbox-Retro"
-    "${config.xdg.dataHome}/icons/Nordzy"
-    "${config.xdg.dataHome}/icons/Papirus"
-    "${config.xdg.dataHome}/icons/Tela-circle-black"
-    "${config.xdg.dataHome}/icons/Tela-circle-blue"
-    "${config.xdg.dataHome}/icons/Tela-circle-dracula"
-    "${config.xdg.dataHome}/icons/Tela-circle-green"
-    "${config.xdg.dataHome}/icons/Tela-circle-grey"
-    "${config.xdg.dataHome}/icons/Tela-circle-pink"
-    "${config.xdg.dataHome}/icons/Tela-circle-purple"
-    "${config.xdg.dataHome}/icons/Tela-circle-yellow"
-    "${config.xdg.dataHome}/icons/breeze"
-    "${config.xdg.dataHome}/icons/Kanagawa"
-    "${config.xdg.dataHome}/icons/Papirus-kanagawa"
-    "${config.xdg.dataHome}/icons/Catppuccin-Macchiato-Dark-Cursors"
-    "${config.xdg.dataHome}/icons/Wallbash-Icon"
-    "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
-  ];
-  legacyGtkHomeArtifacts = [
-    "${config.home.homeDirectory}/.themes/Catppuccin-Latte"
-    "${config.home.homeDirectory}/.themes/Catppuccin-Mocha"
-    "${config.home.homeDirectory}/.themes/Rose-Pine"
-    "${config.home.homeDirectory}/.themes/Wallbash-Gtk"
-  ];
   mkDataDirLink =
     name: source:
     lib.nameValuePair name {
@@ -77,14 +30,14 @@ let
     "${config.xdg.configHome}/gtk-3.0/settings.ini"
     "${config.xdg.configHome}/xsettingsd/xsettingsd.conf"
   ];
-  flatpakMaterializedDirs = [
-    "${config.xdg.configHome}/gtk-4.0"
+  managedGtkAssetTargets = [
     "${config.xdg.dataHome}/themes/${modes.dark.gtk.themeName}"
     "${config.xdg.dataHome}/themes/${modes.light.gtk.themeName}"
     "${config.xdg.dataHome}/icons/Papirus"
     "${config.xdg.dataHome}/icons/breeze"
     "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
   ];
+  flatpakMaterializedDirs = [ "${config.xdg.configHome}/gtk-4.0" ] ++ managedGtkAssetTargets;
   gtk3SettingsText = ''
     [Settings]
     gtk-theme-name=${gtkThemeName}
@@ -134,16 +87,11 @@ let
   '';
 in
 lib.mkIf config.ahdg.features.gui {
-  home.activation.removeLegacyGtkThemeArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    for target in ${lib.escapeShellArgs legacyGtkArtifacts}; do
+  home.activation.prepareManagedGtkAssets = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    # The previous generation materializes these store links for Flatpak.
+    # Remove only those declared targets before Home Manager links the next one.
+    for target in ${lib.escapeShellArgs managedGtkAssetTargets}; do
       if [[ -e "$target" ]] && [[ ! -L "$target" ]]; then
-        chmod -R u+w "$target" 2>/dev/null || true
-        rm -rf "$target"
-      fi
-    done
-
-    for target in ${lib.escapeShellArgs legacyGtkHomeArtifacts}; do
-      if [[ -e "$target" ]] || [[ -L "$target" ]]; then
         chmod -R u+w "$target" 2>/dev/null || true
         rm -rf "$target"
       fi
@@ -184,11 +132,6 @@ lib.mkIf config.ahdg.features.gui {
     seed_text_file "${config.xdg.configHome}/gtk-3.0/settings.ini" ${lib.escapeShellArg gtk3SettingsText}
     seed_text_file "${config.xdg.configHome}/xsettingsd/xsettingsd.conf" ${lib.escapeShellArg xsettingsdText}
     seed_dir_copy "${runtime.gtk.themeDir}/gtk-4.0" "${config.xdg.configHome}/gtk-4.0"
-  '';
-
-  home.activation.removeDeprecatedGtkIconArtifacts = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    rm -rf \
-      "${config.xdg.dataHome}/icons/Kanagawa"
   '';
 
   home.activation.materializeGtkThemeForFlatpak = lib.hm.dag.entryAfter [ "linkGeneration" ] ''

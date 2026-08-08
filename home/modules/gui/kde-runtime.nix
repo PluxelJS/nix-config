@@ -178,9 +178,8 @@ in
         ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
     '';
 
-    # A pre-migration kded6 may have been launched directly by the host DBus
-    # service. Retire only that exact host executable before the Nix unit takes
-    # ownership; never terminate an already-correct Nix process.
+    # The host DBus service may launch /usr/bin/kded6 before the Nix unit.
+    # Stop only that exact executable; never terminate a correct Nix process.
     home.activation.retireHostKded = lib.hm.dag.entryBefore [ "reloadSystemd" ] ''
       for pid in $(${pkgs.procps}/bin/pgrep -x kded6 2>/dev/null || true); do
         if [[ "$(${pkgs.coreutils}/bin/readlink -f "/proc/$pid/exe" 2>/dev/null || true)" == /usr/bin/kded6 ]]; then

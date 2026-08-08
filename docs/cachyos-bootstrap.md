@@ -38,31 +38,28 @@ and verification are subcommands of the same binary:
 
 ## Fresh Install
 
-On a pure CachyOS install, first update the host and install Git:
+After CachyOS KDE has created the desktop user, run this as that user:
+
+```bash
+git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+```
+
+Preview without changing the machine:
+
+```bash
+~/.config/nix/setup --check
+```
+
+If needed, update the host and install Git first:
 
 ```bash
 sudo pacman -Syu
 sudo pacman -S --needed git
 ```
 
-Clone the repo into the canonical path:
-
-```bash
-git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
-cd ~/.config/nix
-```
-
-Dry-run the bootstrap:
-
-```bash
-bootstrap/cachyos.sh
-```
-
-Apply the desktop bootstrap:
-
-```bash
-bootstrap/cachyos.sh --apply
-```
+Then rerun the clone-and-setup command above. The lower-level
+`bootstrap/cachyos.sh` interface remains available for maintenance and custom
+profile work, but is not required for a normal first install.
 
 What it does:
 
@@ -134,6 +131,8 @@ Then run:
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh verify desktop
 ```
+
+Verification covers the active deployment and enabled services.
 
 Expected first-run notes:
 

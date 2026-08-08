@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.ahdg.features;
   homeDir = config.home.homeDirectory;
@@ -232,7 +237,8 @@ in
           // (lib.genAttrs notepadNextManagedMimeTypes (_: textEditorAssociationDesktopIds))
           // {
             "application/pdf" = "wps-office-pdf.desktop";
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = "wps-office-wps.desktop";
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
+              "wps-office-wps.desktop";
             "application/zip" = [
               "com.teamspeak.TeamSpeak3.desktop"
               "peazip.desktop"
@@ -255,7 +261,8 @@ in
           // (lib.genAttrs notepadNextManagedMimeTypes (_: notepadNextDesktopId))
           // {
             "application/gzip" = "peazip.desktop";
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = "wps-office-wps.desktop";
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
+              "wps-office-wps.desktop";
             "application/x-7z-compressed" = "peazip.desktop";
             "application/x-bzip-compressed-tar" = "peazip.desktop";
             "application/x-bzip2" = "peazip.desktop";
@@ -356,41 +363,38 @@ in
     TERMINAL = "ghostty";
   };
 
-  home.activation.removeLegacySessionEnv = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    legacy_env="${config.xdg.configHome}/environment.d/90-dms.conf"
-    if [[ -f "$legacy_env" ]] && [[ ! -L "$legacy_env" ]]; then
-      rm -f "$legacy_env"
-    fi
-  '';
+  home.activation.prepareWritableMimeApps = lib.mkIf cfg.desktopXdg (
+    lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+      target="${config.xdg.configHome}/mimeapps.list"
 
-  home.activation.prepareWritableMimeApps = lib.mkIf cfg.desktopXdg (lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    target="${config.xdg.configHome}/mimeapps.list"
-
-    # Migrate the old Home Manager/store link without touching an existing
-    # regular file containing user or application choices.
-    if [[ -L "$target" ]]; then
-      resolved="$(readlink -f "$target" 2>/dev/null || true)"
-      if [[ "$resolved" == /nix/store/* ]]; then
-        rm -f "$target"
+      # Migrate the old Home Manager/store link without touching an existing
+      # regular file containing user or application choices.
+      if [[ -L "$target" ]]; then
+        resolved="$(readlink -f "$target" 2>/dev/null || true)"
+        if [[ "$resolved" == /nix/store/* ]]; then
+          rm -f "$target"
+        fi
       fi
-    fi
 
-    install -dm755 "${config.xdg.configHome}"
-    if [[ ! -e "$target" && ! -L "$target" ]]; then
-      install -m644 /dev/null "$target"
-    elif [[ -f "$target" && ! -L "$target" ]]; then
-      chmod u+rw "$target"
-    fi
-  '');
+      install -dm755 "${config.xdg.configHome}"
+      if [[ ! -e "$target" && ! -L "$target" ]]; then
+        install -m644 /dev/null "$target"
+      elif [[ -f "$target" && ! -L "$target" ]]; then
+        chmod u+rw "$target"
+      fi
+    ''
+  );
 
-  home.activation.materializeDesktopMimeApps = lib.mkIf cfg.desktopXdg (lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    target="${config.xdg.dataHome}/applications/mimeapps.list"
-    if [[ -L "$target" ]]; then
-      source="$(readlink -f "$target")"
-      rm -f "$target"
-      install -m644 "$source" "$target"
-    fi
-  '');
+  home.activation.materializeDesktopMimeApps = lib.mkIf cfg.desktopXdg (
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      target="${config.xdg.dataHome}/applications/mimeapps.list"
+      if [[ -L "$target" ]]; then
+        source="$(readlink -f "$target")"
+        rm -f "$target"
+        install -m644 "$source" "$target"
+      fi
+    ''
+  );
 
   home.activation.updateMimeDatabase = lib.hm.dag.entryAfter [ "materializeDesktopMimeApps" ] ''
     if [[ -d "${config.xdg.dataHome}/mime" ]] && command -v update-mime-database >/dev/null 2>&1; then

@@ -1,6 +1,6 @@
 [General]
 ColorScheme=CatppuccinMacchiatoLavender
-TerminalApplication=/home/ahdg/.nix-profile/bin/ghostty --gtk-single-instance=true
+TerminalApplication=ghostty --gtk-single-instance=true
 XftHintStyle=hintslight
 XftSubPixel=rgb
 fixed=Monospace,13,-1,5,400,0,0,0,0,0,0,0,0,0,0,1

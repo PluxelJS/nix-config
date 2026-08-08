@@ -1,8 +1,5 @@
-{ lib, ... }:
+{ ... }:
 {
-  home.username = lib.mkDefault "ahdg";
-  home.homeDirectory = lib.mkDefault "/home/ahdg";
-
   # Change this only after reading the Home Manager release notes.
   home.stateVersion = "24.11";
 

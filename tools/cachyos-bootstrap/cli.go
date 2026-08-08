@@ -12,7 +12,6 @@ type bootstrapOptions struct {
 	profile       string
 	flake         string
 	minimal       bool
-	noFlatpaks    bool
 	withFlatpaks  bool
 	noInstallNix  bool
 	noInstallParu bool
@@ -142,7 +141,7 @@ func (a app) newCleanupCommand() *cobra.Command {
 	opts := cleanupOptions{}
 	cmd := &cobra.Command{
 		Use:   "cleanup",
-		Short: "Remove pacman packages replaced by Nix or retired stacks",
+		Short: "Remove safe host packages duplicated by the Nix stack",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return a.runCleanup(opts)
@@ -156,7 +155,7 @@ func (a app) newVerifyCommand() *cobra.Command {
 	opts := verifyOptions{}
 	cmd := &cobra.Command{
 		Use:   "verify [profile]",
-		Short: "Validate the Home Manager migration result",
+		Short: "Validate the current Home Manager deployment",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
@@ -165,6 +164,7 @@ func (a app) newVerifyCommand() *cobra.Command {
 			return a.runVerify(opts)
 		},
 	}
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "print every successful check")
 	return cmd
 }
 
@@ -179,7 +179,6 @@ func addBootstrapFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	cmd.Flags().StringVar(&opts.profile, "profile", opts.profile, "deployment profile")
 	cmd.Flags().StringVar(&opts.flake, "flake", "", "flake output; default follows profile")
 	cmd.Flags().BoolVar(&opts.minimal, "minimal", false, "skip desktop extras and Flatpak apps")
-	cmd.Flags().BoolVar(&opts.noFlatpaks, "no-flatpaks", false, "deprecated; Flatpak apps are deferred unless --with-flatpaks is set")
 	cmd.Flags().BoolVar(&opts.withFlatpaks, "with-flatpaks", false, "install remote and local Flatpak apps in this foreground bootstrap run")
 	cmd.Flags().BoolVar(&opts.noInstallNix, "no-install-nix", false, "skip Nix installation/daemon setup")
 	cmd.Flags().BoolVar(&opts.noInstallParu, "no-install-paru", false, "skip paru installation")

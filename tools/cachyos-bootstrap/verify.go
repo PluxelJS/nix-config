@@ -11,6 +11,7 @@ import (
 
 type verifyOptions struct {
 	profile string
+	verbose bool
 }
 
 type verifier struct {
@@ -18,6 +19,8 @@ type verifier struct {
 	profile    string
 	features   map[string]bool
 	userGroups []string
+	verbose    bool
+	passes     int
 	failures   int
 }
 
@@ -28,9 +31,9 @@ func (a app) runVerify(opts verifyOptions) error {
 	}
 	v.run()
 	if v.failures > 0 {
-		return fmt.Errorf("migration checks failed: %d", v.failures)
+		return fmt.Errorf("verification finished: %d passed, %d failed", v.passes, v.failures)
 	}
-	fmt.Println("\nMigration checks passed.")
+	fmt.Printf("Verification checks passed: %d.\n", v.passes)
 	return nil
 }
 
@@ -65,7 +68,13 @@ func newVerifier(cfg config, opts verifyOptions) (*verifier, error) {
 		}
 	}
 
-	return &verifier{home: home, profile: profile, features: features, userGroups: cfg.UserGroups[profile]}, nil
+	return &verifier{
+		home:       home,
+		profile:    profile,
+		features:   features,
+		userGroups: cfg.UserGroups[profile],
+		verbose:    opts.verbose,
+	}, nil
 }
 
 func (v *verifier) run() {
@@ -110,16 +119,7 @@ func (v *verifier) run() {
 		v.checkFonts()
 	}
 
-	v.checkAbsent(".config/environment.d/90-dms.conf", "%s legacy file is removed", "%s should no longer exist")
 	v.checkSymlink(".gitconfig")
-	if strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.name")) == "ahdg6" &&
-		strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.email")) != "" {
-		v.pass("global git author identity resolves through the managed compatibility entrypoint")
-	} else {
-		v.fail("global git author identity should resolve through ~/.gitconfig")
-	}
-	v.checkAbsent(".config/gtkrc", "%s legacy file is removed", "%s should no longer exist")
-	v.checkAbsent(".config/amzxyz", "%s legacy config tree is removed", "%s should no longer exist")
 
 	if v.has("fonts") {
 		v.checkRegularPath(".config/fontconfig/fonts.conf", "%s is materialized for Flatpak", "%s should be a regular file for Flatpak compatibility")
@@ -132,7 +132,6 @@ func (v *verifier) run() {
 
 	if v.has("gui") {
 		v.checkMaterializedGUI()
-		v.checkRetiredGUIState()
 	}
 	if v.has("localsend") {
 		v.checkLocalSend()
@@ -237,7 +236,6 @@ func (v *verifier) checkFonts() {
 	} {
 		v.checkFile(rel)
 	}
-	v.checkAbsent(".local/share/fonts/nix", "%s duplicate font tree is removed", "%s should be provided by the Home Manager profile instead")
 }
 
 func (v *verifier) checkMaterializedGUI() {
@@ -265,63 +263,7 @@ func (v *verifier) checkMaterializedGUI() {
 		v.checkRegularPath(rel, "%s is materialized for Flatpak", "%s should be a regular file or directory for Flatpak compatibility")
 	}
 
-	v.checkAbsent(".config/autostart/org.fcitx.Fcitx5.desktop", "system fcitx autostart is no longer masked by a user override", "system fcitx autostart should not be masked under ~/.config/autostart")
-	for _, rel := range []string{
-		".config/autostart/abdownloader.desktop",
-		".config/autostart/cachyos-hello.desktop",
-		".config/autostart/jetbrains-toolbox.desktop",
-		".config/autostart/mihomo-party.desktop",
-		".config/autostart/razer.desktop",
-		".config/autostart/后台启动浏览器.desktop",
-	} {
-		v.checkAbsent(rel, "%s migrated user autostart is removed", "%s should be owned by Mango startup or the package autostart")
-	}
 	v.checkFlatpakOverridesWritable()
-}
-
-func (v *verifier) checkRetiredGUIState() {
-	v.checkAbsent(".config/qt5ct", "unused qt5ct/qt6ct config trees are removed", "unused qt5ct/qt6ct config trees should no longer exist")
-	v.checkAbsent(".config/qt6ct", "unused qt5ct/qt6ct config trees are removed", "unused qt5ct/qt6ct config trees should no longer exist")
-	for _, rel := range []string{
-		".local/share/icons/Papirus-kanagawa",
-		".local/share/icons/Kanagawa",
-		".local/share/themes/Catppuccin-Mocha",
-		".local/share/themes/Wallbash-Gtk",
-		".local/share/themes/Abyssal-Wave",
-		".local/share/themes/Decay-Green",
-		".local/share/themes/Edge-Runner",
-		".local/share/themes/Everforest-Dark",
-		".local/share/themes/Frosted-Glass",
-		".local/share/themes/Graphite-Mono",
-		".local/share/themes/Gruvbox-Retro",
-		".local/share/themes/Material-Sakura",
-		".local/share/themes/Nordic-Blue",
-		".local/share/themes/Rose-Pine",
-		".local/share/themes/Synth-Wave",
-		".local/share/themes/Tokyo-Night",
-		".local/share/icons/Wallbash-Icon",
-		".local/share/icons/BeautyLine",
-		".local/share/icons/Gruvbox-Plus-Dark",
-		".local/share/icons/Gruvbox-Retro",
-		".local/share/icons/Nordzy",
-		".local/share/icons/Tela-circle-black",
-		".local/share/icons/Tela-circle-blue",
-		".local/share/icons/Tela-circle-dracula",
-		".local/share/icons/Tela-circle-green",
-		".local/share/icons/Tela-circle-grey",
-		".local/share/icons/Tela-circle-pink",
-		".local/share/icons/Tela-circle-purple",
-		".local/share/icons/Tela-circle-yellow",
-		".config/gtk-3.0/gtk.css",
-		".config/gtk-3.0/dank-colors.css",
-		".local/share/icons/Catppuccin-Macchiato-Lavender-Cursors",
-		".themes/Catppuccin-Latte",
-		".themes/Catppuccin-Mocha",
-		".themes/Rose-Pine",
-		".themes/Wallbash-Gtk",
-	} {
-		v.checkAbsent(rel, "%s legacy path is removed", "%s should no longer exist")
-	}
 }
 
 func (v *verifier) checkFlatpakOverridesWritable() {
@@ -378,20 +320,20 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "copyq", "file", "mark-shot", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "wl-paste")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
-		v.pass("interactive zsh resolves the migrated toolchain")
+		v.pass("interactive zsh resolves the managed toolchain")
 	} else {
-		v.fail("interactive zsh cannot resolve one or more migrated tools")
+		v.fail("interactive zsh cannot resolve one or more managed tools")
 	}
 
 	if v.has("ghostty") {
-		v.checkZsh("[[ \"$ELECTRON_OZONE_PLATFORM_HINT\" == \"auto\" && \"$TERMINAL\" == \"ghostty\" ]]", "interactive zsh exports the migrated desktop helper environment", "interactive zsh is missing migrated desktop helper environment variables")
+		v.checkZsh("[[ \"$ELECTRON_OZONE_PLATFORM_HINT\" == \"auto\" && \"$TERMINAL\" == \"ghostty\" ]]", "interactive zsh exports the desktop helper environment", "interactive zsh is missing desktop helper environment variables")
 	}
 	if v.has("desktopXdg") {
-		v.checkZsh("[[ \"$XDG_DESKTOP_DIR\" == \"$HOME/桌面\" && \"$XDG_DOWNLOAD_DIR\" == \"$HOME/下载\" ]]", "interactive zsh exports the migrated XDG user directories", "interactive zsh is missing migrated XDG user directory variables")
+		v.checkZsh("[[ \"$XDG_DESKTOP_DIR\" == \"$HOME/桌面\" && \"$XDG_DOWNLOAD_DIR\" == \"$HOME/下载\" ]]", "interactive zsh exports the managed XDG user directories", "interactive zsh is missing managed XDG user directory variables")
 	}
 	if v.has("gui") {
 		v.checkZsh("command -v darkly-settings6 >/dev/null", "Darkly is provided by the system KDE/Qt package set", "Darkly is missing from the system KDE/Qt package set")
-		v.checkZsh("[[ \"$INPUT_METHOD\" == \"fcitx\" && \"$XMODIFIERS\" == \"@im=fcitx\" && \"$GTK_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULES\" == \"wayland;fcitx\" ]]", "interactive zsh exports the migrated fcitx environment", "interactive zsh is missing part of the migrated fcitx environment")
+		v.checkZsh("[[ \"$INPUT_METHOD\" == \"fcitx\" && \"$XMODIFIERS\" == \"@im=fcitx\" && \"$GTK_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULES\" == \"wayland;fcitx\" ]]", "interactive zsh exports the managed fcitx environment", "interactive zsh is missing part of the managed fcitx environment")
 	}
 	if v.has("fonts") {
 		if regexp.MustCompile(`^Inter`).MatchString(commandOutput("fc-match", "sans-serif")) {
@@ -404,20 +346,10 @@ func (v *verifier) checkInteractiveShell() {
 		} else {
 			v.fail("monospace no longer resolves to Maple Mono NF CN")
 		}
-		if regexp.MustCompile(`^Inter`).MatchString(commandOutput("fc-match", `system\-ui`)) {
-			v.pass("system-ui resolves to the desktop sans-serif stack")
+		if regexp.MustCompile(`^SourceHanSerif.*"Source Han Serif SC"`).MatchString(commandOutput("fc-match", "serif")) {
+			v.pass("serif resolves to the Nix-managed Source Han Serif stack")
 		} else {
-			v.fail("system-ui no longer resolves to Inter")
-		}
-		if regexp.MustCompile(`^SourceHanSerif.*"Source Han Serif SC"`).MatchString(commandOutput("fc-match", `ui\-serif`)) {
-			v.pass("ui-serif resolves to the desktop serif stack")
-		} else {
-			v.fail("ui-serif no longer resolves to Source Han Serif SC")
-		}
-		if regexp.MustCompile(`^(MapleMono-NF-CN|MapleMono-NF-CN-|Maple Mono NF CN)`).MatchString(commandOutput("fc-match", `ui\-monospace`)) {
-			v.pass("ui-monospace resolves to the desktop monospace stack")
-		} else {
-			v.fail("ui-monospace no longer resolves to Maple Mono NF CN")
+			v.fail("serif no longer resolves to Source Han Serif SC")
 		}
 		if regexp.MustCompile(`^NotoColorEmoji.*"Noto Color Emoji"`).MatchString(commandOutput("fc-match", "emoji")) {
 			v.pass("emoji resolves to Noto Color Emoji")
@@ -437,6 +369,9 @@ func (v *verifier) checkFlatpakApps() {
 	}
 	v.checkCodeStudio()
 	v.checkCLion()
+	if !flatpakAppInstalled("org.telegram.desktop") {
+		return
+	}
 
 	if commandOK("flatpak", "run", "--command=sh", "org.telegram.desktop", "-c", "fc-match sans-serif 2>/dev/null | grep -q '^Inter'") {
 		v.pass("Telegram Flatpak now picks up the user fontconfig stack")
@@ -449,7 +384,7 @@ func (v *verifier) checkFlatpakApps() {
 		v.fail("Telegram Flatpak is still missing part of the materialized theme stack")
 	}
 	if commandOK("flatpak", "run", "--command=sh", "org.telegram.desktop", "-c", "test -f ~/.config/fcitx5/config && test -f ~/.local/share/fcitx5/themes/plasma/theme.conf && test -f ~/.local/share/fcitx5/rime/default.yaml && printenv XMODIFIERS | grep -qx '@im=fcitx' && printenv QT_IM_MODULES | grep -qx 'wayland;fcitx'") {
-		v.pass("Telegram Flatpak can read the migrated fcitx and rime stack")
+		v.pass("Telegram Flatpak can read the managed fcitx and rime stack")
 	} else {
 		v.fail("Telegram Flatpak is still missing part of the fcitx or rime stack")
 	}
@@ -485,7 +420,7 @@ func (v *verifier) checkCodeStudio() {
 		v.fail("Code Studio is not wired to the host Codex config as expected")
 	}
 	if !fileContainsRegex(commandOutput("flatpak", "override", "--user", "--show", appID), `(?m)^persistent=(.*;)?\.codex(;|$)`) {
-		v.pass("Code Studio does not persist the legacy ~/.codex mount")
+		v.pass("Code Studio does not persist the obsolete ~/.codex mount")
 	} else {
 		v.fail("Code Studio should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex")
 	}
@@ -507,6 +442,7 @@ func (v *verifier) checkCLion() {
 		return
 	}
 	home := shellQuote(v.home)
+	profileZsh := filepath.Join(v.home, ".local", "state", "nix", "profiles", "profile", "bin", "zsh")
 	if flatpakShell(appID, "for cmd in zsh git gh opencode node npm npx; do command -v \"$cmd\" >/dev/null 2>&1 || exit 1; done") {
 		v.pass("CLion terminal resolves the shared host-managed toolchain")
 	} else {
@@ -523,7 +459,7 @@ func (v *verifier) checkCLion() {
 		v.fail("CLion is not wired to the host Codex config as expected")
 	}
 	if !fileContainsRegex(commandOutput("flatpak", "override", "--user", "--show", appID), `(?m)^persistent=(.*;)?\.codex(;|$)`) {
-		v.pass("CLion does not persist the legacy ~/.codex mount")
+		v.pass("CLion does not persist the obsolete ~/.codex mount")
 	} else {
 		v.fail("CLion should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex")
 	}
@@ -555,12 +491,12 @@ func (v *verifier) checkCLion() {
 	} else {
 		v.fail("CLion is missing the host secret service or KWallet session bus policy")
 	}
-	if flatpakShell(appID, "env_block=\"$(sed -n '/\\[Environment\\]/,/^\\[/p' /.flatpak-info)\"; printf '%s\n' \"$env_block\" | grep -q '^FLATPAK_IDE_ENV=1$' && printf '%s\n' \"$env_block\" | grep -q '^SHELL=/home/ahdg/.local/state/nix/profiles/profile/bin/zsh$' && printf '%s\n' \"$env_block\" | grep -q '^GTK_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULES=wayland$' && printf '%s\n' \"$env_block\" | grep -q '^XMODIFIERS=$'") {
+	if flatpakShell(appID, "env_block=\"$(sed -n '/\\[Environment\\]/,/^\\[/p' /.flatpak-info)\"; printf '%s\n' \"$env_block\" | grep -q '^FLATPAK_IDE_ENV=1$' && printf '%s\n' \"$env_block\" | grep -Fqx "+shellQuote("SHELL="+profileZsh)+" && printf '%s\n' \"$env_block\" | grep -q '^GTK_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULES=wayland$' && printf '%s\n' \"$env_block\" | grep -q '^XMODIFIERS=$'") {
 		v.pass("CLion keeps its Wayland-specific input env override instead of inheriting desktop IM settings")
 	} else {
 		v.fail("CLion should keep its Wayland-specific input env override")
 	}
-	if flatpakShell(appID, "options_dir=\"$(find \"$XDG_CONFIG_HOME/JetBrains\" -maxdepth 2 -mindepth 2 -type d -name options | sort | head -n1)\"; test -n \"$options_dir\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/editor-font.xml\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/terminal-font.xml\" && (grep -Fq 'myShellPath\" value=\"/home/ahdg/.local/state/nix/profiles/profile/bin/zsh' \"$options_dir/terminal.xml\" || grep -Fq 'myShellPath\" value=\"$USER_HOME$/.local/state/nix/profiles/profile/bin/zsh' \"$options_dir/terminal.xml\") && grep -q 'terminalEngine\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'terminalEngineInRemDev\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'selectedLocale\" value=\"zh-CN\"' \"$options_dir/ide.general.xml\"") {
+	if flatpakShell(appID, "options_dir=\"$(find \"$XDG_CONFIG_HOME/JetBrains\" -maxdepth 2 -mindepth 2 -type d -name options | sort | head -n1)\"; test -n \"$options_dir\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/editor-font.xml\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/terminal-font.xml\" && (grep -Fq "+shellQuote("myShellPath\" value=\""+profileZsh)+" \"$options_dir/terminal.xml\" || grep -Fq 'myShellPath\" value=\"$USER_HOME$/.local/state/nix/profiles/profile/bin/zsh' \"$options_dir/terminal.xml\") && grep -q 'terminalEngine\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'terminalEngineInRemDev\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'selectedLocale\" value=\"zh-CN\"' \"$options_dir/ide.general.xml\"") {
 		v.pass("CLion has JetBrains-wide seeded defaults for font, classic terminal shell, and locale")
 	} else {
 		v.fail("CLion is missing one of the JetBrains-wide seeded IDE defaults")
@@ -716,7 +652,7 @@ func (v *verifier) checkZsh(script, okMessage, failMessage string) {
 }
 
 func (v *verifier) checkCleanZshWithoutTerm() {
-	logPath := filepath.Join(os.TempDir(), "verify-shell-migration.zsh.log")
+	logPath := filepath.Join(os.TempDir(), "verify-deployment.zsh.log")
 	cmd := exec.Command("zsh", "-i", "-c", ":")
 	cmd.Env = append(os.Environ(), "TERM=")
 	out, err := cmd.CombinedOutput()
@@ -731,8 +667,8 @@ func (v *verifier) checkCleanZshWithoutTerm() {
 }
 
 func (v *verifier) checkGhosttySmoke() {
-	stdoutPath := filepath.Join(os.TempDir(), "verify-shell-migration.ghostty.stdout")
-	stderrPath := filepath.Join(os.TempDir(), "verify-shell-migration.ghostty.stderr")
+	stdoutPath := filepath.Join(os.TempDir(), "verify-deployment.ghostty.stdout")
+	stderrPath := filepath.Join(os.TempDir(), "verify-deployment.ghostty.stderr")
 	stdoutFile, stdoutErr := os.Create(stdoutPath)
 	stderrFile, stderrErr := os.Create(stderrPath)
 	if stdoutErr != nil || stderrErr != nil {
@@ -780,15 +716,6 @@ func (v *verifier) checkFile(rel string) {
 	}
 }
 
-func (v *verifier) checkAbsent(rel, okFormat, failFormat string) {
-	p := v.path(rel)
-	if !pathExists(p) {
-		v.passPath(okFormat, p)
-	} else {
-		v.failPath(failFormat, p)
-	}
-}
-
 func (v *verifier) checkRegularPath(rel, okFormat, failFormat string) {
 	p := v.path(rel)
 	if pathExists(p) && !isSymlink(p) {
@@ -816,28 +743,15 @@ func (v *verifier) path(rel string) string {
 }
 
 func (v *verifier) pass(format string, args ...any) {
-	fmt.Printf("[ok] "+format+"\n", args...)
+	v.passes++
+	if v.verbose {
+		fmt.Printf("[ok] "+format+"\n", args...)
+	}
 }
 
 func (v *verifier) fail(format string, args ...any) {
 	fmt.Printf("[fail] "+format+"\n", args...)
 	v.failures++
-}
-
-func (v *verifier) passPath(format, path string) {
-	if strings.Contains(format, "%") {
-		v.pass(format, path)
-	} else {
-		v.pass(format)
-	}
-}
-
-func (v *verifier) failPath(format, path string) {
-	if strings.Contains(format, "%") {
-		v.fail(format, path)
-	} else {
-		v.fail(format)
-	}
 }
 
 func flatpakShell(appID, script string) bool {

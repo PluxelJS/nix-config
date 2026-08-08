@@ -1,5 +1,5 @@
 [profiles.desktop]
-flake = "ahdg"
+flake = "current"
 features = [
   "fastfetch",
   "ghostty",
@@ -14,15 +14,15 @@ features = [
 ]
 
 [profiles.shell]
-flake = "ahdg-shell"
+flake = "current-shell"
 features = ["fonts"]
 
 [profiles.container]
-flake = "ahdg-container"
+flake = "current-container"
 features = []
 
 [packages]
-base = ["zsh", "pkgfile", "github-cli"]
+base = ["zsh", "pkgfile"]
 
 [packages.features]
 flatpak = ["desktop-file-utils", "flatpak", "flatpak-builder"]
@@ -49,7 +49,6 @@ localsend = ["ufw"]
 [packages.profiles]
 desktop = [
   "base-devel",
-  "git",
   "libcap-ng",
   "linux-cachyos-headers",
   "mangohud",

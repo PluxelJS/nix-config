@@ -2,6 +2,24 @@
 
 Fresh-machine setup lives here.
 
+For the usual case where CachyOS KDE and the desktop user already exist, clone
+the repo and use its root entrypoint:
+
+```bash
+git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+```
+
+Use `./setup --check` for a non-mutating preview, `./setup --flatpaks` for the
+deferred app list, and `./setup --verify` for validation. The optional remote
+`install.sh` installs Git when needed, makes a shallow checkout, and hands off
+to `setup`; read it before using the `curl | bash` form when the remote
+repository is not fully trusted.
+
+The bootstrap binary passes `--impure` only to its Home Manager invocation so
+the portable flake output can resolve `USER` and `HOME`. It does not weaken
+global Nix settings. Manual `home-manager`/`nix build` commands should pass
+`--impure` explicitly.
+
 The primary implementation is the committed Go binary:
 
 - `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/firewall/cleanup/verify CLI
@@ -23,6 +41,9 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh verify
 ```
 
+`verify` checks the active deployment. Add `--verbose` only when individual
+successful checks are useful for diagnosis.
+
 Use [docs/cachyos-bootstrap.md](../docs/cachyos-bootstrap.md) for the complete
 pure-CachyOS deployment flow.
 
@@ -34,9 +55,9 @@ Flatpak are explicit catch-up work:
 bootstrap/cachyos.sh flatpaks --apply
 ```
 
-`--minimal` skips desktop extras and Flatpaks for lean shell/container bring-up
-or debugging. `bootstrap --apply --with-flatpaks` keeps the old foreground
-all-in-one behavior when that is useful.
+`--minimal` skips desktop extras and optional Flatpaks for lean shell/container
+bring-up or debugging. `bootstrap --apply --with-flatpaks` explicitly requests
+the foreground all-in-one flow.
 
 `bootstrap/cachyos.toml` stays intentionally small: profiles select feature
 names, package sections are plain package lists, `aurPackages.desktop` declares

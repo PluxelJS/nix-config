@@ -26,7 +26,7 @@ let
   };
   wanxiangGrammar = pkgs.fetchurl {
     url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
-    hash = "sha256-DRnxrj9nZW3x+LIHoULuEIyPa2bjZ4cgIiG7k3w++Cw=";
+    hash = "sha256-MW285vytIy2GebvKOdWmggyHCz/pVKW5jkg4remyqDE=";
   };
 
   rimeStaticPayload =
@@ -61,20 +61,13 @@ lib.mkIf config.ahdg.features.gui {
     XMODIFIERS = "@im=fcitx";
   };
 
-  home.activation.removeLegacyInputMethodArtifacts = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    legacy_autostart="${config.xdg.configHome}/autostart/org.fcitx.Fcitx5.desktop"
-
-    if [[ -e "$legacy_autostart" || -L "$legacy_autostart" ]]; then
-      rm -f "$legacy_autostart"
-    fi
-
+  home.activation.prepareManagedInputMethodAssets = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    # These targets are materialized after linking for Flatpak compatibility.
+    # Clear only the paths declared and recreated by this module.
     for target in \
-      "${config.xdg.configHome}/amzxyz" \
-      "${config.xdg.configHome}/fcitx" \
       "${config.xdg.configHome}/fcitx5/config" \
       "${config.xdg.configHome}/fcitx5/profile" \
       "${config.xdg.configHome}/fcitx5/conf" \
-      "${config.xdg.configHome}/ibus" \
       "${config.xdg.dataHome}/fcitx5/themes/plasma" \
       "${config.xdg.dataHome}/fcitx5/themes/catppuccin-macchiato-lavender" \
       "${config.xdg.dataHome}/fcitx5/themes/catppuccin-mocha-lavender"

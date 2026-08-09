@@ -31,10 +31,11 @@ The host package manager owns:
 ## Quick Start
 
 After the normal x86_64 CachyOS + KDE installer has created your desktop user,
-open a terminal as that user and run:
+open a terminal as that user and run the self-updating installer. It installs
+Git when needed and then hands off to the idempotent setup flow:
 
 ```bash
-git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+curl -fsSL https://raw.githubusercontent.com/PluxelJS/nix-config/main/bootstrap/install.sh | bash
 ```
 
 `setup` is idempotent, defaults to the desktop profile, and may be rerun after
@@ -44,12 +45,21 @@ config updates. To inspect the planned work first:
 ~/.config/nix/setup --check
 ```
 
-If Git is not installed yet, install it with `sudo pacman -S --needed git`.
-An optional remote installer that installs Git and performs the shallow clone is:
+The normal first run is unattended apart from sudo authentication. Repository
+packages and the repository's explicit AUR package allowlist use non-interactive
+installation; an error stops the flow instead of asking for a package-management
+decision mid-bootstrap.
+
+The equivalent manual path is:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PluxelJS/nix-config/main/bootstrap/install.sh | bash
+sudo pacman -S --needed git
+git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix
+~/.config/nix/setup
 ```
+
+Re-running the remote installer fast-forwards an existing clean checkout and
+reconciles the machine. Local repository changes are never overwritten.
 
 The default apply path prioritizes the usable desktop base and defers slower
 Flatpak app downloads. Catch up those apps later:
@@ -85,7 +95,7 @@ home-manager switch --flake ~/.config/nix#current-container --impure
 If `home-manager` is not installed globally:
 
 ```bash
-nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
+nix run --impure ~/.config/nix#home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
 ```
 
 Build activation package only:

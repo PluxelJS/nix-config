@@ -48,10 +48,10 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 	}
 
 	if err := a.ensureNix(opts); err != nil {
-		return err
+		return fmt.Errorf("prepare Nix: %w", err)
 	}
 	if err := a.ensureParu(opts); err != nil {
-		return err
+		return fmt.Errorf("prepare AUR helper: %w", err)
 	}
 
 	fmt.Println()
@@ -62,12 +62,12 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 		profileExplicit: true,
 		sudoReady:       opts.apply,
 	}); err != nil {
-		return err
+		return fmt.Errorf("install host dependencies: %w", err)
 	}
 
 	if !opts.noSwitch {
 		if err := a.runHomeManager(opts); err != nil {
-			return err
+			return fmt.Errorf("apply Home Manager profile: %w", err)
 		}
 	}
 
@@ -78,7 +78,7 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 			minimal: opts.minimal,
 			profile: opts.profile,
 		}); err != nil {
-			return err
+			return fmt.Errorf("install Flatpak applications: %w", err)
 		}
 	} else if hasFlatpakApps {
 		warn("remote and local Flatpak app installs deferred; desktop base is applied first")
@@ -91,13 +91,6 @@ func (a app) runBootstrap(opts bootstrapOptions) error {
 	}
 	fmt.Printf("\nNext checks after reboot/login:\n  %s %s\n",
 		shellJoin([]string{filepath.Join(a.repo, "bootstrap", "cachyos.sh"), "verify"}), opts.profile)
-	if opts.apply && (strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.name")) == "" ||
-		strings.TrimSpace(commandOutput("git", "config", "--global", "--get", "user.email")) == "") {
-		fmt.Println(`
-Git author identity is intentionally machine-local. Configure it once:
-  git config --global user.name "Your Name"
-  git config --global user.email "you@example.com"`)
-	}
 	return nil
 }
 
@@ -319,7 +312,7 @@ func (r depResult) applyPackages(includeExtras bool) error {
 
 	if len(repoMissing) > 0 {
 		fmt.Println("Installing missing required repo packages...")
-		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, repoMissing...)...); err != nil {
+		if err := run("sudo", append([]string{"pacman", "-S", "--needed", "--noconfirm"}, repoMissing...)...); err != nil {
 			return err
 		}
 	} else {
@@ -329,7 +322,7 @@ func (r depResult) applyPackages(includeExtras bool) error {
 	if includeExtras && len(extrasMissing) > 0 {
 		fmt.Println()
 		fmt.Println("Installing missing desktop extra repo packages...")
-		if err := run("sudo", append([]string{"pacman", "-S", "--needed"}, extrasMissing...)...); err != nil {
+		if err := run("sudo", append([]string{"pacman", "-S", "--needed", "--noconfirm"}, extrasMissing...)...); err != nil {
 			return err
 		}
 	} else if len(extrasMissing) > 0 {
@@ -347,7 +340,7 @@ func (r depResult) applyPackages(includeExtras bool) error {
 			return fmt.Errorf("missing required AUR packages and no paru command is available: %s; run bootstrap/cachyos.sh --apply", strings.Join(aurMissing, ", "))
 		}
 		fmt.Println("Installing missing required AUR packages...")
-		if err := run("paru", append([]string{"-S", "--needed"}, aurMissing...)...); err != nil {
+		if err := run("paru", append([]string{"-S", "--needed", "--noconfirm", "--skipreview"}, aurMissing...)...); err != nil {
 			return err
 		}
 	}
@@ -433,11 +426,56 @@ func (a app) ensureNix(opts bootstrapOptions) error {
 	} else {
 		warn("nix command missing and --no-install-nix was set")
 	}
+	if opts.apply && !commandExists("nix") {
+		return errors.New("nix command is still missing after the installation step")
+	}
+
+	if opts.apply && commandExists("nix-store") {
+		storeNeedsInit := !directoryExists("/nix/store") || !fileExists("/nix/var/nix/db/db.sqlite")
+		if storeNeedsInit {
+			warn("Nix store is missing or incomplete; repairing it before starting the daemon")
+		}
+
+		// These operations are idempotent. Run them even when /nix/store exists so
+		// retrying after an interrupted package install repairs build users,
+		// ownership, permissions, and daemon runtime directories.
+		if commandExists("systemd-sysusers") && fileExists("/usr/lib/sysusers.d/nix-daemon.conf") {
+			if err := run("sudo", "systemd-sysusers", "/usr/lib/sysusers.d/nix-daemon.conf"); err != nil {
+				return fmt.Errorf("create Nix build users: %w", err)
+			}
+		}
+		if !groupExists("nixbld") {
+			return errors.New("Nix build group `nixbld` is missing after applying the package's sysusers policy")
+		}
+		if err := run("sudo", "install", "-d", "-m0755", "-o", "root", "-g", "root", "/nix"); err != nil {
+			return fmt.Errorf("repair /nix permissions: %w", err)
+		}
+		if err := run("sudo", "install", "-d", "-m1775", "-o", "root", "-g", "nixbld", "/nix/store"); err != nil {
+			return fmt.Errorf("repair /nix/store permissions: %w", err)
+		}
+		if commandExists("systemd-tmpfiles") && fileExists("/usr/lib/tmpfiles.d/nix-daemon.conf") {
+			if err := run("sudo", "systemd-tmpfiles", "--create", "/usr/lib/tmpfiles.d/nix-daemon.conf"); err != nil {
+				return fmt.Errorf("create Nix runtime directories: %w", err)
+			}
+		}
+		if storeNeedsInit {
+			if err := run("sudo", "nix-store", "--store", "local", "--init"); err != nil {
+				return fmt.Errorf("initialize /nix/store: %w", err)
+			}
+		}
+	}
 
 	if opts.apply && commandExists("systemctl") {
 		if err := run("sudo", "systemctl", "enable", "--now", "nix-daemon.service"); err != nil {
 			return err
 		}
+	}
+	if opts.apply && commandExists("nix") && !commandOK(
+		"nix",
+		"--extra-experimental-features", "nix-command",
+		"store", "ping", "--store", "daemon",
+	) {
+		return errors.New("Nix daemon store is unavailable after initialization; check `systemctl status nix-daemon.service` and `/nix/store`")
 	}
 
 	if opts.apply && groupExists("nix-users") {
@@ -483,7 +521,7 @@ func installPacmanPackage(pkg, reason string, apply bool) error {
 	}
 	fail("pacman package `%s` missing (%s)", pkg, reason)
 	if apply {
-		return run("sudo", "pacman", "-S", "--needed", pkg)
+		return run("sudo", "pacman", "-S", "--needed", "--noconfirm", pkg)
 	}
 	return nil
 }
@@ -588,8 +626,7 @@ func (a app) installLocalFlatpak(appID string) error {
 }
 
 func (a app) runHomeManager(opts bootstrapOptions) error {
-	flakeRef := fmt.Sprintf("%s#%s", a.repo, opts.flake)
-	hmArgs := []string{"run", "--impure", "github:nix-community/home-manager", "--", "switch", "--flake", flakeRef, "-b", "pre-nix", "--impure"}
+	hmArgs := a.homeManagerArgs(opts)
 	if !opts.apply {
 		fmt.Printf("\nHome Manager switch command:\n  %s\n", shellJoin(append([]string{"nix"}, hmArgs...)))
 		return nil
@@ -601,6 +638,12 @@ func (a app) runHomeManager(opts bootstrapOptions) error {
 		return err
 	}
 	return nil
+}
+
+func (a app) homeManagerArgs(opts bootstrapOptions) []string {
+	flakeRef := fmt.Sprintf("%s#%s", a.repo, opts.flake)
+	homeManagerRef := fmt.Sprintf("%s#home-manager", a.repo)
+	return []string{"run", "--impure", homeManagerRef, "--", "switch", "--flake", flakeRef, "-b", "pre-nix", "--impure"}
 }
 
 func ensureFlathub(apply bool) error {

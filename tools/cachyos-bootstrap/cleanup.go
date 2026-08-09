@@ -29,6 +29,7 @@ var cleanupGroups = []struct {
 			"git",
 			"localsend",
 			"mise",
+			"notepadnext-bin",
 			"peazip",
 			"peazip-qt-bin",
 			"maplemono-cn",

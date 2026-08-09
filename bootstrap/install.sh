@@ -19,17 +19,28 @@ if ! command -v pacman >/dev/null 2>&1; then
   echo "This bootstrap targets CachyOS/Arch hosts with pacman." >&2
   exit 1
 fi
+if ! command -v sudo >/dev/null 2>&1; then
+  echo "This bootstrap requires sudo to be installed and configured for the desktop user." >&2
+  exit 1
+fi
 
 target_dir="${NIX_CONFIG_TARGET:-${XDG_CONFIG_HOME:-$HOME/.config}/nix}"
 
 if ! command -v git >/dev/null 2>&1; then
-  sudo pacman -S --needed git
+  sudo pacman -S --needed --noconfirm git
 fi
 
 if [[ -e "$target_dir" ]]; then
   if [[ ! -d "$target_dir/.git" ]]; then
     echo "Target exists but is not a Git checkout: $target_dir" >&2
     exit 1
+  fi
+
+  if [[ -z "$(git -C "$target_dir" status --porcelain)" ]]; then
+    echo "Updating existing checkout: $target_dir"
+    git -C "$target_dir" pull --ff-only
+  else
+    echo "Existing checkout has local changes; using it without pulling: $target_dir" >&2
   fi
 else
   mkdir -p "$(dirname "$target_dir")"

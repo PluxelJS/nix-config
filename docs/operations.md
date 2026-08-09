@@ -30,7 +30,7 @@ home-manager switch --flake ~/.config/nix#current-container --impure
 If `home-manager` is not installed globally:
 
 ```bash
-nix run github:nix-community/home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
+nix run --impure ~/.config/nix#home-manager -- switch --flake ~/.config/nix#current -b pre-nix --impure
 ```
 
 Build activation package only:

@@ -8,7 +8,7 @@ every byte supplied by rolling host repositories.
 
 The Home Manager layer is the strongest boundary:
 
-- `flake.lock` pins nixpkgs, Home Manager, nixGL, ragenix, and their transitive
+- `flake.lock` pins nixpkgs, Home Manager, nixGL, agenix, and their transitive
   inputs by revision and NAR hash.
 - Custom Nix packages and downloaded desktop resources use immutable versions
   or commits plus content hashes.

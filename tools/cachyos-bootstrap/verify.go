@@ -336,7 +336,7 @@ func (v *verifier) checkUserGroups() {
 }
 
 func (v *verifier) checkInteractiveShell() {
-	expectedTools := []string{"zsh", "starship", "git", "gh", "fzf", "zoxide", "mise", "atuin"}
+	expectedTools := []string{"zsh", "starship", "git", "gh", "fzf", "zoxide", "mise", "atuin", "agenix"}
 	if v.has("fastfetch") {
 		expectedTools = append(expectedTools, "fastfetch")
 	}
@@ -344,7 +344,7 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "ghostty")
 	}
 	if v.has("gui") {
-		expectedTools = append(expectedTools, "copyq", "dex", "file", "mark-shot", "notify-send", "openrazer-daemon", "peazip", "polychromatic-controller", "songrec", "wl-paste")
+		expectedTools = append(expectedTools, "copyq", "dex", "file", "mark-shot", "NotepadNext", "notify-send", "openrazer-daemon", "peazip", "polychromatic-controller", "songrec", "wl-paste")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
 		v.pass("interactive zsh resolves the managed toolchain")

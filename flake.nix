@@ -8,9 +8,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    ragenix = {
-      url = "github:yaxitech/ragenix";
+    agenix = {
+      url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
     nixgl = {
       url = "github:nix-community/nixGL";
@@ -23,7 +24,7 @@
       nixpkgs,
       nixpkgs-mise,
       home-manager,
-      ragenix,
+      agenix,
       nixgl,
       ...
     }:
@@ -78,10 +79,11 @@
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           extraSpecialArgs = {
-            inherit ragenix;
+            inherit agenix;
             inherit nixgl;
           };
           modules = [
+            agenix.homeManagerModules.default
             ./home/default.nix
             ./home/profiles/${profile}.nix
             {
@@ -106,6 +108,10 @@
         };
     in
     {
+      # Let bootstrap run the Home Manager CLI from this flake's lock file
+      # instead of fetching an unrelated latest release during first setup.
+      packages.${system}.home-manager = home-manager.packages.${system}.home-manager;
+
       homeModules.default = ./home/default.nix;
 
       homeConfigurations = {

@@ -1,4 +1,4 @@
-{ pkgs, ragenix, ... }:
+{ pkgs, agenix, ... }:
 let
   pkgfileCompat = pkgs.writeShellApplication {
     name = "pkgfile";
@@ -39,6 +39,6 @@ in {
       pkgfileCompat
     ])
     ++ [
-      ragenix.packages.${pkgs.stdenv.hostPlatform.system}.default
+      agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
 }

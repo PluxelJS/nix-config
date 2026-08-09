@@ -9,8 +9,8 @@ adding more runtime complexity to the Home Manager config today.
   Flatpak IDE terminals can resolve the GitHub credential helper.
 - Let Home Manager own normal config for `git`; seed `gh` defaults as a writable
   runtime file so `gh` can migrate or update its own config.
-- Keep `ragenix` installed as a future-facing encryption helper, but do not
-  wire it into `gh` auth yet.
+- Keep the original `agenix` CLI and Home Manager module available for a future
+  encrypted recovery secret, but do not wire it into `gh` auth yet.
 - Let local runtime auth stay local:
   `gh` should use the desktop credential store when available.
 - Prefer SSH for Git transport and `gh` as the GitHub credential helper.
@@ -40,7 +40,8 @@ If cross-machine recovery becomes worth the extra complexity later:
 
 1. Keep daily auth in the local keyring.
 2. Export a recovery token from `gh auth token`.
-3. Encrypt that token with `ragenix` or another age-based secret workflow.
+3. Encrypt that token with `agenix` and declare its runtime destination through
+   the already imported Home Manager module.
 4. Use the encrypted token only as a backup/bootstrap source for new machines.
 
 This keeps local UX simple while still leaving a path to future recovery.

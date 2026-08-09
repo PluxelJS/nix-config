@@ -11,7 +11,6 @@ let
     ++ lib.optionals config.ahdg.features.gui [
       pkgs.bibata-cursors
       pkgs.papirus-icon-theme
-      pkgs.notepad-next
       pkgs.copyq
       pkgs.file
       pkgs.libnotify

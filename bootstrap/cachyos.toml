@@ -70,7 +70,6 @@ mangowm-git = ["mango", "mmsg"]
 [aurPackages]
 desktop = [
   "clash-party-bin",
-  "notepadnext-bin",
   "polychromatic",
   "wps-office-cn",
   "wps-office-mime-cn",

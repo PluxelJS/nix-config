@@ -33,6 +33,9 @@ func TestBundledConfigValidates(t *testing.T) {
 	if stringInSlice("peazip-qt-bin", cfg.AURPackages["desktop"]) {
 		t.Fatal("PeaZip should be provided by Home Manager instead of the retired AUR binary package")
 	}
+	if stringInSlice("notepadnext-bin", cfg.AURPackages["desktop"]) {
+		t.Fatal("Notepad Next should be provided by Home Manager instead of a volatile AUR binary package")
+	}
 }
 
 func TestDetectsLocalSendUFWRules(t *testing.T) {
@@ -158,5 +161,38 @@ func TestShellQuote(t *testing.T) {
 		if got := shellQuote(input); got != want {
 			t.Fatalf("shellQuote(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+func TestDirectoryExists(t *testing.T) {
+	dir := t.TempDir()
+	if !directoryExists(dir) {
+		t.Fatalf("expected %s to be detected as a directory", dir)
+	}
+
+	file := filepath.Join(dir, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if directoryExists(file) {
+		t.Fatalf("expected %s not to be detected as a directory", file)
+	}
+	if directoryExists(filepath.Join(dir, "missing")) {
+		t.Fatal("expected a missing path not to be detected as a directory")
+	}
+}
+
+func TestHomeManagerUsesPinnedFlakePackage(t *testing.T) {
+	a := app{repo: "/home/test/.config/nix"}
+	args := a.homeManagerArgs(bootstrapOptions{flake: "current"})
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "/home/test/.config/nix#home-manager") {
+		t.Fatalf("Home Manager command does not use the repo-pinned CLI: %s", joined)
+	}
+	if !strings.Contains(joined, "/home/test/.config/nix#current") {
+		t.Fatalf("Home Manager command does not use the selected profile: %s", joined)
+	}
+	if strings.Contains(joined, "github:nix-community/home-manager") {
+		t.Fatalf("Home Manager command unexpectedly fetches an unpinned CLI: %s", joined)
 	}
 }

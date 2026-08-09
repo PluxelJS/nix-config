@@ -2,11 +2,11 @@
 
 Fresh-machine setup lives here.
 
-For the usual case where CachyOS KDE and the desktop user already exist, clone
-the repo and use its root entrypoint:
+For the usual case where CachyOS KDE and the desktop user already exist, run
+the self-updating installer as that user:
 
 ```bash
-git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+curl -fsSL https://raw.githubusercontent.com/PluxelJS/nix-config/main/bootstrap/install.sh | bash
 ```
 
 Use `./setup --check` for a non-mutating preview, `./setup --flatpaks` for the
@@ -15,10 +15,22 @@ deferred app list, and `./setup --verify` for validation. The optional remote
 to `setup`; read it before using the `curl | bash` form when the remote
 repository is not fully trusted.
 
+The first-run path passes non-interactive flags for trusted repository packages
+and the explicit AUR allowlist, leaving sudo authentication as the only expected
+prompt. Treat additions to that allowlist as code changes and review them before
+merging.
+
 The bootstrap binary passes `--impure` only to its Home Manager invocation so
 the portable flake output can resolve `USER` and `HOME`. It does not weaken
 global Nix settings. Manual `home-manager`/`nix build` commands should pass
 `--impure` explicitly.
+
+On an Arch-family install, the bootstrap idempotently reapplies Nix's
+sysusers/tmpfiles policy and canonical store permissions before starting
+`nix-daemon.service`. It initializes the database when the package hooks left
+the store incomplete, then verifies the daemon connection before continuing.
+Home Manager itself comes from this repository's flake lock rather than an
+unrelated latest CLI release.
 
 The primary implementation is the committed Go binary:
 

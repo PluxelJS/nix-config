@@ -38,10 +38,12 @@ and verification are subcommands of the same binary:
 
 ## Fresh Install
 
-After CachyOS KDE has created the desktop user, run this as that user:
+After CachyOS KDE has created the desktop user, run this as that user. The
+installer adds Git when missing, clones the repository, or fast-forwards an
+existing clean checkout, and then applies the desktop profile:
 
 ```bash
-git clone https://github.com/PluxelJS/nix-config.git ~/.config/nix && ~/.config/nix/setup
+curl -fsSL https://raw.githubusercontent.com/PluxelJS/nix-config/main/bootstrap/install.sh | bash
 ```
 
 Preview without changing the machine:
@@ -63,7 +65,11 @@ profile work, but is not required for a normal first install.
 
 What it does:
 
-- installs Nix through pacman and enables `nix-daemon.service`
+- installs Nix through pacman, idempotently repairs its build users, runtime
+  directories, and canonical store permissions, initializes the database when
+  a fresh package install left it incomplete, enables `nix-daemon.service`, and
+  verifies the daemon store before invoking the Home Manager CLI pinned by this
+  repository's flake lock
 - installs `paru` from the CachyOS repository when missing
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
@@ -77,6 +83,11 @@ What it does:
 - defers Flathub apps plus the local Code Studio Flatpak package to an
   explicit catch-up command
 - prints the verification command to run after the session has been refreshed
+
+The normal apply path is non-interactive after sudo authentication: pacman uses
+the configured signed repositories, while paru is limited to the explicit AUR
+allowlist in `bootstrap/cachyos.toml` and skips its interactive review screen.
+Treat changes to that allowlist as code changes and review them before merging.
 
 Useful variants:
 
@@ -136,8 +147,7 @@ Verification covers the active deployment and enabled services.
 
 Git author identity is not stored in the repository. Configure it once per
 account with `git config --global user.name ...` and
-`git config --global user.email ...`; bootstrap prints this reminder when
-either value is missing.
+`git config --global user.email ...` when the machine will create commits.
 
 Expected first-run notes:
 

@@ -108,6 +108,8 @@ desktop behavior that is not equivalently available from the trusted repo set:
 MangoWM commands, Polychromatic's OpenRazer UI, Mihomo Party's desktop/scheme
 handler, and WPS desktop/MIME integration. PeaZip is provided directly by
 Nixpkgs so a retired or renamed AUR binary package cannot block deployment.
+Notepad Next follows the same rule and keeps its existing command and desktop
+ID through the nixpkgs package.
 
 Mango session startup is user-layer and Home Manager-owned:
 

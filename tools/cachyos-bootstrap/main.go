@@ -144,6 +144,11 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
+func directoryExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
 func linesAsSet(text string) map[string]bool {
 	result := make(map[string]bool)
 	for _, line := range strings.Split(text, "\n") {

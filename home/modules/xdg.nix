@@ -30,11 +30,7 @@ let
   notepadNextManagedMimeTypes = notepadNextMimeTypes ++ [ notepadNextCustomMimeType ];
   textEditorAssociationDesktopIds = [
     notepadNextDesktopId
-    "com.visualstudio.code.desktop"
     "io.github.trumank.CodeStudio.desktop"
-    "codium.desktop"
-    "code-oss.desktop"
-    "codium-wayland.desktop"
     "vim.desktop"
     "micro.desktop"
     "featherpad.desktop"
@@ -286,13 +282,10 @@ in
             ];
             "text/plain" = [
               notepadNextDesktopId
+              "io.github.trumank.CodeStudio.desktop"
               "vim.desktop"
               "micro.desktop"
               "featherpad.desktop"
-              "codium.desktop"
-              "com.visualstudio.code.desktop"
-              "code-oss.desktop"
-              "codium-wayland.desktop"
             ];
             "x-scheme-handler/clash" = "mihomo-party.desktop";
             "x-scheme-handler/mihomo" = "mihomo-party.desktop";

@@ -17,7 +17,10 @@ The Home Manager layer is the strongest boundary:
 - GTK/KDE themes, icons, cursors, fontconfig policy, input-method policy, and
   Flatpak-facing materialized copies are generated from the locked closure.
 - Proxy LLM and Verdaccio container images are selected by digest.
-- Code Studio archives are selected by URL and SHA-256.
+- Code Studio's editor, SDK, and shell form an explicitly pinned compatibility
+  baseline selected by immutable archive hashes and a fixed runtime branch. It
+  is not advanced by routine dependency refreshes because newer tested editor
+  builds regress Wayland font clarity.
 
 Building the activation package realizes the complete Nix-side dependency
 graph, not only the configuration text:

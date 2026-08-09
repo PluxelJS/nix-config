@@ -140,16 +140,13 @@ are never continuously enforced by Home Manager.
 These cases are not a reason to expand new app theming to unrelated
 system-installed apps.
 
-## VSCode Boundary
+## Code Studio Boundary
 
-VSCode and related desktop IDs currently appear only as desktop-integration
-participants such as MIME fallback ordering or window rules.
-
-That is not the same thing as declaring VSCode to be part of the Nix-owned
-theme stack.
-
-Until the editor runtime itself is deliberately moved under Nix ownership, its
-theme should not become a first-class target in this theme policy.
+Code Studio is the sole declared VS Code-family editor. Its runtime is built
+from the compatibility-pinned local Flatpak manifest, while Home Manager owns
+its desktop bridge and shared theme/font/input integration. Generic editor
+window matching may still recognize upstream executable names, but that does
+not install VS Code, VSCodium, or Code OSS.
 
 ## GTK Direction
 

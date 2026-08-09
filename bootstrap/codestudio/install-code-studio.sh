@@ -7,7 +7,7 @@ manifest="$script_dir/io.github.trumank.CodeStudio.yml"
 build_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ahdg-code-studio-flatpak-build"
 repo_dir="${XDG_DATA_HOME:-$HOME/.local/share}/ahdg/flatpak-repos/code-studio"
 remote_name="ahdg-code-studio"
-runtime_ref="org.freedesktop.Sdk//25.08"
+runtime_ref="org.freedesktop.Sdk//24.08"
 
 if [[ ! -f "$manifest" ]]; then
   echo "run from the repository root" >&2

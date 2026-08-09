@@ -99,7 +99,6 @@ desktop = [
   "com.tencent.WeChat",
   "com.tencent.wemeet",
   "com.thincast.client",
-  "com.visualstudio.code",
   "io.github.flattool.Warehouse",
   "io.missioncenter.MissionCenter",
   "org.gnome.Boxes",

@@ -71,7 +71,6 @@ mangowm-git = ["mango", "mmsg"]
 desktop = [
   "clash-party-bin",
   "notepadnext-bin",
-  "peazip-qt-bin",
   "polychromatic",
   "wps-office-cn",
   "wps-office-mime-cn",

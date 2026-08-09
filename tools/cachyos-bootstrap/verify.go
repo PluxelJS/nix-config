@@ -207,6 +207,11 @@ func (v *verifier) checkGUIFiles() {
 		v.checkFile(rel)
 	}
 	for _, rel := range []string{
+		".config/autostart/ahdg-abdm-tray.desktop",
+		".config/autostart/ahdg-copyq.desktop",
+		".config/autostart/ahdg-mango-dms.desktop",
+		".config/autostart/ahdg-mihomo-party.desktop",
+		".config/autostart/ahdg-zen-browser-warmup.desktop",
 		".config/systemd/user/mango-session.target",
 		".config/menus/plasma-applications.menu",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
@@ -339,7 +344,7 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "ghostty")
 	}
 	if v.has("gui") {
-		expectedTools = append(expectedTools, "copyq", "file", "mark-shot", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "wl-paste")
+		expectedTools = append(expectedTools, "copyq", "dex", "file", "mark-shot", "notify-send", "openrazer-daemon", "peazip", "polychromatic-controller", "songrec", "wl-paste")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
 		v.pass("interactive zsh resolves the managed toolchain")
@@ -540,6 +545,20 @@ func (v *verifier) checkDesktopRuntime() {
 	}
 
 	if v.has("gui") {
+		copyqAutostart := readFile(v.path(".config/autostart/ahdg-copyq.desktop"))
+		dmsAutostart := readFile(v.path(".config/autostart/ahdg-mango-dms.desktop"))
+		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
+		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
+		if strings.Contains(copyqAutostart, "Exec=/nix/store/") &&
+			!strings.Contains(copyqAutostart, "OnlyShowIn=") &&
+			strings.Contains(dmsAutostart, "OnlyShowIn=X-Mango;") &&
+			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
+			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
+			v.pass("Plasma and Mango consume the managed XDG autostart policy without a systemd application target")
+		} else {
+			v.fail("managed XDG autostart policy or the Mango dex runner is incomplete")
+		}
+
 		userEnvironment := commandOutput("systemctl", "--user", "show-environment")
 		if regexp.MustCompile(`(?m)^XDG_MENU_PREFIX=plasma-$`).MatchString(userEnvironment) &&
 			regexp.MustCompile(`(?m)^XDG_CONFIG_DIRS=/nix/store/.*/etc/xdg:/etc/xdg$`).MatchString(userEnvironment) {
@@ -548,10 +567,11 @@ func (v *verifier) checkDesktopRuntime() {
 			v.fail("systemd user environment does not select the Nix Plasma application menu")
 		}
 		dolphinUnit := commandOutput("systemctl", "--user", "cat", "plasma-dolphin.service")
-		if dolphinUnit != "" && strings.Contains(dolphinUnit, ".config/ahdg/theme/session.env") && strings.Contains(dolphinUnit, "/nix/store/") {
-			v.pass("Dolphin FileManager1 daemon uses the Nix KDE runtime and dynamic environment")
+		dolphinPath := regexp.MustCompile(`(?m)^Environment=PATH=/nix/store/.*/bin:/usr/local/bin:/usr/bin$`)
+		if dolphinUnit != "" && strings.Contains(dolphinUnit, ".config/ahdg/theme/session.env") && dolphinPath.MatchString(dolphinUnit) {
+			v.pass("Dolphin FileManager1 daemon uses the Nix KDE runtime and can dispatch portal requests")
 		} else {
-			v.fail("Dolphin FileManager1 daemon is not fully Nix-owned")
+			v.fail("Dolphin FileManager1 daemon is not fully Nix-owned or cannot resolve its portal launcher")
 		}
 		dolphinLauncher, dolphinErr := exec.LookPath("dolphin")
 		dolphinLauncherText := readFile(dolphinLauncher)

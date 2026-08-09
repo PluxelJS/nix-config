@@ -30,6 +30,9 @@ func TestBundledConfigValidates(t *testing.T) {
 	if stringInSlice("ufw", cfg.Packages.Features["gui"]) {
 		t.Fatal("UFW should follow the LocalSend feature, not the generic GUI feature")
 	}
+	if stringInSlice("peazip-qt-bin", cfg.AURPackages["desktop"]) {
+		t.Fatal("PeaZip should be provided by Home Manager instead of the retired AUR binary package")
+	}
 }
 
 func TestDetectsLocalSendUFWRules(t *testing.T) {

@@ -199,6 +199,7 @@ from this flake:
 
 - `~/.config/ahdg/`
 - `~/.config/atuin/config.toml`
+- `~/.config/autostart/ahdg-*.desktop`
 - `~/.config/fastfetch/`
 - `~/.config/fcitx5/`
 - `~/.config/fontconfig/`
@@ -212,7 +213,6 @@ from this flake:
 - `~/.config/user-dirs.dirs`
 - `~/.config/user-dirs.locale`
 - `~/.config/xdg-desktop-portal/portals.conf`
-- `~/.config/systemd/user/copyq.service`
 - `~/.config/xdg-terminals.list`
 - `~/.config/xsettingsd/xsettingsd.conf`
 - `~/.config/zsh/.zshenv`

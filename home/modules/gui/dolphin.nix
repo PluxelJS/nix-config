@@ -16,6 +16,12 @@ lib.mkIf config.ahdg.features.gui {
       Slice = "background.slice";
       EnvironmentFile = themeEnvironmentFile;
       Environment = [
+        # FileManager1 requests from sandboxed apps (for example Telegram)
+        # arrive through the portal and systemd user bus, not an interactive
+        # shell.  Keep Dolphin's own launcher resolvable when the daemon
+        # dispatches those requests, even if the user manager has the host's
+        # minimal PATH.
+        "PATH=${lib.makeBinPath [ dolphinLauncher ]}:/usr/local/bin:/usr/bin"
         "XDG_MENU_PREFIX=plasma-"
         "XDG_CONFIG_DIRS=${config.ahdg.kde.runtime.plasmaWorkspace}/etc/xdg:/etc/xdg"
       ];

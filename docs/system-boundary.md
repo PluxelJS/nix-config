@@ -100,24 +100,27 @@ AUR packages used by the desktop profile:
 
 - `mangowm-git`
 - `polychromatic`
-- `clash-party-bin`, `peazip-qt-bin`, `wps-office-cn`,
+- `clash-party-bin`, `wps-office-cn`,
   `wps-office-mime-cn`, `wps-office-mui-zh-cn`
 
 These AUR packages remain explicit exceptions because they provide current
 desktop behavior that is not equivalently available from the trusted repo set:
-MangoWM commands, Polychromatic's OpenRazer UI, PeaZip's Dolphin service menu,
-Mihomo Party's desktop/scheme handler, and WPS desktop/MIME integration.
+MangoWM commands, Polychromatic's OpenRazer UI, Mihomo Party's desktop/scheme
+handler, and WPS desktop/MIME integration. PeaZip is provided directly by
+Nixpkgs so a retired or renamed AUR binary package cannot block deployment.
 
 Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
   target started by Mango's `exec-once`
-- `copyq.service` is Nix-managed, supervised by systemd, and bound to
-  `mango-session.target`; `~/.config/mango/startup.conf` owns the remaining
-  session apps such as ABDM tray, Mihomo Party, browser warmup, and display
-  helper scripts
-- package-provided XDG autostart entries and user overrides remain host/user
-  state; this flake does not delete unrelated entries under `~/.config/autostart`
+- Home Manager writes shared XDG autostart entries for CopyQ, ABDM tray, Mihomo
+  Party, and browser warmup; Plasma consumes them natively and Mango consumes
+  the same files through `dex`
+- Mango-only XDG entries use the extension desktop ID `OnlyShowIn=X-Mango;`, while the compositor's
+  `startup.conf` is reserved for one-shot session hardware helpers
+- package-provided XDG autostart entries and unrelated user overrides remain
+  host/user state; this flake owns only its `ahdg-*.desktop` entries and does
+  not delete other files under `~/.config/autostart`
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 The active KDE user stack is deliberately Nix-owned: Dolphin, Ark, KDED,
@@ -140,7 +143,7 @@ theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
 `dolphinui.rc` are writable regular files. A Home Manager switch never replaces
 or rewrites an existing live KDE preference file.
 
-CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
+CopyQ, PeaZip, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
 pinned to 16.0.0 until nixpkgs catches up because that release line fixes the
 long-running clipboard process leak; meatshell is pinned to the verified
 upstream 0.6.10 release artifact; GPU-backed meatshell and Zed launch through

@@ -41,30 +41,44 @@ nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 
 ## Proxy LLM Service
 
-The desktop profile generates one `proxy-llm.service` and one secret-free
-compose file in the Nix store. The service runs Proxy-LLM-API, Claude Code Hub,
-PostgreSQL, Dragonfly, and sing-box as one rootless Podman project.
+The desktop profile imports the official, lock-pinned Proxy-LLM-API Home
+Manager module. Its package in the Nix store owns compose files and lifecycle
+helpers; no `~/code/_ACode` checkout is needed after an optional one-time
+migration. Startup is queued asynchronously so a slow image pull cannot block
+Home Manager activation.
 
 ```bash
 systemctl --user status proxy-llm.service
 systemctl --user restart proxy-llm.service
 journalctl --user-unit=proxy-llm.service --follow
+proxy-llm status
+proxy-llm secrets
 ```
 
-Nix owns the service definition, image digests, ports, dependencies, and mount
-layout in `home/modules/podman/proxy-llm.nix`. It does not put credentials or
-mutable data in the Nix store. These stay in `~/.local/state/proxy-llm/`:
+Machine-local files live under `~/.local/state/proxy-llm/`: `.env`,
+CLIProxyAPI config, OAuth credentials, logs, plugins, and generated sing-box
+config. PostgreSQL, Dragonfly, and sing-box data use stable Podman named volumes
+unless `.env` explicitly selects legacy bind directories. Back up both the
+state directory and required named volumes while the service is stopped.
 
-- `.env`: Hub and PostgreSQL credentials and application settings
-- `api-config.yaml` and `sing-box.json`: local service configuration
-- `postgres/` and `dragonfly/`: database state
-- `auth/`, `logs/`, and `plugins/`: Proxy-LLM-API runtime state
+The upstream helper enables sing-box only when `.env` explicitly sets
+`SINGBOX_NODE_URL` or `SINGBOX_CONFIG_PATH`. With neither value configured,
+CLIProxyAPI connects directly and no sing-box container or proxy environment is
+added. Use `proxy-llm` for initialization, status, updates, logs, login, and
+proxy testing. For upstream development without changing `flake.lock`, build or
+switch with `--override-input proxy-llm "git+file://$HOME/code/_ACode"`.
 
-Back up that directory while `proxy-llm.service` is stopped. Restoring it on
-another machine before applying the desktop profile restores the same local
-service state. The service checks for all three required configuration files,
-so a fresh machine without restored local state fails closed instead of
-starting with placeholder credentials.
+When upgrading a workstation that still runs from the old checkout, perform
+the guarded one-time cutover before switching Home Manager:
+
+```bash
+PROXY_LLM_STATE_DIR="$HOME/.local/state/proxy-llm" \
+  nix run ~/.config/nix#proxy-llm -- cutover "$HOME/code/_ACode"
+```
+
+The new packaged helper health-checks the running old stack before stopping
+it, preserves its Compose project identity and rootless UID/GID data, and
+automatically restores the old service on any failure.
 
 Check or repair only the Arch-side runtime base:
 
@@ -207,7 +221,6 @@ from this flake:
 - `~/.config/git/config`
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
-- `~/.config/containers/systemd/verdaccio.container`
 - `~/.config/systemd/user/proxy-llm.service`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
@@ -239,9 +252,9 @@ Some files remain outside strict Nix ownership on purpose:
   writable file when missing and adds an include for the Nix-managed generic
   policy under `~/.config/git/config`.
 
-- `~/.local/state/proxy-llm/`
-  Credentials, OAuth tokens, databases, logs, and other state for the
-  Nix-defined rootless Podman stack remain local and writable.
+- `~/.local/state/proxy-llm/` and its Podman volumes
+  Proxy-LLM-API credentials, OAuth tokens, local configuration, logs, and
+  databases remain writable machine state outside the Nix store.
 
 - `~/.config/mimeapps.list`
   This is the writable, higher-priority MIME override layer used by desktop
@@ -376,24 +389,6 @@ for inspection and tooling convenience; it is not the canonical storage layer.
 `GTK_IM_MODULE`, `QT_IM_MODULE`, and `XMODIFIERS` are cleared for these IDE
 sandboxes as an explicit compatibility workaround for the current JetBrains
 Wayland runtimes on this machine.
-
-## Local Verdaccio Registry
-
-The desktop profile enables `ahdg.podman.verdaccio` by default. The module
-writes a user quadlet at `~/.config/containers/systemd/verdaccio.container`,
-reloads user systemd, and enables `verdaccio.service` when Podman is available.
-
-Useful commands:
-
-```bash
-systemctl --user status verdaccio.service
-systemctl --user restart verdaccio.service
-podman volume inspect verdaccio-storage
-```
-
-The registry binds to `127.0.0.1:4873`. Storage is the Podman named volume
-`verdaccio-storage`, so package data is runtime state rather than Nix store
-content.
 
 ## Runtime Expectations
 

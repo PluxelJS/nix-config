@@ -16,8 +16,7 @@ Home Manager owns:
   helpers, KWallet, PolicyKit agent, themes, and portal services
 - fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
-- user-scoped services such as the Proxy LLM compose stack and Verdaccio
-  Podman quadlet
+- the user-scoped Proxy LLM Podman compose stack
 - LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
 
 The host package manager owns:
@@ -104,10 +103,11 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
-The desktop profile enables `proxy-llm.service`. Nix owns its compose topology
-and pinned images, while machine-local configuration and persistent data stay
-under `~/.local/state/proxy-llm/`. See
-[docs/operations.md](docs/operations.md) for service and backup commands.
+The desktop profile consumes the official Proxy-LLM-API flake and starts its
+packaged helper through `proxy-llm.service`; a source checkout is not required.
+The lock file pins the tested upstream module and compose behavior, while local
+credentials and runtime state stay writable outside the store. See
+[docs/operations.md](docs/operations.md).
 
 ## Structure
 

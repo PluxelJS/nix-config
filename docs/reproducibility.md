@@ -16,7 +16,9 @@ The Home Manager layer is the strongest boundary:
   TsangerJinKai font is committed directly under `home/assets/fonts/custom/`.
 - GTK/KDE themes, icons, cursors, fontconfig policy, input-method policy, and
   Flatpak-facing materialized copies are generated from the locked closure.
-- Proxy LLM and Verdaccio container images are selected by digest.
+- The official Proxy-LLM-API package, Home Manager module, and compose behavior
+  are pinned as a flake input. Container tags remain an application-runtime
+  update boundary rather than bit-for-bit image locks.
 - Code Studio's editor, SDK, and shell form an explicitly pinned compatibility
   baseline selected by immutable archive hashes and a fixed runtime branch. It
   is not advanced by routine dependency refreshes because newer tested editor
@@ -71,8 +73,7 @@ pinned Flatpak commits, which this setup does not currently provide.
 The following must not be reproduced from a shared repository:
 
 - Git author identity, GitHub authentication, KWallet, and application tokens
-- Proxy LLM secrets and databases
-- Verdaccio packages, caches, logs, and other service data
+- Proxy LLM local state, secrets, and databases
 - Rime user dictionaries, sync data, and generated build output
 - device pairing, per-monitor runtime state, and application history
 

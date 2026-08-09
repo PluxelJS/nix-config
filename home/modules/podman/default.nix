@@ -1,15 +1,25 @@
-{ config, lib, ... }:
 {
-  imports = [
-    ./proxy-llm.nix
-    ./verdaccio.nix
-  ];
-
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
   config = lib.mkIf (config.ahdg.profile == "desktop") {
-    home.activation.ensurePodmanSocket = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      if command -v systemctl >/dev/null 2>&1 && command -v podman >/dev/null 2>&1; then
-        systemctl --user daemon-reload >/dev/null 2>&1 || true
-        systemctl --user enable --now podman.socket >/dev/null 2>&1 || true
+    # Retire only the old Nix-owned Quadlet during migration. A later local
+    # regular file with the same name remains entirely user-managed.
+    home.activation.retireNixVerdaccio = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+      quadlet="$HOME/.config/containers/systemd/verdaccio.container"
+      if [ -L "$quadlet" ]; then
+        resolved="$(${lib.getExe' pkgs.coreutils "readlink"} -f "$quadlet" 2>/dev/null || true)"
+        case "$resolved" in
+          /nix/store/*)
+            if command -v systemctl >/dev/null 2>&1; then
+              systemctl --user disable --now verdaccio.service >/dev/null 2>&1 || true
+              systemctl --user reset-failed verdaccio.service >/dev/null 2>&1 || true
+            fi
+            ;;
+        esac
       fi
     '';
 

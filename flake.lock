@@ -138,13 +138,35 @@
         "type": "github"
       }
     },
+    "proxy-llm": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786275477,
+        "narHash": "sha256-Q1yqsiBjHubNkKy33T5fHF6jTeG7OvZGzgdVav5leCo=",
+        "owner": "PluxelJS",
+        "repo": "Proxy-LLM-API",
+        "rev": "b91ec6fa9d2d7712957fc75f44ff60784f86b23a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PluxelJS",
+        "ref": "main",
+        "repo": "Proxy-LLM-API",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "agenix": "agenix",
         "home-manager": "home-manager",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-mise": "nixpkgs-mise"
+        "nixpkgs-mise": "nixpkgs-mise",
+        "proxy-llm": "proxy-llm"
       }
     },
     "systems": {

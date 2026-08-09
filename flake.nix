@@ -17,6 +17,10 @@
       url = "github:nix-community/nixGL";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    proxy-llm = {
+      url = "github:PluxelJS/Proxy-LLM-API/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -26,6 +30,7 @@
       home-manager,
       agenix,
       nixgl,
+      proxy-llm,
       ...
     }:
     let
@@ -84,6 +89,7 @@
           };
           modules = [
             agenix.homeManagerModules.default
+            proxy-llm.homeManagerModules.default
             ./home/default.nix
             ./home/profiles/${profile}.nix
             {
@@ -110,7 +116,10 @@
     {
       # Let bootstrap run the Home Manager CLI from this flake's lock file
       # instead of fetching an unrelated latest release during first setup.
-      packages.${system}.home-manager = home-manager.packages.${system}.home-manager;
+      packages.${system} = {
+        home-manager = home-manager.packages.${system}.home-manager;
+        proxy-llm = proxy-llm.packages.${system}.default;
+      };
 
       homeModules.default = ./home/default.nix;
 

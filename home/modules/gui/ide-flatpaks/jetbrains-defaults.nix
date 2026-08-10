@@ -55,6 +55,36 @@ EOF
   '';
 
   home.activation.seedJetbrainsIdeDefaults = lib.hm.dag.entryAfter [ "seedJetbrainsJavaPrefs" ] ''
+    # JetBrains records the exact config selector in product-info.json. Create
+    # that options directory before first launch, and repeat this on upgrades,
+    # instead of guessing product/version names or waiting for an IDE run.
+    while IFS= read -r app_dir; do
+      [[ -n "$app_dir" ]] || continue
+      app_id="''${app_dir##*/}"
+      flatpak_location="$(flatpak info --show-location "$app_id" 2>/dev/null || true)"
+      [[ -n "$flatpak_location" ]] || continue
+
+      product_info="$(find "$flatpak_location/files" -maxdepth 4 -type f -name product-info.json -print 2>/dev/null | sort | head -n1)"
+      [[ -n "$product_info" ]] || continue
+
+      data_directory_name="$(${pkgs.python3}/bin/python3 - "$product_info" <<'PY'
+import json
+import pathlib
+import sys
+
+try:
+    value = json.loads(pathlib.Path(sys.argv[1]).read_text()).get("dataDirectoryName", "")
+except (OSError, json.JSONDecodeError):
+    value = ""
+
+if isinstance(value, str) and value and "/" not in value and value not in {".", ".."}:
+    print(value)
+PY
+)"
+      [[ -n "$data_directory_name" ]] || continue
+      mkdir -p "$app_dir/config/JetBrains/$data_directory_name/options"
+    done < <(find "${ideLib.homeDir}/.var/app" -maxdepth 1 -mindepth 1 -type d -name 'com.jetbrains.*' 2>/dev/null | sort)
+
     while IFS= read -r options_dir; do
       [[ -n "$options_dir" ]] || continue
 

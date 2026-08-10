@@ -358,7 +358,10 @@ Installed `com.jetbrains.*` Flatpaks are managed automatically:
   `*64.vmoptions`
 - seed the JetBrains region preference to `apac` when the app-private Java
   Preferences store has not created it yet
-- seed app-level JetBrains defaults for existing product config directories:
+- read each installed product's `dataDirectoryName` from its Flatpak
+  `product-info.json`, create the app-private config/data/cache roots and the
+  exact versioned options directory before first launch, then seed app-level
+  JetBrains defaults there:
   Maple Mono editor/console/terminal fonts, zh-CN locale, new UI, classic
   terminal engine, and the Nix profile zsh as terminal shell
 - unpack `home/files/jetbrains/inputhelp.zip` into each app's private
@@ -371,8 +374,9 @@ has already created.
 
 That design keeps ownership boundaries clear:
 
-- JetBrains creates its own product/version directories and base vmoptions files
-  under the Flatpak-managed XDG directories, for example
+- JetBrains creates its own base vmoptions files under the Flatpak-managed XDG
+  directories; Home Manager prepares the product/version options directory
+  from package metadata, for example
   `~/.var/app/com.jetbrains.CLion/config/JetBrains`
 - Home Manager applies sandbox policy and performs idempotent append-only
   customization on top
@@ -410,6 +414,8 @@ After a successful switch:
 - `~/.local/share/fonts/custom/` is a regular directory copied from the repo
 - GTK themes, fcitx themes, icon themes, and Flatpak-facing Plasma/GTK assets
   are materialized as regular files or directories
+- both Xcursor default locations inherit the configured cursor theme, and the
+  XDG default file plus Flatpak-facing cursor assets are materialized
 - `~/.local/share/fcitx5/rime/` contains a Nix-refreshed Wanxiang baseline plus
   writable runtime subtrees such as `build/`, `sync`, and `*.userdb/`
 - `~/.gitconfig` is a writable machine-local identity and compatibility file
@@ -419,6 +425,10 @@ After a successful switch:
 - `XDG_MENU_PREFIX=plasma-`, and
   `~/.config/menus/plasma-applications.menu` pins the Nix Plasma menu, so
   KService cannot fall back to a stale Arch menu prefix
+- the complete fcitx environment is imported into both the systemd user
+  manager and the DBus activation environment during Home Manager activation
+- the managed ABDM tray entry is the only active autostart entry; the vendor
+  basename is declaratively shadowed with `Hidden=true`
 
 The managed Plasma menu is XDG/KService infrastructure, not a KDE interface
 preference. Appearance, layout, toolbar, mouse, Dolphin, and Ark settings remain
@@ -461,4 +471,7 @@ Or target a specific deployment explicitly:
 The verifier decides most checks from
 `~/.config/ahdg/enabled-features`, so custom feature mixes remain valid.
 Successful checks are summarized by default; use `verify --verbose` when
-diagnosing a machine and you need every individual result.
+diagnosing a machine and you need every individual result. Installed Flatpaks
+that are undeclared or present in more than one installation are reported as
+warnings: cleanup remains an explicit user decision because uninstalling an app
+can also remove app-private data.

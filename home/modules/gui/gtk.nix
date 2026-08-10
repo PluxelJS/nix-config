@@ -21,21 +21,22 @@ let
   managedGtkAssets =
     map (mode: mkDataDirLink "themes/${mode.gtk.themeName}" mode.gtk.themeDir) themeModes
     ++ [
-      (mkDataDirLink "icons/Papirus" runtime.icon.papirusDir)
+      (mkDataDirLink "icons/${runtime.icon.name}" runtime.icon.papirusDir)
       (mkDataDirLink "icons/breeze" runtime.icon.breezeDir)
-      (mkDataDirLink "icons/Bibata-Modern-Ice" runtime.cursor.dir)
     ];
   flatpakMaterializedFiles = [
     "${config.home.homeDirectory}/.gtkrc-2.0"
     "${config.xdg.configHome}/gtk-3.0/settings.ini"
     "${config.xdg.configHome}/xsettingsd/xsettingsd.conf"
+    "${config.xdg.dataHome}/icons/default/index.theme"
   ];
   managedGtkAssetTargets = [
     "${config.xdg.dataHome}/themes/${modes.dark.gtk.themeName}"
     "${config.xdg.dataHome}/themes/${modes.light.gtk.themeName}"
-    "${config.xdg.dataHome}/icons/Papirus"
+    "${config.xdg.dataHome}/icons/${runtime.icon.name}"
     "${config.xdg.dataHome}/icons/breeze"
-    "${config.xdg.dataHome}/icons/Bibata-Modern-Ice"
+    "${config.xdg.dataHome}/icons/default"
+    "${config.xdg.dataHome}/icons/${runtime.cursor.name}"
   ];
   flatpakMaterializedDirs = [ "${config.xdg.configHome}/gtk-4.0" ] ++ managedGtkAssetTargets;
   gtk3SettingsText = ''

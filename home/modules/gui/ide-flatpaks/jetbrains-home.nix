@@ -62,7 +62,22 @@ lib.mkIf config.ahdg.features.flatpak {
     done < <(find "${ideLib.homeDir}/.var/app" -maxdepth 1 -mindepth 1 -type d \( -name 'com.jetbrains.*' -o -name '${ideLib.codeStudioAppId}' \) 2>/dev/null | sort)
   '';
 
-  home.activation.createJetbrainsHostHomeViews = lib.hm.dag.entryAfter [ "prepareFlatpakIdeCodexHomes" ] ''
+  home.activation.prepareJetbrainsXdgState = lib.hm.dag.entryAfter [
+    "manageFlatpakJetbrainsOverrides"
+  ] ''
+    while IFS= read -r app_dir; do
+      [[ -n "$app_dir" ]] || continue
+      mkdir -p \
+        "$app_dir/config/JetBrains" \
+        "$app_dir/data/JetBrains" \
+        "$app_dir/cache/JetBrains"
+    done < <(find "${ideLib.homeDir}/.var/app" -maxdepth 1 -mindepth 1 -type d -name 'com.jetbrains.*' 2>/dev/null | sort)
+  '';
+
+  home.activation.createJetbrainsHostHomeViews = lib.hm.dag.entryAfter [
+    "prepareFlatpakIdeCodexHomes"
+    "prepareJetbrainsXdgState"
+  ] ''
     create_home_view() {
       local app_dir="$1"
       local view_dir="$app_dir/home"

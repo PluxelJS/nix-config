@@ -119,6 +119,18 @@ in
   };
 
   config = lib.mkIf config.ahdg.features.gui {
+    # Let Home Manager publish the Xcursor package, default inheritance file,
+    # legacy ~/.icons links, Xresources values, and XCURSOR_PATH as one unit.
+    # Toolkit- and compositor-specific settings below consume the same values.
+    home.pointerCursor = {
+      enable = true;
+      package = pkgs.bibata-cursors;
+      name = theme.cursorThemeName;
+      size = theme.cursorSize;
+      dotIcons.enable = true;
+      x11.enable = true;
+    };
+
     ahdg.theme.runtime = {
       modes = modes;
       defaultMode = defaultMode;
@@ -127,7 +139,7 @@ in
 
       icon = {
         name = theme.iconThemeName;
-        papirusDir = "${pkgs.papirus-icon-theme}/share/icons/Papirus";
+        papirusDir = "${pkgs.papirus-icon-theme}/share/icons/${theme.iconThemeName}";
         breezeDir = "${pkgs.kdePackages.breeze-icons}/share/icons/breeze";
       };
 

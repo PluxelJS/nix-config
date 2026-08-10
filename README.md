@@ -116,7 +116,7 @@ credentials and runtime state stay writable outside the store. See
 - `home/modules/profile.nix`: base profiles plus feature overrides
 - `home/modules/shell/`: shell behavior and CLI tooling
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak, LocalSend
-- `home/modules/podman/`: user-scoped Podman compose services and quadlets
+- `home/modules/podman/`: user-scoped Podman client/runtime defaults
 - `home/files/`: native-format config sources and small runtime seeds
 - `setup`: clone-and-run entrypoint for the normal CachyOS KDE scenario
 - `bootstrap/`: advanced fresh-machine binary, config, and shell entrypoint

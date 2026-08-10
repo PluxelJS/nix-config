@@ -32,6 +32,11 @@ environment by Home Manager:
 - `pkgs.kdePackages.breeze-icons`
 - font packages and fontconfig rules
 
+`home.pointerCursor` publishes the Bibata package, Xcursor search path,
+Xresources values, and both modern and legacy default-theme inheritance links.
+GTK, KDE, Mango, portals, and Flatpak-facing copies all consume that same
+cursor name and size.
+
 Darkly and Breeze are part of the Nix KDE closure, so their Qt/KDE plugins
 match the Nix application runtime. The host graphics driver is attached with
 nixGL and does not participate in Qt plugin selection.

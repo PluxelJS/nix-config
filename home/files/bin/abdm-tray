@@ -23,6 +23,7 @@ exe="$(find_abdm)" || {
 }
 
 settings="$HOME/.abdm/config/appSettings.json"
+mkdir -p "$HOME/.abdm/system/log"
 
 ensure_tray_enabled() {
   [ -f "$settings" ] || return 0

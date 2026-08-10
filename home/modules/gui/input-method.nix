@@ -19,6 +19,19 @@ let
     "conf/wayland.conf"
     "conf/waylandim.conf"
   ];
+  inputMethodEnvironment = {
+    INPUT_METHOD = "fcitx";
+    GTK_IM_MODULE = "fcitx";
+    GLFW_IM_MODULE = "ibus";
+    QT_IM_MODULE = "fcitx";
+    QT_IM_MODULES = "wayland;fcitx";
+    SDL_IM_MODULE = "fcitx";
+    XMODIFIERS = "@im=fcitx";
+  };
+  inputMethodVariableNames = lib.attrNames inputMethodEnvironment;
+  inputMethodExports = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") inputMethodEnvironment
+  );
   wanxiangBase = pkgs.fetchurl {
     # Asset 504043698 is the exact v17.2.4 base bundle. Pinning its immutable
     # release object avoids following a mutable release download name.
@@ -87,15 +100,23 @@ in
 lib.mkIf config.ahdg.features.gui {
   # Keep fcitx runtime ownership on the Arch side. Nix owns the policy layer:
   # config files, themes, Rime payloads, and desktop/session environment.
-  home.sessionVariables = {
-    INPUT_METHOD = "fcitx";
-    GTK_IM_MODULE = "fcitx";
-    GLFW_IM_MODULE = "ibus";
-    QT_IM_MODULE = "fcitx";
-    QT_IM_MODULES = "wayland;fcitx";
-    SDL_IM_MODULE = "fcitx";
-    XMODIFIERS = "@im=fcitx";
-  };
+  home.sessionVariables = inputMethodEnvironment;
+
+  # Home Manager session variables cover new shells, while DBus/systemd
+  # services inherit the user manager's environment. Synchronize both during
+  # activation so portals and DBus-activated applications do not depend on a
+  # compositor-specific login hook having run first.
+  home.activation.syncInputMethodEnvironment = lib.hm.dag.entryBefore [ "reloadSystemd" ] ''
+    ${inputMethodExports}
+
+    if systemctl --user show-environment >/dev/null 2>&1; then
+      systemctl --user import-environment ${lib.escapeShellArgs inputMethodVariableNames}
+    fi
+
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+      dbus-update-activation-environment --systemd ${lib.escapeShellArgs inputMethodVariableNames}
+    fi
+  '';
 
   home.activation.prepareManagedInputMethodAssets = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
     # These targets are materialized after linking for Flatpak compatibility.

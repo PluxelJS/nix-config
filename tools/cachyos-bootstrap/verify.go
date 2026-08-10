@@ -19,8 +19,10 @@ type verifier struct {
 	profile    string
 	features   map[string]bool
 	userGroups []string
+	flatpaks   map[string]bool
 	verbose    bool
 	passes     int
+	warnings   int
 	failures   int
 }
 
@@ -31,9 +33,9 @@ func (a app) runVerify(opts verifyOptions) error {
 	}
 	v.run()
 	if v.failures > 0 {
-		return fmt.Errorf("verification finished: %d passed, %d failed", v.passes, v.failures)
+		return fmt.Errorf("verification finished: %d passed, %d warnings, %d failed", v.passes, v.warnings, v.failures)
 	}
-	fmt.Printf("Verification checks passed: %d.\n", v.passes)
+	fmt.Printf("Verification checks passed: %d (%d warnings).\n", v.passes, v.warnings)
 	return nil
 }
 
@@ -56,6 +58,7 @@ func newVerifier(cfg config, opts verifyOptions) (*verifier, error) {
 
 	featuresPath := filepath.Join(home, ".config", "ahdg", "enabled-features")
 	features := map[string]bool{}
+	flatpaks := map[string]bool{}
 	if data, err := os.ReadFile(featuresPath); err == nil {
 		features = linesAsSet(string(data))
 	} else {
@@ -67,12 +70,16 @@ func newVerifier(cfg config, opts verifyOptions) (*verifier, error) {
 			features[feature] = true
 		}
 	}
+	for _, appID := range append(cfg.Flatpaks[profile], cfg.LocalFlatpaks[profile]...) {
+		flatpaks[appID] = true
+	}
 
 	return &verifier{
 		home:       home,
 		profile:    profile,
 		features:   features,
 		userGroups: cfg.UserGroups[profile],
+		flatpaks:   flatpaks,
 		verbose:    opts.verbose,
 	}, nil
 }
@@ -133,6 +140,7 @@ func (v *verifier) run() {
 
 	if v.has("gui") {
 		v.checkMaterializedGUI()
+		v.checkPointerCursor()
 	}
 	if v.has("localsend") {
 		v.checkLocalSend()
@@ -212,6 +220,7 @@ func (v *verifier) checkGUIFiles() {
 		".config/autostart/ahdg-mango-dms.desktop",
 		".config/autostart/ahdg-mihomo-party.desktop",
 		".config/autostart/ahdg-zen-browser-warmup.desktop",
+		".config/autostart/com.abdownloadmanager.desktop",
 		".config/systemd/user/mango-session.target",
 		".config/menus/plasma-applications.menu",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
@@ -281,7 +290,6 @@ func (v *verifier) checkMaterializedGUI() {
 		".local/share/themes/Catppuccin-Latte",
 		".local/share/icons/Papirus",
 		".local/share/icons/breeze",
-		".local/share/icons/Bibata-Modern-Ice",
 		".config/color-schemes/CatppuccinMacchiatoLavender.colors",
 		".local/share/color-schemes/CatppuccinMacchiatoLavender.colors",
 		".config/color-schemes/CatppuccinLatteLavender.colors",
@@ -291,6 +299,28 @@ func (v *verifier) checkMaterializedGUI() {
 	}
 
 	v.checkFlatpakOverridesWritable()
+}
+
+func (v *verifier) checkPointerCursor() {
+	sessionEnvironment := readFile(v.path(".config/ahdg/theme/session.env"))
+	match := regexp.MustCompile(`(?m)^XCURSOR_THEME=([^\s]+)$`).FindStringSubmatch(sessionEnvironment)
+	if len(match) != 2 {
+		v.fail("active cursor theme is missing from the managed session environment")
+		return
+	}
+
+	cursorTheme := match[1]
+	inheritanceLine := "Inherits=" + cursorTheme
+	legacyDefault := v.path(".icons/default/index.theme")
+	xdgDefault := v.path(".local/share/icons/default/index.theme")
+	cursorAssets := v.path(filepath.Join(".local/share/icons", cursorTheme))
+	if isRegular(legacyDefault) && fileLineMatches(legacyDefault, "^"+regexp.QuoteMeta(inheritanceLine)+"$") &&
+		isRegular(xdgDefault) && !isSymlink(xdgDefault) && fileLineMatches(xdgDefault, "^"+regexp.QuoteMeta(inheritanceLine)+"$") &&
+		isDir(cursorAssets) && !isSymlink(cursorAssets) {
+		v.pass("cursor defaults inherit %s and Flatpak-facing assets are materialized", cursorTheme)
+	} else {
+		v.fail("cursor default inheritance or materialized assets are incomplete for %s", cursorTheme)
+	}
 }
 
 func (v *verifier) checkFlatpakOverridesWritable() {
@@ -395,7 +425,9 @@ func (v *verifier) checkFlatpakApps() {
 		return
 	}
 	v.checkCodeStudio()
-	v.checkCLion()
+	v.checkJetbrains("com.jetbrains.CLion", "CLion")
+	v.checkJetbrains("com.jetbrains.RustRover", "RustRover")
+	v.checkFlatpakPolicyDrift()
 	if !flatpakAppInstalled("org.telegram.desktop") {
 		return
 	}
@@ -463,75 +495,102 @@ func (v *verifier) checkCodeStudio() {
 	}
 }
 
-func (v *verifier) checkCLion() {
-	appID := "com.jetbrains.CLion"
+func (v *verifier) checkJetbrains(appID, product string) {
 	if !flatpakAppInstalled(appID) {
 		return
 	}
 	home := shellQuote(v.home)
 	profileZsh := filepath.Join(v.home, ".local", "state", "nix", "profiles", "profile", "bin", "zsh")
 	if flatpakShell(appID, "for cmd in zsh git gh opencode node npm npx; do command -v \"$cmd\" >/dev/null 2>&1 || exit 1; done") {
-		v.pass("CLion terminal resolves the shared host-managed toolchain")
+		v.pass("%s terminal resolves the shared host-managed toolchain", product)
 	} else {
-		v.fail("CLion terminal is missing part of the shared host-managed toolchain")
+		v.fail("%s terminal is missing part of the shared host-managed toolchain", product)
 	}
 	if flatpakShell(appID, fmt.Sprintf("test -f %s/.config/zsh/.zshrc && test -f %s/.config/starship/starship.toml && test -f %s/.config/atuin/config.toml && test -f %s/.config/opencode/tui.json", home, home, home, home)) {
-		v.pass("CLion can read the host-side shared shell and opencode config")
+		v.pass("%s can read the host-side shared shell and opencode config", product)
 	} else {
-		v.fail("CLion cannot read the shared shell or opencode config")
+		v.fail("%s cannot read the shared shell or opencode config", product)
 	}
 	if flatpakShell(appID, fmt.Sprintf("test \"$CODEX_HOME\" = %s/.local/share/codex && test -f \"$CODEX_HOME/config.toml\" && test \"$(readlink -f \"$CODEX_HOME/config.toml\")\" = %s/.codex/config.toml", home, home)) {
-		v.pass("CLion uses app-private CODEX_HOME state with the host Codex config")
+		v.pass("%s uses app-private CODEX_HOME state with the host Codex config", product)
 	} else {
-		v.fail("CLion is not wired to the host Codex config as expected")
+		v.fail("%s is not wired to the host Codex config as expected", product)
 	}
 	if !fileContainsRegex(commandOutput("flatpak", "override", "--user", "--show", appID), `(?m)^persistent=(.*;)?\.codex(;|$)`) {
-		v.pass("CLion does not persist the obsolete ~/.codex mount")
+		v.pass("%s does not persist the obsolete ~/.codex mount", product)
 	} else {
-		v.fail("CLion should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex")
+		v.fail("%s should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex", product)
 	}
 	if flatpakShell(appID, fmt.Sprintf("! grep -q \" %s/.codex/config.toml %s/.codex/config.toml \" /proc/self/mountinfo", v.home, v.home)) {
-		v.pass("CLion exposes Codex config through a directory mount for atomic writes")
+		v.pass("%s exposes Codex config through a directory mount for atomic writes", product)
 	} else {
-		v.fail("CLion should not expose Codex config as a single-file mount")
+		v.fail("%s should not expose Codex config as a single-file mount", product)
 	}
 	if flatpakShell(appID, "test -d \"$XDG_CONFIG_HOME/JetBrains\" && test -d \"$XDG_DATA_HOME/JetBrains\" && test -d \"$XDG_CACHE_HOME/JetBrains\"") {
-		v.pass("CLion keeps JetBrains config, data, and cache in app-private XDG state")
+		v.pass("%s keeps JetBrains config, data, and cache in app-private XDG state", product)
 	} else {
-		v.fail("CLion is missing one of the app-private JetBrains XDG state directories")
+		v.fail("%s is missing one of the app-private JetBrains XDG state directories", product)
 	}
-	if isDir(filepath.Join(v.home, ".var/app/com.jetbrains.CLion/home/.config/JetBrains")) &&
-		isDir(filepath.Join(v.home, ".var/app/com.jetbrains.CLion/home/.local/share/JetBrains")) &&
-		isDir(filepath.Join(v.home, ".var/app/com.jetbrains.CLion/home/.cache/JetBrains")) &&
-		evalSymlink(filepath.Join(v.home, ".var/app/com.jetbrains.CLion/home/.codex/config.toml")) == filepath.Join(v.home, ".codex/config.toml") {
-		v.pass("CLion exposes a host-side home view for app-private XDG and Codex state")
+	appHome := filepath.Join(v.home, ".var", "app", appID, "home")
+	if isDir(filepath.Join(appHome, ".config", "JetBrains")) &&
+		isDir(filepath.Join(appHome, ".local", "share", "JetBrains")) &&
+		isDir(filepath.Join(appHome, ".cache", "JetBrains")) &&
+		evalSymlink(filepath.Join(appHome, ".codex", "config.toml")) == filepath.Join(v.home, ".codex", "config.toml") {
+		v.pass("%s exposes a host-side home view for app-private XDG and Codex state", product)
 	} else {
-		v.fail("CLion host-side home view is missing an expected compatibility path")
+		v.fail("%s host-side home view is missing an expected compatibility path", product)
 	}
 	if flatpakShell(appID, "sed -n '/\\[Context\\]/,/\\[Session Bus Policy\\]/p' /.flatpak-info | grep -q '^sockets=wayland;$'") {
-		v.pass("CLion stays on Wayland-only sockets without X11 fallback")
+		v.pass("%s stays on Wayland-only sockets without X11 fallback", product)
 	} else {
-		v.fail("CLion should stay on Wayland-only sockets without X11 fallback")
+		v.fail("%s should stay on Wayland-only sockets without X11 fallback", product)
 	}
 	if flatpakShell(appID, secretPolicyScript()) {
-		v.pass("CLion can reach the host secret service and KWallet session bus names")
+		v.pass("%s can reach the host secret service and KWallet session bus names", product)
 	} else {
-		v.fail("CLion is missing the host secret service or KWallet session bus policy")
+		v.fail("%s is missing the host secret service or KWallet session bus policy", product)
 	}
 	if flatpakShell(appID, "env_block=\"$(sed -n '/\\[Environment\\]/,/^\\[/p' /.flatpak-info)\"; printf '%s\n' \"$env_block\" | grep -q '^FLATPAK_IDE_ENV=1$' && printf '%s\n' \"$env_block\" | grep -Fqx "+shellQuote("SHELL="+profileZsh)+" && printf '%s\n' \"$env_block\" | grep -q '^GTK_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULE=$' && printf '%s\n' \"$env_block\" | grep -q '^QT_IM_MODULES=wayland$' && printf '%s\n' \"$env_block\" | grep -q '^XMODIFIERS=$'") {
-		v.pass("CLion keeps its Wayland-specific input env override instead of inheriting desktop IM settings")
+		v.pass("%s keeps its Wayland-specific input env override instead of inheriting desktop IM settings", product)
 	} else {
-		v.fail("CLion should keep its Wayland-specific input env override")
+		v.fail("%s should keep its Wayland-specific input env override", product)
 	}
 	if flatpakShell(appID, "options_dir=\"$(find \"$XDG_CONFIG_HOME/JetBrains\" -maxdepth 2 -mindepth 2 -type d -name options | sort | head -n1)\"; test -n \"$options_dir\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/editor-font.xml\" && grep -q 'FONT_FAMILY\" value=\"Maple Mono NF CN\"' \"$options_dir/terminal-font.xml\" && (grep -Fq "+shellQuote("myShellPath\" value=\""+profileZsh)+" \"$options_dir/terminal.xml\" || grep -Fq 'myShellPath\" value=\"$USER_HOME$/.local/state/nix/profiles/profile/bin/zsh' \"$options_dir/terminal.xml\") && grep -q 'terminalEngine\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'terminalEngineInRemDev\" value=\"CLASSIC\"' \"$options_dir/terminal.xml\" && grep -q 'selectedLocale\" value=\"zh-CN\"' \"$options_dir/ide.general.xml\"") {
-		v.pass("CLion has JetBrains-wide seeded defaults for font, classic terminal shell, and locale")
+		v.pass("%s has JetBrains-wide seeded defaults for font, classic terminal shell, and locale", product)
 	} else {
-		v.fail("CLion is missing one of the JetBrains-wide seeded IDE defaults")
+		v.fail("%s is missing one of the JetBrains-wide seeded IDE defaults", product)
 	}
 	if flatpakShell(appID, "test -f \"$HOME/.java/.userPrefs/jetbrains/region/prefs.xml\" && grep -q 'key=\"code\" value=\"apac\"' \"$HOME/.java/.userPrefs/jetbrains/region/prefs.xml\"") {
-		v.pass("CLion persists JetBrains Java Preferences with a fixed region code")
+		v.pass("%s persists JetBrains Java Preferences with a fixed region code", product)
 	} else {
-		v.fail("CLion is missing the persisted JetBrains Java Preferences region code")
+		v.fail("%s is missing the persisted JetBrains Java Preferences region code", product)
+	}
+}
+
+func (v *verifier) checkFlatpakPolicyDrift() {
+	installed := commandOutput("flatpak", "list", "--app", "--columns=application,installation")
+	installations := map[string][]string{}
+	order := []string{}
+	for _, line := range strings.Split(installed, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		appID := fields[0]
+		if _, seen := installations[appID]; !seen {
+			order = append(order, appID)
+		}
+		installations[appID] = append(installations[appID], fields[1])
+	}
+
+	for _, appID := range order {
+		locations := installations[appID]
+		if !v.flatpaks[appID] {
+			v.warn("Flatpak app `%s` is installed but not declared for profile `%s`", appID, v.profile)
+		}
+		if len(locations) > 1 {
+			v.warn("Flatpak app `%s` is installed more than once: %s", appID, strings.Join(locations, ", "))
+		}
 	}
 }
 
@@ -546,6 +605,8 @@ func (v *verifier) checkDesktopRuntime() {
 
 	if v.has("gui") {
 		copyqAutostart := readFile(v.path(".config/autostart/ahdg-copyq.desktop"))
+		abdmAutostart := readFile(v.path(".config/autostart/ahdg-abdm-tray.desktop"))
+		abdmVendorAutostart := readFile(v.path(".config/autostart/com.abdownloadmanager.desktop"))
 		dmsAutostart := readFile(v.path(".config/autostart/ahdg-mango-dms.desktop"))
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
 		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
@@ -558,6 +619,13 @@ func (v *verifier) checkDesktopRuntime() {
 		} else {
 			v.fail("managed XDG autostart policy or the Mango dex runner is incomplete")
 		}
+		if strings.Contains(abdmAutostart, "Exec="+v.path(".local/bin/abdm-tray")) &&
+			!fileContainsRegex(abdmAutostart, `(?m)^Hidden=true$`) &&
+			fileContainsRegex(abdmVendorAutostart, `(?m)^Hidden=true$`) {
+			v.pass("AB Download Manager has one active managed autostart entry")
+		} else {
+			v.fail("AB Download Manager vendor autostart is not suppressed by the managed tray entry")
+		}
 
 		userEnvironment := commandOutput("systemctl", "--user", "show-environment")
 		if regexp.MustCompile(`(?m)^XDG_MENU_PREFIX=plasma-$`).MatchString(userEnvironment) &&
@@ -565,6 +633,33 @@ func (v *verifier) checkDesktopRuntime() {
 			v.pass("systemd user environment selects the Nix Plasma application menu")
 		} else {
 			v.fail("systemd user environment does not select the Nix Plasma application menu")
+		}
+		inputMethodEnvironment := []string{
+			`INPUT_METHOD=fcitx`,
+			`GTK_IM_MODULE=fcitx`,
+			`GLFW_IM_MODULE=ibus`,
+			`QT_IM_MODULE=fcitx`,
+			`QT_IM_MODULES=(wayland;fcitx|\$'wayland;fcitx')`,
+			`SDL_IM_MODULE=fcitx`,
+			`XMODIFIERS=@im=fcitx`,
+		}
+		inputMethodEnvironmentComplete := true
+		for _, expectedPattern := range inputMethodEnvironment {
+			if !regexp.MustCompile(`(?m)^` + expectedPattern + `$`).MatchString(userEnvironment) {
+				inputMethodEnvironmentComplete = false
+				break
+			}
+		}
+		if inputMethodEnvironmentComplete {
+			v.pass("systemd user environment exports the complete managed fcitx policy")
+		} else {
+			v.fail("systemd user environment is missing part of the managed fcitx policy")
+		}
+		failedUserUnits := strings.TrimSpace(commandOutput("systemctl", "--user", "--failed", "--no-legend", "--plain"))
+		if failedUserUnits == "" {
+			v.pass("systemd user manager has no failed units")
+		} else {
+			v.fail("systemd user manager has failed units: %s", strings.ReplaceAll(failedUserUnits, "\n", "; "))
 		}
 		dolphinUnit := commandOutput("systemctl", "--user", "cat", "plasma-dolphin.service")
 		dolphinPath := regexp.MustCompile(`(?m)^Environment=PATH=/nix/store/.*/bin:/usr/local/bin:/usr/bin$`)
@@ -794,6 +889,11 @@ func (v *verifier) pass(format string, args ...any) {
 func (v *verifier) fail(format string, args ...any) {
 	fmt.Printf("[fail] "+format+"\n", args...)
 	v.failures++
+}
+
+func (v *verifier) warn(format string, args ...any) {
+	fmt.Printf("[warn] "+format+"\n", args...)
+	v.warnings++
 }
 
 func flatpakShell(appID, script string) bool {

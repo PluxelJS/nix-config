@@ -9,7 +9,6 @@ let
       pkgs.noto-fonts-color-emoji
     ]
     ++ lib.optionals config.ahdg.features.gui [
-      pkgs.bibata-cursors
       pkgs.papirus-icon-theme
       pkgs.copyq
       pkgs.file

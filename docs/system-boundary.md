@@ -106,10 +106,8 @@ AUR packages used by the desktop profile:
 These AUR packages remain explicit exceptions because they provide current
 desktop behavior that is not equivalently available from the trusted repo set:
 MangoWM commands, Polychromatic's OpenRazer UI, Mihomo Party's desktop/scheme
-handler, and WPS desktop/MIME integration. PeaZip is provided directly by
-Nixpkgs so a retired or renamed AUR binary package cannot block deployment.
-Notepad Next follows the same rule and keeps its existing command and desktop
-ID through the nixpkgs package.
+handler, and WPS desktop/MIME integration. The Nix-managed Notepad Next package
+keeps its existing command and desktop ID.
 
 Mango session startup is user-layer and Home Manager-owned:
 
@@ -145,11 +143,12 @@ theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
 `dolphinui.rc` are writable regular files. A Home Manager switch never replaces
 or rewrites an existing live KDE preference file.
 
-CopyQ, PeaZip, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
-pinned to 16.0.0 until nixpkgs catches up because that release line fixes the
-long-running clipboard process leak; meatshell is pinned to the verified
-upstream 0.6.10 release artifact; GPU-backed meatshell and Zed launch through
-the CachyOS nixGL bridge.
+CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. Ark and
+its 7z, RAR, Unarchiver, and Info-ZIP backends belong to the coherent KDE
+runtime above. CopyQ is pinned to 16.0.0 until nixpkgs catches up because that
+release line fixes the long-running clipboard process leak; meatshell is pinned
+to the verified upstream 0.6.10 release artifact; GPU-backed meatshell and Zed
+launch through the CachyOS nixGL bridge.
 
 Small user glue scripts such as `abdm-launch` and
 `protontricks-launch-mangohud` are Home Manager-owned under `~/.local/bin`; the

@@ -8,6 +8,37 @@ let
   cfg = config.ahdg.features;
   homeDir = config.home.homeDirectory;
 
+  archiveDesktopId = "org.kde.ark.desktop";
+  archiveMimeTypes = [
+    "application/gzip"
+    "application/vnd.rar"
+    "application/x-7z-compressed"
+    "application/x-archive"
+    "application/x-bzip"
+    "application/x-bzip2"
+    "application/x-bzip-compressed-tar"
+    "application/x-bzip2-compressed-tar"
+    "application/x-compress"
+    "application/x-compressed-tar"
+    "application/x-cpio"
+    "application/x-gzip"
+    "application/x-gzip-compressed-tar"
+    "application/x-java-archive"
+    "application/x-lzip"
+    "application/x-lzip-compressed-tar"
+    "application/x-lzma"
+    "application/x-lzma-compressed-tar"
+    "application/x-rar"
+    "application/x-tar"
+    "application/x-xz"
+    "application/x-xz-compressed-tar"
+    "application/x-zip-compressed"
+    "application/x-zstd"
+    "application/x-zstd-compressed-tar"
+    "application/zip"
+    "application/zstd"
+  ];
+
   browserAssociationMimeTypes = [
     "application/x-extension-htm"
     "application/x-extension-html"
@@ -231,14 +262,11 @@ in
         associations.added =
           (lib.genAttrs browserAssociationMimeTypes (_: "zen.desktop"))
           // (lib.genAttrs notepadNextManagedMimeTypes (_: textEditorAssociationDesktopIds))
+          // (lib.genAttrs archiveMimeTypes (_: archiveDesktopId))
           // {
             "application/pdf" = "wps-office-pdf.desktop";
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
               "wps-office-wps.desktop";
-            "application/zip" = [
-              "com.teamspeak.TeamSpeak3.desktop"
-              "peazip.desktop"
-            ];
             "image/jpeg" = "org.gnome.eog.desktop";
             "image/png" = "org.gnome.eog.desktop";
             "text/csv" = "wps-office-et.desktop";
@@ -255,27 +283,12 @@ in
         defaultApplications =
           (lib.genAttrs browserDefaultMimeTypes (_: "zen.desktop"))
           // (lib.genAttrs notepadNextManagedMimeTypes (_: notepadNextDesktopId))
+          // (lib.genAttrs archiveMimeTypes (_: archiveDesktopId))
           // {
-            "application/gzip" = "peazip.desktop";
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
               "wps-office-wps.desktop";
-            "application/x-7z-compressed" = "peazip.desktop";
-            "application/x-bzip-compressed-tar" = "peazip.desktop";
-            "application/x-bzip2" = "peazip.desktop";
-            "application/x-gzip-compressed-tar" = "peazip.desktop";
-            "application/x-lzip" = "peazip.desktop";
             "application/x-ms-dos-executable" = "protontricks-launch-mangohud.desktop";
             "application/x-msdownload" = "protontricks-launch-mangohud.desktop";
-            "application/x-rar" = "peazip.desktop";
-            "application/x-tar" = [
-              "peazip.desktop"
-              "org.kde.ark.desktop"
-              "lxqt-archiver.desktop"
-            ];
-            "application/x-xz" = "peazip.desktop";
-            "application/x-xz-compressed-tar" = "peazip.desktop";
-            "application/zip" = "peazip.desktop";
-            "application/zstd" = "peazip.desktop";
             "inode/directory" = [
               "org.kde.dolphin.desktop"
               "pcmanfm-qt.desktop"

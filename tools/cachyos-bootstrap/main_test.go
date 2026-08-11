@@ -30,8 +30,8 @@ func TestBundledConfigValidates(t *testing.T) {
 	if stringInSlice("ufw", cfg.Packages.Features["gui"]) {
 		t.Fatal("UFW should follow the LocalSend feature, not the generic GUI feature")
 	}
-	if stringInSlice("peazip-qt-bin", cfg.AURPackages["desktop"]) {
-		t.Fatal("PeaZip should be provided by Home Manager instead of the retired AUR binary package")
+	if stringInSlice("peazip", cfg.AURPackages["desktop"]) || stringInSlice("peazip-qt-bin", cfg.AURPackages["desktop"]) {
+		t.Fatal("PeaZip has been retired in favor of the Nix-owned KDE Ark runtime")
 	}
 	if stringInSlice("notepadnext-bin", cfg.AURPackages["desktop"]) {
 		t.Fatal("Notepad Next should be provided by Home Manager instead of a volatile AUR binary package")

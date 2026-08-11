@@ -374,7 +374,7 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "ghostty")
 	}
 	if v.has("gui") {
-		expectedTools = append(expectedTools, "copyq", "dex", "file", "mark-shot", "NotepadNext", "notify-send", "openrazer-daemon", "peazip", "polychromatic-controller", "songrec", "wl-paste")
+		expectedTools = append(expectedTools, "ark", "copyq", "dex", "file", "mark-shot", "NotepadNext", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "unar", "unrar", "wl-paste", "7z")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
 		v.pass("interactive zsh resolves the managed toolchain")
@@ -600,6 +600,25 @@ func (v *verifier) checkDesktopRuntime() {
 			v.pass("Notepad Next is the effective text/plain default")
 		} else {
 			v.fail("Notepad Next is not the effective text/plain default")
+		}
+
+		arkIsDefault := true
+		for _, mimeType := range []string{
+			"application/zip",
+			"application/x-7z-compressed",
+			"application/vnd.rar",
+			"application/x-tar",
+			"application/gzip",
+		} {
+			if strings.TrimSpace(commandOutput("xdg-mime", "query", "default", mimeType)) != "org.kde.ark.desktop" {
+				arkIsDefault = false
+				break
+			}
+		}
+		if arkIsDefault {
+			v.pass("Ark is the effective default for common archive formats")
+		} else {
+			v.fail("Ark is not the effective default for every common archive format")
 		}
 	}
 

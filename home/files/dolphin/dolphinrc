@@ -1,5 +1,6 @@
 [General]
 DoubleClickViewAction=go_back
+OpenExternallyCalledFolderInNewTab=true
 
 [InformationPanel]
 previewsShown=false

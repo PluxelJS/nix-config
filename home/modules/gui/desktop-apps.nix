@@ -43,9 +43,6 @@ lib.mkIf config.ahdg.features.gui {
   home.packages = [
     pkgs.dex
 
-    # Keep the archive application reproducible instead of depending on a
-    # renamed or retired AUR binary package.
-    pkgs.peazip
     # The upstream binary AUR package has disappeared more than once; nixpkgs
     # provides the same command and desktop ID used by the MIME policy.
     pkgs.notepad-next

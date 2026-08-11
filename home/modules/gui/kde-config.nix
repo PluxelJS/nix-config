@@ -5,6 +5,13 @@
   ...
 }:
 let
+  mkKdeDefault = name: path: pkgs.writeText "ahdg-default-${name}" (builtins.readFile path);
+  dolphinrcDefault = mkKdeDefault "dolphinrc" ../../files/dolphin/dolphinrc;
+  dolphinUiDefault = mkKdeDefault "dolphinui.rc" ../../files/dolphin/dolphinui.rc;
+  kdeglobalsDefault = mkKdeDefault "kdeglobals" ../../files/kde/kdeglobals;
+  kcminputrcDefault = mkKdeDefault "kcminputrc" ../../files/kde/kcminputrc;
+  arkrcDefault = mkKdeDefault "arkrc" ../../files/kde/arkrc;
+
   kdeConfig =
     (pkgs.writeShellApplication {
       name = "ahdg-kde-config";
@@ -59,6 +66,11 @@ let
           source=$1
           target=$2
 
+          if [ ! -f "$source" ]; then
+            printf 'KDE default source is missing: %s\n' "$source" >&2
+            return 1
+          fi
+
           if [ -L "$target" ]; then
             resolved="$(readlink -f "$target" 2>/dev/null || true)"
             case "$resolved" in
@@ -81,9 +93,15 @@ let
           source=$1
           target=$2
           label=$3
+
+          if [ ! -f "$source" ]; then
+            printf 'KDE default source is missing: %s\n' "$source" >&2
+            return 1
+          fi
+
           backup_file "$target" "$label"
-          rm -f "$target"
-          install -Dm644 "$source" "$target"
+          install -Dm644 "$source" "$target.new"
+          mv -f "$target.new" "$target"
         }
 
         manage_file() {
@@ -98,17 +116,17 @@ let
         }
 
         if [ "$scope" = dolphin ] || [ "$scope" = all ]; then
-          manage_file ${lib.escapeShellArg (toString ../../files/dolphin/dolphinrc)} "$config_home/dolphinrc" config/dolphinrc
-          manage_file ${lib.escapeShellArg (toString ../../files/dolphin/dolphinui.rc)} "$data_home/kxmlgui5/dolphin/dolphinui.rc" data/kxmlgui5/dolphin/dolphinui.rc
+          manage_file ${lib.escapeShellArg dolphinrcDefault} "$config_home/dolphinrc" config/dolphinrc
+          manage_file ${lib.escapeShellArg dolphinUiDefault} "$data_home/kxmlgui5/dolphin/dolphinui.rc" data/kxmlgui5/dolphin/dolphinui.rc
         fi
 
         if [ "$scope" = appearance ] || [ "$scope" = all ]; then
-          manage_file ${lib.escapeShellArg (toString ../../files/kde/kdeglobals)} "$config_home/kdeglobals" config/kdeglobals
-          manage_file ${lib.escapeShellArg (toString ../../files/kde/kcminputrc)} "$config_home/kcminputrc" config/kcminputrc
+          manage_file ${lib.escapeShellArg kdeglobalsDefault} "$config_home/kdeglobals" config/kdeglobals
+          manage_file ${lib.escapeShellArg kcminputrcDefault} "$config_home/kcminputrc" config/kcminputrc
         fi
 
         if [ "$scope" = ark ] || [ "$scope" = all ]; then
-          manage_file ${lib.escapeShellArg (toString ../../files/kde/arkrc)} "$config_home/arkrc" config/arkrc
+          manage_file ${lib.escapeShellArg arkrcDefault} "$config_home/arkrc" config/arkrc
         fi
 
         if [ "$command" = reset ] && [ "$reset_count" -gt 0 ]; then

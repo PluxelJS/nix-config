@@ -41,6 +41,19 @@ let
       exec ${executable} "$@"
     '';
 
+  # Ark uses Kerfuffle plugins for the UI, but several writable/encrypted
+  # formats are implemented by command-line helpers discovered through PATH.
+  # Keep those helpers in the same Nix-owned runtime as Ark so opening an
+  # archive from Dolphin never falls back to whichever tools CachyOS happens
+  # to have installed.
+  archiveBackends = [
+    pkgs.p7zip
+    pkgs.unrar
+    pkgs.unar
+    pkgs.zip
+    pkgs.unzip
+  ];
+
   dolphin = wrap pkgs.kdePackages.dolphin;
   ark = wrap pkgs.kdePackages.ark;
   kded = wrap pkgs.kdePackages.kded;
@@ -49,7 +62,11 @@ let
   kwallet = wrap pkgs.kdePackages.kwallet;
   kwalletmanager = wrap pkgs.kdePackages.kwalletmanager;
   dolphinLauncher = mkKdeLauncher "dolphin" (lib.getExe' dolphin "dolphin");
-  arkLauncher = mkKdeLauncher "ark" (lib.getExe' ark "ark");
+  arkLauncher = pkgs.writeShellScriptBin "ark" ''
+    ${kdeEnvironment}
+    export PATH=${lib.escapeShellArg (lib.makeBinPath archiveBackends)}:''${PATH:-/usr/local/bin:/usr/bin}
+    exec ${lib.getExe' ark "ark"} "$@"
+  '';
   kdedLauncher = mkKdeLauncher "kded6" (lib.getExe' kded "kded6");
 
   mkPinnedDesktopEntry =
@@ -126,7 +143,7 @@ in
       pkgs.kdePackages.kio-extras
       pkgs.kdePackages.kio-fuse
       pkgs.kdePackages.kservice
-    ];
+    ] ++ archiveBackends;
 
     # The profile copy has precedence even when CachyOS keeps equivalent KDE
     # packages installed for recovery or system-wide integrations.

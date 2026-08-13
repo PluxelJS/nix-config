@@ -113,9 +113,11 @@ Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
   target started by Mango's `exec-once`
-- Home Manager writes shared XDG autostart entries for CopyQ, ABDM tray, Mihomo
-  Party, and browser warmup; Plasma consumes them natively and Mango consumes
-  the same files through `dex`
+- Home Manager writes shared XDG autostart entries for ABDM tray, Mihomo Party,
+  and browser warmup, plus the Mango-only DMS entry; Plasma consumes shared
+  entries natively and Mango consumes the same files through `dex`. The managed
+  CopyQ entry is disabled: the package remains available as a manual fallback,
+  while DMS exclusively owns clipboard history.
 - Mango-only XDG entries use the extension desktop ID `OnlyShowIn=X-Mango;`, while the compositor's
   `startup.conf` is reserved for one-shot session hardware helpers
 - package-provided XDG autostart entries and unrelated user overrides remain
@@ -143,7 +145,12 @@ theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
 `dolphinui.rc` are writable regular files. A Home Manager switch never replaces
 or rewrites an existing live KDE preference file.
 
-CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. Ark and
+CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
+installed as a manual fallback; Mango uses DMS's native Wayland clipboard
+backend with a 20,000-entry retention limit. The Nix-managed DMS command stays
+on the host UI's 1.5.3 release but patches history replay for `text/uri-list`:
+file lists are restored as KDE/GNOME-compatible copy offers instead of reading
+the first URI as file content. Ark and
 its 7z, RAR, Unarchiver, and Info-ZIP backends belong to the coherent KDE
 runtime above. CopyQ is pinned to 16.0.0 until nixpkgs catches up because that
 release line fixes the long-running clipboard process leak; meatshell is pinned

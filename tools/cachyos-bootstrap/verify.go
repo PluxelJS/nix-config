@@ -630,11 +630,12 @@ func (v *verifier) checkDesktopRuntime() {
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
 		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
 		if strings.Contains(copyqAutostart, "Exec=/nix/store/") &&
-			!strings.Contains(copyqAutostart, "OnlyShowIn=") &&
+			fileContainsRegex(copyqAutostart, `(?m)^Hidden=true$`) &&
 			strings.Contains(dmsAutostart, "OnlyShowIn=X-Mango;") &&
+			strings.Contains(dmsAutostart, "Exec=/nix/store/") &&
 			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
-			v.pass("Plasma and Mango consume the managed XDG autostart policy without a systemd application target")
+			v.pass("DMS owns Mango clipboard history while CopyQ autostart remains disabled as a fallback")
 		} else {
 			v.fail("managed XDG autostart policy or the Mango dex runner is incomplete")
 		}

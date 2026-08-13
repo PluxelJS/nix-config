@@ -109,6 +109,10 @@ lib.mkIf config.ahdg.features.gui {
     sed -i \
       -e 's|@DEX@|${lib.getExe pkgs.dex}|g' \
       "${mangoTarget}/dms.conf"
+
+    sed -i \
+      -e 's|@DMS@|${lib.getExe pkgs.dms}|g' \
+      "${mangoTarget}/config.conf"
   '';
 
   home.activation.ensureOpenRazerRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''

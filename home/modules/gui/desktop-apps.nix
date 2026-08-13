@@ -14,6 +14,7 @@ let
       tryExec ? null,
       onlyShowIn ? [ ],
       comment ? null,
+      hidden ? false,
     }:
     ''
       [Desktop Entry]
@@ -23,17 +24,30 @@ let
       Exec=${exec}
       ${lib.optionalString (tryExec != null) "TryExec=${tryExec}"}
       ${lib.optionalString (onlyShowIn != [ ]) "OnlyShowIn=${lib.concatStringsSep ";" onlyShowIn};"}
+      ${lib.optionalString hidden "Hidden=true"}
       Terminal=false
       StartupNotify=false
       X-GNOME-Autostart-enabled=true
     '';
 
-  copyqAutostart = pkgs.writeShellScript "ahdg-copyq-autostart" ''
-    export QT_QPA_PLATFORMTHEME=kde
-    export KDE_SESSION_VERSION=6
-    export KDE_FULL_SESSION=true
-    export COPYQ_CLIPBOARD_MIME_SIZE_LIMIT='.*:100M'
-    exec ${lib.getExe pkgs.copyq} --start-server
+  dmsAutostart = pkgs.writeShellScript "ahdg-mango-dms-autostart" ''
+    # The backend socket can appear shortly after the shell starts. Apply the
+    # clipboard retention policy once it is ready; DMS persists the setting in
+    # its own database, and repeating this on login keeps it declarative.
+    (
+      for _ in $(${pkgs.coreutils}/bin/seq 1 50); do
+        if ${lib.getExe pkgs.dms} clipboard config set \
+          --enable \
+          --max-history 20000 \
+          --auto-clear-days 0 \
+          --no-clear-at-startup >/dev/null 2>&1; then
+          exit 0
+        fi
+        ${pkgs.coreutils}/bin/sleep 0.2
+      done
+    ) &
+
+    exec ${lib.getExe pkgs.dms} run
   '';
 in
 lib.mkIf config.ahdg.features.gui {
@@ -59,10 +73,11 @@ lib.mkIf config.ahdg.features.gui {
 
   xdg.configFile = {
     "autostart/ahdg-copyq.desktop".text = mkAutostart {
-      name = "CopyQ";
-      comment = "Clipboard manager";
-      exec = copyqAutostart;
+      name = "CopyQ (autostart disabled)";
+      comment = "Installed as a fallback; DMS owns clipboard history";
+      exec = lib.getExe pkgs.copyq;
       tryExec = lib.getExe pkgs.copyq;
+      hidden = true;
     };
 
     "autostart/ahdg-abdm-tray.desktop".text = mkAutostart {
@@ -98,8 +113,8 @@ lib.mkIf config.ahdg.features.gui {
 
     "autostart/ahdg-mango-dms.desktop".text = mkAutostart {
       name = "Dank Material Shell";
-      exec = "dms run";
-      tryExec = "dms";
+      exec = dmsAutostart;
+      tryExec = lib.getExe pkgs.dms;
       onlyShowIn = [ "X-Mango" ];
     };
   };

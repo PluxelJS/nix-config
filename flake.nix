@@ -40,6 +40,7 @@
           (final: prev: {
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             meatshell = final.callPackage ./pkgs/meatshell.nix { };
+            dms = final.callPackage ./pkgs/dms.nix { };
             copyq = prev.copyq.overrideAttrs (old: {
               # CopyQ 15 fixed a leak in the long-running Wayland clipboard
               # monitor/provider processes. Keep the Nix-managed desktop on

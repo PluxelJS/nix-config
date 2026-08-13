@@ -61,7 +61,7 @@ This file is the source of truth for cross-app shortcut decisions.
 
 ## MangoWC
 
-- `Ctrl+\``: toggle `CopyQ`.
+- `Ctrl+\``: toggle the native Wayland clipboard history in `DMS`.
 - `Super+Shift+M`: launch `SongRec` in `gui-norecording` mode first.
 - `Super+Shift+R`: reload the MangoWC config.
 

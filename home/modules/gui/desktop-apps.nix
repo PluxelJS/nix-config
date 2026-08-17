@@ -52,14 +52,11 @@ let
 in
 lib.mkIf config.ahdg.features.gui {
   # Plasma consumes XDG autostart entries itself. Minimal compositors such as
-  # Mango use dex as the session-side reader, so both desktops consume the same
-  # declarative files without coupling ordinary GUI applications to systemd.
+  # Mango use dex as the session-side reader, so ordinary GUI applications keep
+  # sharing the same declarative files. DMS is a session service instead: its
+  # clipboard IPC must survive Home Manager switches and be restartable.
   home.packages = [
     pkgs.dex
-
-    # The upstream binary AUR package has disappeared more than once; nixpkgs
-    # provides the same command and desktop ID used by the MIME policy.
-    pkgs.notepad-next
 
     # Both applications use GPU-backed native rendering. On CachyOS they need
     # the same host GL bridge as Ghostty and LocalSend.
@@ -111,13 +108,28 @@ lib.mkIf config.ahdg.features.gui {
       tryExec = "zen-browser";
     };
 
-    "autostart/ahdg-mango-dms.desktop".text = mkAutostart {
-      name = "Dank Material Shell";
-      exec = dmsAutostart;
-      tryExec = lib.getExe pkgs.dms;
-      onlyShowIn = [ "X-Mango" ];
-    };
   };
+
+  systemd.user.services.ahdg-mango-dms = {
+    Unit = {
+      Description = "Dank Material Shell";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "mango-session.target" ];
+    };
+    Service = {
+      ExecStart = dmsAutostart;
+      Restart = "on-failure";
+      RestartSec = 2;
+      Slice = "session.slice";
+    };
+    Install.WantedBy = [ "mango-session.target" ];
+  };
+
+  home.activation.ensureDmsService = lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
+    if ${pkgs.systemd}/bin/systemctl --user --quiet is-active mango-session.target; then
+      ${pkgs.systemd}/bin/systemctl --user start ahdg-mango-dms.service 2>/dev/null || true
+    fi
+  '';
 
   home.activation.configureCopyqTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     copyq_config="${config.xdg.configHome}/copyq/copyq.conf"

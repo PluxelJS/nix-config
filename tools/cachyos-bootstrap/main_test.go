@@ -34,7 +34,7 @@ func TestBundledConfigValidates(t *testing.T) {
 		t.Fatal("PeaZip has been retired in favor of the Nix-owned KDE Ark runtime")
 	}
 	if stringInSlice("notepadnext-bin", cfg.AURPackages["desktop"]) {
-		t.Fatal("Notepad Next should be provided by Home Manager instead of a volatile AUR binary package")
+		t.Fatal("Notepad Next has been retired in favor of the Nix-owned Kate runtime")
 	}
 }
 

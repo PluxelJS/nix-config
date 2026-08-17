@@ -18,8 +18,8 @@ let
   interactiveInit = ''
     # Let Starship be the single prompt owner inside nix-shell / nix develop.
     export NIX_SHELL_PRESERVE_PROMPT=1
+    unset GTK_IM_MODULE
     export INPUT_METHOD="''${INPUT_METHOD:-fcitx}"
-    export GTK_IM_MODULE="''${GTK_IM_MODULE:-fcitx}"
     export SDL_IM_MODULE="''${SDL_IM_MODULE:-fcitx}"
     export GLFW_IM_MODULE="''${GLFW_IM_MODULE:-ibus}"
 
@@ -72,8 +72,8 @@ let
     # Some interactive helpers reinitialize parts of the environment. Re-assert
     # the IM compatibility exports at the end so terminal-launched GUI apps and
     # Flatpak helper shells see the same values as the desktop session.
+    unset GTK_IM_MODULE
     export INPUT_METHOD="''${INPUT_METHOD:-fcitx}"
-    export GTK_IM_MODULE="''${GTK_IM_MODULE:-fcitx}"
     export SDL_IM_MODULE="''${SDL_IM_MODULE:-fcitx}"
     export GLFW_IM_MODULE="''${GLFW_IM_MODULE:-ibus}"
   '';

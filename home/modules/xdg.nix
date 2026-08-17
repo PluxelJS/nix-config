@@ -55,19 +55,20 @@ let
     "x-scheme-handler/https"
   ];
 
-  notepadNextCommand = "NotepadNext";
-  notepadNextDesktopId = "NotepadNext.desktop";
-  notepadNextCustomMimeType = "text/x-notepadnext-text";
-  notepadNextManagedMimeTypes = notepadNextMimeTypes ++ [ notepadNextCustomMimeType ];
+  kateCommand = "kate";
+  kateDesktopId = "org.kde.kate.desktop";
+  kateBlockingCommand = "${kateCommand} -b";
+  kateCustomMimeType = "text/x-kate-text";
+  kateManagedMimeTypes = textEditorMimeTypes ++ [ kateCustomMimeType ];
   textEditorAssociationDesktopIds = [
-    notepadNextDesktopId
+    kateDesktopId
     "io.github.trumank.CodeStudio.desktop"
     "vim.desktop"
     "micro.desktop"
     "featherpad.desktop"
   ];
 
-  notepadNextMimeTypes = [
+  textEditorMimeTypes = [
     "inode/x-empty"
     "text/plain"
     "text/x-nix"
@@ -160,11 +161,11 @@ in
       enable = true;
     }
     (lib.mkIf cfg.desktopXdg {
-      dataFile."mime/packages/notepadnext-extensions.xml".text = ''
+      dataFile."mime/packages/kate-extensions.xml".text = ''
         <?xml version="1.0" encoding="UTF-8"?>
         <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-          <mime-type type="${notepadNextCustomMimeType}">
-            <comment>NotepadNext text source</comment>
+          <mime-type type="${kateCustomMimeType}">
+            <comment>Kate text source</comment>
             <sub-class-of type="text/plain"/>
             <glob pattern="*.nix"/>
             <glob pattern="*.conf"/>
@@ -211,20 +212,6 @@ in
         </mime-info>
       '';
 
-      dataFile."applications/${notepadNextDesktopId}".text = ''
-        [Desktop Entry]
-        Type=Application
-        Name=Notepad Next
-        GenericName=Text Editor
-        Comment=A cross-platform, reimplementation of Notepad++
-        Exec=${notepadNextCommand} %F
-        Icon=NotepadNext
-        Terminal=false
-        StartupNotify=true
-        Categories=Qt;TextEditor;Utility;
-        MimeType=${lib.concatStringsSep ";" notepadNextManagedMimeTypes};
-      '';
-
       # Keep the declarative policy in the lower-priority XDG data location.
       # ~/.config/mimeapps.list is a writable regular file for application and
       # user overrides, while this file remains the reproducible fallback.
@@ -261,7 +248,7 @@ in
 
         associations.added =
           (lib.genAttrs browserAssociationMimeTypes (_: "zen.desktop"))
-          // (lib.genAttrs notepadNextManagedMimeTypes (_: textEditorAssociationDesktopIds))
+          // (lib.genAttrs kateManagedMimeTypes (_: textEditorAssociationDesktopIds))
           // (lib.genAttrs archiveMimeTypes (_: archiveDesktopId))
           // {
             "application/pdf" = "wps-office-pdf.desktop";
@@ -282,7 +269,7 @@ in
 
         defaultApplications =
           (lib.genAttrs browserDefaultMimeTypes (_: "zen.desktop"))
-          // (lib.genAttrs notepadNextManagedMimeTypes (_: notepadNextDesktopId))
+          // (lib.genAttrs kateManagedMimeTypes (_: kateDesktopId))
           // (lib.genAttrs archiveMimeTypes (_: archiveDesktopId))
           // {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" =
@@ -294,7 +281,7 @@ in
               "pcmanfm-qt.desktop"
             ];
             "text/plain" = [
-              notepadNextDesktopId
+              kateDesktopId
               "io.github.trumank.CodeStudio.desktop"
               "vim.desktop"
               "micro.desktop"
@@ -361,8 +348,8 @@ in
     TERMINFO_DIRS = "${config.home.profileDirectory}/share/terminfo:/nix/var/nix/profiles/default/share/terminfo:/usr/share/terminfo";
   }
   // lib.optionalAttrs cfg.desktopXdg {
-    EDITOR = notepadNextCommand;
-    VISUAL = notepadNextCommand;
+    EDITOR = kateBlockingCommand;
+    VISUAL = kateBlockingCommand;
   }
   // lib.optionalAttrs config.ahdg.features.ghostty {
     ELECTRON_OZONE_PLATFORM_HINT = "auto";

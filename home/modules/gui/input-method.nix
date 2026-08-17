@@ -21,7 +21,6 @@ let
   ];
   inputMethodEnvironment = {
     INPUT_METHOD = "fcitx";
-    GTK_IM_MODULE = "fcitx";
     GLFW_IM_MODULE = "ibus";
     QT_IM_MODULE = "fcitx";
     QT_IM_MODULES = "wayland;fcitx";
@@ -110,6 +109,7 @@ lib.mkIf config.ahdg.features.gui {
     ${inputMethodExports}
 
     if systemctl --user show-environment >/dev/null 2>&1; then
+      systemctl --user unset-environment GTK_IM_MODULE
       systemctl --user import-environment ${lib.escapeShellArgs inputMethodVariableNames}
     fi
 

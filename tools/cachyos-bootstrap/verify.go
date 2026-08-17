@@ -217,10 +217,10 @@ func (v *verifier) checkGUIFiles() {
 	for _, rel := range []string{
 		".config/autostart/ahdg-abdm-tray.desktop",
 		".config/autostart/ahdg-copyq.desktop",
-		".config/autostart/ahdg-mango-dms.desktop",
 		".config/autostart/ahdg-mihomo-party.desktop",
 		".config/autostart/ahdg-zen-browser-warmup.desktop",
 		".config/autostart/com.abdownloadmanager.desktop",
+		".config/systemd/user/ahdg-mango-dms.service",
 		".config/systemd/user/mango-session.target",
 		".config/menus/plasma-applications.menu",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
@@ -374,7 +374,7 @@ func (v *verifier) checkInteractiveShell() {
 		expectedTools = append(expectedTools, "ghostty")
 	}
 	if v.has("gui") {
-		expectedTools = append(expectedTools, "ark", "copyq", "dex", "file", "mark-shot", "NotepadNext", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "unar", "unrar", "wl-paste", "7z")
+		expectedTools = append(expectedTools, "ark", "copyq", "dex", "file", "kate", "mark-shot", "notify-send", "openrazer-daemon", "polychromatic-controller", "songrec", "unar", "unrar", "wl-paste", "7z")
 	}
 	if commandOK("zsh", "-i", "-c", "command -v "+strings.Join(expectedTools, " ")+" >/dev/null") {
 		v.pass("interactive zsh resolves the managed toolchain")
@@ -390,7 +390,7 @@ func (v *verifier) checkInteractiveShell() {
 	}
 	if v.has("gui") {
 		v.checkZsh("command -v darkly-settings6 >/dev/null", "Darkly is provided by the system KDE/Qt package set", "Darkly is missing from the system KDE/Qt package set")
-		v.checkZsh("[[ \"$INPUT_METHOD\" == \"fcitx\" && \"$XMODIFIERS\" == \"@im=fcitx\" && \"$GTK_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULES\" == \"wayland;fcitx\" ]]", "interactive zsh exports the managed fcitx environment", "interactive zsh is missing part of the managed fcitx environment")
+		v.checkZsh("[[ \"$INPUT_METHOD\" == \"fcitx\" && \"$XMODIFIERS\" == \"@im=fcitx\" && -z \"${GTK_IM_MODULE:-}\" && \"$QT_IM_MODULE\" == \"fcitx\" && \"$QT_IM_MODULES\" == \"wayland;fcitx\" ]]", "interactive zsh exports the managed fcitx environment", "interactive zsh is missing part of the managed fcitx environment")
 	}
 	if v.has("fonts") {
 		if regexp.MustCompile(`^Inter`).MatchString(commandOutput("fc-match", "sans-serif")) {
@@ -596,10 +596,10 @@ func (v *verifier) checkFlatpakPolicyDrift() {
 
 func (v *verifier) checkDesktopRuntime() {
 	if v.has("desktopXdg") {
-		if strings.TrimSpace(commandOutput("xdg-mime", "query", "default", "text/plain")) == "NotepadNext.desktop" {
-			v.pass("Notepad Next is the effective text/plain default")
+		if strings.TrimSpace(commandOutput("xdg-mime", "query", "default", "text/plain")) == "org.kde.kate.desktop" {
+			v.pass("Kate is the effective text/plain default")
 		} else {
-			v.fail("Notepad Next is not the effective text/plain default")
+			v.fail("Kate is not the effective text/plain default")
 		}
 
 		arkIsDefault := true
@@ -626,18 +626,18 @@ func (v *verifier) checkDesktopRuntime() {
 		copyqAutostart := readFile(v.path(".config/autostart/ahdg-copyq.desktop"))
 		abdmAutostart := readFile(v.path(".config/autostart/ahdg-abdm-tray.desktop"))
 		abdmVendorAutostart := readFile(v.path(".config/autostart/com.abdownloadmanager.desktop"))
-		dmsAutostart := readFile(v.path(".config/autostart/ahdg-mango-dms.desktop"))
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
+		dmsService := commandOutput("systemctl", "--user", "cat", "ahdg-mango-dms.service")
 		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
 		if strings.Contains(copyqAutostart, "Exec=/nix/store/") &&
 			fileContainsRegex(copyqAutostart, `(?m)^Hidden=true$`) &&
-			strings.Contains(dmsAutostart, "OnlyShowIn=X-Mango;") &&
-			strings.Contains(dmsAutostart, "Exec=/nix/store/") &&
+			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*/ahdg-mango-dms-autostart$`).MatchString(dmsService) &&
+			strings.Contains(dmsService, "PartOf=mango-session.target") &&
 			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
-			v.pass("DMS owns Mango clipboard history while CopyQ autostart remains disabled as a fallback")
+			v.pass("DMS owns Mango clipboard history as a restartable session service while CopyQ autostart remains disabled as a fallback")
 		} else {
-			v.fail("managed XDG autostart policy or the Mango dex runner is incomplete")
+			v.fail("managed DMS service, CopyQ fallback, or the Mango dex runner is incomplete")
 		}
 		if strings.Contains(abdmAutostart, "Exec="+v.path(".local/bin/abdm-tray")) &&
 			!fileContainsRegex(abdmAutostart, `(?m)^Hidden=true$`) &&
@@ -656,7 +656,6 @@ func (v *verifier) checkDesktopRuntime() {
 		}
 		inputMethodEnvironment := []string{
 			`INPUT_METHOD=fcitx`,
-			`GTK_IM_MODULE=fcitx`,
 			`GLFW_IM_MODULE=ibus`,
 			`QT_IM_MODULE=fcitx`,
 			`QT_IM_MODULES=(wayland;fcitx|\$'wayland;fcitx')`,

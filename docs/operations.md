@@ -410,7 +410,7 @@ After a successful switch:
   symlinks
 - `~/.config/mimeapps.list` is a writable regular override file, while
   `~/.local/share/applications/mimeapps.list` is the materialized Nix fallback
-- `xdg-mime query default text/plain` resolves to `NotepadNext.desktop`
+- `xdg-mime query default text/plain` resolves to `org.kde.kate.desktop`
 - `~/.local/share/fonts/custom/` is a regular directory copied from the repo
 - GTK themes, fcitx themes, icon themes, and Flatpak-facing Plasma/GTK assets
   are materialized as regular files or directories

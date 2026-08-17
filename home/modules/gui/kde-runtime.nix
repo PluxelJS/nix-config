@@ -56,6 +56,7 @@ let
 
   dolphin = wrap pkgs.kdePackages.dolphin;
   ark = wrap pkgs.kdePackages.ark;
+  kate = wrap pkgs.kdePackages.kate;
   kded = wrap pkgs.kdePackages.kded;
   kdeCliTools = wrap pkgs.kdePackages.kde-cli-tools;
   plasmaWorkspace = wrap pkgs.kdePackages.plasma-workspace;
@@ -67,6 +68,7 @@ let
     export PATH=${lib.escapeShellArg (lib.makeBinPath archiveBackends)}:''${PATH:-/usr/local/bin:/usr/bin}
     exec ${lib.getExe' ark "ark"} "$@"
   '';
+  kateLauncher = mkKdeLauncher "kate" (lib.getExe' kate "kate");
   kdedLauncher = mkKdeLauncher "kded6" (lib.getExe' kded "kded6");
 
   mkPinnedDesktopEntry =
@@ -84,6 +86,10 @@ let
     mkPinnedDesktopEntry "org.kde.ark.desktop" "${ark}/share/applications/org.kde.ark.desktop"
       "Exec=ark %U"
       "Exec=${lib.getExe arkLauncher} %U";
+  kateDesktopEntry =
+    mkPinnedDesktopEntry "org.kde.kate.desktop" "${kate}/share/applications/org.kde.kate.desktop"
+      "Exec=kate"
+      "Exec=${lib.getExe kateLauncher}";
   kdedDbusService =
     mkPinnedDesktopEntry "org.kde.kded6.service"
       "${pkgs.kdePackages.kded}/share/dbus-1/services/org.kde.kded6.service"
@@ -112,6 +118,8 @@ in
       inherit
         ark
         arkLauncher
+        kate
+        kateLauncher
         dolphin
         dolphinLauncher
         kded
@@ -133,6 +141,8 @@ in
       (lib.hiPrio dolphinLauncher)
       ark
       (lib.hiPrio arkLauncher)
+      kate
+      (lib.hiPrio kateLauncher)
       kded
       kdeCliTools
       plasmaWorkspace
@@ -155,6 +165,10 @@ in
       "applications/org.kde.ark.desktop" = {
         force = true;
         source = arkDesktopEntry;
+      };
+      "applications/org.kde.kate.desktop" = {
+        force = true;
+        source = kateDesktopEntry;
       };
       "dbus-1/services/org.kde.kded6.service" = {
         force = true;

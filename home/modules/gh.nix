@@ -1,8 +1,9 @@
 { config, lib, pkgs, ... }:
 let
+  ghEditor = "kate -b";
   ghConfigText = ''
     git_protocol: ssh
-    editor: NotepadNext
+    editor: ${ghEditor}
     prompt: enabled
   '';
 in
@@ -22,6 +23,14 @@ in
       printf '%s' ${lib.escapeShellArg ghConfigText} > "$gh_config"
     elif [[ -f "$gh_config" ]]; then
       chmod 600 "$gh_config" 2>/dev/null || true
+    fi
+
+    if [[ -f "$gh_config" ]]; then
+      if grep -q '^editor:' "$gh_config"; then
+        sed -i ${lib.escapeShellArg "s|^editor:.*|editor: ${ghEditor}|"} "$gh_config"
+      else
+        printf '\neditor: %s\n' ${lib.escapeShellArg ghEditor} >> "$gh_config"
+      fi
     fi
   '';
 

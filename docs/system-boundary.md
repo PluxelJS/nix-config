@@ -106,18 +106,19 @@ AUR packages used by the desktop profile:
 These AUR packages remain explicit exceptions because they provide current
 desktop behavior that is not equivalently available from the trusted repo set:
 MangoWM commands, Polychromatic's OpenRazer UI, Mihomo Party's desktop/scheme
-handler, and WPS desktop/MIME integration. The Nix-managed Notepad Next package
-keeps its existing command and desktop ID.
+handler, and WPS desktop/MIME integration. Kate is supplied by the Nix-managed
+KDE runtime and owns the text editor desktop/MIME defaults.
 
 Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
   target started by Mango's `exec-once`
 - Home Manager writes shared XDG autostart entries for ABDM tray, Mihomo Party,
-  and browser warmup, plus the Mango-only DMS entry; Plasma consumes shared
-  entries natively and Mango consumes the same files through `dex`. The managed
-  CopyQ entry is disabled: the package remains available as a manual fallback,
-  while DMS exclusively owns clipboard history.
+  and browser warmup; Plasma consumes shared entries natively and Mango consumes
+  the same files through `dex`. DMS runs as a `mango-session.target` user
+  service so clipboard IPC is restartable after Home Manager switches. The
+  managed CopyQ entry is disabled: the package remains available as a manual
+  fallback, while DMS exclusively owns clipboard history.
 - Mango-only XDG entries use the extension desktop ID `OnlyShowIn=X-Mango;`, while the compositor's
   `startup.conf` is reserved for one-shot session hardware helpers
 - package-provided XDG autostart entries and unrelated user overrides remain

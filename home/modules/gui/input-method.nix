@@ -27,7 +27,9 @@ let
     SDL_IM_MODULE = "fcitx";
     XMODIFIERS = "@im=fcitx";
   };
+  inputMethodUnsetVariableNames = [ "GTK_IM_MODULE" ];
   inputMethodVariableNames = lib.attrNames inputMethodEnvironment;
+  inputMethodDbusVariableNames = inputMethodUnsetVariableNames ++ inputMethodVariableNames;
   inputMethodExports = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") inputMethodEnvironment
   );
@@ -106,15 +108,16 @@ lib.mkIf config.ahdg.features.gui {
   # activation so portals and DBus-activated applications do not depend on a
   # compositor-specific login hook having run first.
   home.activation.syncInputMethodEnvironment = lib.hm.dag.entryBefore [ "reloadSystemd" ] ''
+    unset ${lib.escapeShellArgs inputMethodUnsetVariableNames}
     ${inputMethodExports}
 
     if systemctl --user show-environment >/dev/null 2>&1; then
-      systemctl --user unset-environment GTK_IM_MODULE
+      systemctl --user unset-environment ${lib.escapeShellArgs inputMethodUnsetVariableNames}
       systemctl --user import-environment ${lib.escapeShellArgs inputMethodVariableNames}
     fi
 
     if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-      dbus-update-activation-environment --systemd ${lib.escapeShellArgs inputMethodVariableNames}
+      dbus-update-activation-environment --systemd ${lib.escapeShellArgs inputMethodDbusVariableNames}
     fi
   '';
 
@@ -248,6 +251,23 @@ lib.mkIf config.ahdg.features.gui {
         if [[ "$current_fragment" == "$managed_service_path" ]]; then
           systemctl --user stop fcitx5-daemon.service >/dev/null 2>&1 || true
           systemctl --user reset-failed fcitx5-daemon.service >/dev/null 2>&1 || true
+        fi
+
+        stale_fcitx_pids=()
+        for environ in /proc/[0-9]*/environ; do
+          [[ -r "$environ" ]] || continue
+          proc_dir="''${environ%/environ}"
+          [[ -r "$proc_dir/comm" ]] || continue
+          [[ "$(cat "$proc_dir/comm" 2>/dev/null || true)" == "fcitx5" ]] || continue
+
+          if tr '\0' '\n' < "$environ" 2>/dev/null | grep -q '^GTK_IM_MODULE='; then
+            stale_fcitx_pids+=("''${proc_dir##*/}")
+          fi
+        done
+
+        if (( ''${#stale_fcitx_pids[@]} > 0 )); then
+          kill "''${stale_fcitx_pids[@]}" >/dev/null 2>&1 || true
+          sleep 1
         fi
 
         if [[ -x /usr/bin/fcitx5 ]] && ! busctl --user status org.fcitx.Fcitx5 >/dev/null 2>&1; then

@@ -669,7 +669,8 @@ func (v *verifier) checkDesktopRuntime() {
 				break
 			}
 		}
-		if inputMethodEnvironmentComplete {
+		gtkInputMethodUnset := !regexp.MustCompile(`(?m)^GTK_IM_MODULE=`).MatchString(userEnvironment)
+		if inputMethodEnvironmentComplete && gtkInputMethodUnset {
 			v.pass("systemd user environment exports the complete managed fcitx policy")
 		} else {
 			v.fail("systemd user environment is missing part of the managed fcitx policy")

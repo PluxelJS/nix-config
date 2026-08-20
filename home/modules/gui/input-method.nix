@@ -34,9 +34,9 @@ let
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") inputMethodEnvironment
   );
   wanxiangBase = pkgs.fetchurl {
-    # Asset 504043698 is the exact v17.2.4 base bundle. Pinning its immutable
+    # Asset 521064354 is the exact v17.5.4 base bundle. Pinning its immutable
     # release object avoids following a mutable release download name.
-    url = "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/504043698";
+    url = "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/521064354";
     name = "rime-wanxiang-base.zip";
     curlOptsList = [
       "-H"
@@ -44,12 +44,12 @@ let
       "-H"
       "X-GitHub-Api-Version: 2022-11-28"
     ];
-    hash = "sha256-ZCe9Ypx8yfNtNPhkQHRjFF3SK0KlBPhmkmK+xAHvpks=";
+    hash = "sha256-Az0pJGwVs7w8qfMyk2Cio0S9NlYsTp2M5WqRqVPAw6I=";
   };
   wanxiangGrammar = pkgs.fetchurl {
-    # Asset 506440692 identifies this exact 420255788-byte object. Unlike the
+    # Asset 518941819 identifies this exact 420256812-byte object. Unlike the
     # mutable LTS download alias, replacing the release asset creates a new ID.
-    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/506440692";
+    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/518941819";
     name = "wanxiang-lts-zh-hans.gram";
     curlOptsList = [
       "-H"
@@ -57,7 +57,7 @@ let
       "-H"
       "X-GitHub-Api-Version: 2022-11-28"
     ];
-    hash = "sha256-MW285vytIy2GebvKOdWmggyHCz/pVKW5jkg4remyqDE=";
+    hash = "sha256-PeIaH/WHq04YjC3cVpVdnSXxBPTQzleU8FptkQOuN8s=";
   };
 
   rimeStaticPayload =

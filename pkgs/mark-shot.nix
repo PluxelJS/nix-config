@@ -13,8 +13,19 @@
   wl-clipboard,
   xclip,
   python3,
+  tesseract5,
   libx11,
 }:
+let
+  ocrPython = python3.withPackages (ps: [ ps.rapidocr ]);
+  ocrModels = "${ocrPython}/${ocrPython.sitePackages}/rapidocr/models";
+  ocrTesseract = tesseract5.override {
+    enableLanguages = [
+      "eng"
+      "chi_sim"
+    ];
+  };
+in
 stdenv.mkDerivation (finalAttrs: {
   pname = "mark-shot";
   version = "0.1.45";
@@ -48,6 +59,14 @@ stdenv.mkDerivation (finalAttrs: {
     "-DMARK_SHOT_WITH_LIBPORTAL=ON"
   ];
 
+  postPatch = ''
+    # RapidOCR 3 uses model_root_dir. Point the upstream helper at the models
+    # bundled by nixpkgs instead of its mutable per-user download directory.
+    substituteInPlace scripts/mark-shot-ocr \
+      --replace-fail '#!/usr/bin/env python3' '#!${ocrPython}/bin/python3' \
+      --replace-fail '"Global.model_dir",' '"Global.model_root_dir",'
+  '';
+
   preFixup = ''
     qtWrapperArgs+=(
       --prefix PATH : "$out/bin:${
@@ -55,10 +74,22 @@ stdenv.mkDerivation (finalAttrs: {
           grim
           wl-clipboard
           xclip
-          python3
+          ocrPython
+          ocrTesseract
         ]
       }"
+      --set MARK_SHOT_OCR_NO_VENV 1
+      --set MARK_SHOT_OCR_VERSION PP-OCRv6
+      --set MARK_SHOT_OCR_MODEL_DIR "${ocrModels}"
     )
+  '';
+
+  postFixup = ''
+    wrapProgram "$out/bin/mark-shot-ocr" \
+      --prefix PATH : "${lib.makeBinPath [ ocrTesseract ]}" \
+      --set MARK_SHOT_OCR_NO_VENV 1 \
+      --set MARK_SHOT_OCR_VERSION PP-OCRv6 \
+      --set MARK_SHOT_OCR_MODEL_DIR "${ocrModels}"
   '';
 
   meta = {

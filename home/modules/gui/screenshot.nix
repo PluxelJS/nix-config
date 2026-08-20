@@ -15,8 +15,9 @@ lib.mkIf config.ahdg.features.gui {
       timeoutMs = 1000;
     };
     ocr = {
-      enabled = false;
-      backend = "rapidocr";
+      enabled = true;
+      provider = "helper";
+      backend = "auto";
       command = "";
       timeoutMs = 30000;
     };

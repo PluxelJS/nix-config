@@ -29,11 +29,11 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "meatshell";
-  version = "0.6.10";
+  version = "0.6.14";
 
   src = fetchurl {
     url = "https://github.com/jeff141/meatshell/releases/download/v${finalAttrs.version}/meatshell-v${finalAttrs.version}-linux-x86_64.tar.gz";
-    hash = "sha256-ZDbwTwLMMfFfQK94irPLK5S/lbha/1W69MrCJsYCAI4=";
+    hash = "sha256-Ftw8t/EqTK2Q5MNkUmRalVEBqjp+37m0291qc0hGpEk=";
   };
 
   nativeBuildInputs = [ autoPatchelfHook ];

@@ -51,6 +51,11 @@
                 hash = "sha256-2dizKZhhiu156Xzy0VLReEUMzR3+xgs/ys0Hs1ME+og=";
               };
               buildInputs = old.buildInputs ++ [
+                # CopyQ is a Qt application, so let it use the same KDE
+                # platform theme and widget styles as the rest of the desktop.
+                final.darkly
+                final.kdePackages.breeze
+                final.kdePackages.plasma-integration
                 final.kdePackages.qca
                 final.kdePackages.qtkeychain
               ];

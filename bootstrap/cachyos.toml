@@ -48,6 +48,7 @@ localsend = ["ufw"]
 
 [packages.profiles]
 desktop = [
+  "atop",
   "base-devel",
   "libcap-ng",
   "linux-cachyos-headers",

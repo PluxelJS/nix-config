@@ -34,9 +34,10 @@ unrelated latest CLI release.
 
 The primary implementation is the committed Go binary:
 
-- `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/firewall/cleanup/verify CLI
+- `bootstrap/bin/cachyos-bootstrap`: Linux amd64 bootstrap/deps/atop/firewall/cleanup/verify CLI
 - `bootstrap/cachyos.toml`: profile, package, AUR exception, and Flatpak policy
 - `bootstrap/codestudio/`: local Code Studio Flatpak package used by desktop bootstrap
+- `bootstrap/atop/`: persistent system sampling policy
 - `bootstrap/ufw/`: repo-owned host firewall application profiles
 - `tools/cachyos-bootstrap/`: source for rebuilding the binary
 
@@ -47,6 +48,7 @@ The shell entrypoint is intentionally thin:
 ~/.config/nix/bootstrap/cachyos.sh --apply
 ~/.config/nix/bootstrap/cachyos.sh --apply --minimal
 ~/.config/nix/bootstrap/cachyos.sh deps
+~/.config/nix/bootstrap/cachyos.sh atop --apply
 ~/.config/nix/bootstrap/cachyos.sh firewall --apply
 ~/.config/nix/bootstrap/cachyos.sh pull-gui-config
 ~/.config/nix/bootstrap/cachyos.sh cleanup
@@ -90,6 +92,10 @@ integration remains on the system side: `bootstrap/cachyos.sh deps --apply`
 installs UFW and applies the repo-owned `LocalSend` application profile for
 TCP/UDP port 53317. The same policy can be checked or repaired independently
 with `bootstrap/cachyos.sh firewall [--apply]`.
+
+Atop is a system-layer diagnostic dependency. The desktop dependency flow
+installs it, while `bootstrap/cachyos.sh atop [--apply]` independently checks or
+repairs its 10-second recorder, seven-day retention, and daily rotation.
 
 Rebuild the committed binary after changing Go code or `go.mod`:
 

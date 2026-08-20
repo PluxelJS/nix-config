@@ -18,4 +18,7 @@
   ];
 
   programs.home-manager.enable = true;
+
+  # Keep switches quiet; news remains available through `home-manager news`.
+  news.display = "silent";
 }

@@ -15,8 +15,6 @@ buildGoModule rec {
     hash = "sha256-aTNuC9NDBnYAeEtFsleeUwmGX3AZlKOutbl+LQRPkmQ=";
   };
 
-  patches = [ ./dms-uri-list.patch ];
-
   modRoot = "core";
   subPackages = [ "cmd/dms" ];
   tags = [ "distro_binary" ];
@@ -34,7 +32,7 @@ buildGoModule rec {
   doCheck = false;
 
   meta = {
-    description = "DMS backend with reliable file URI history replay";
+    description = "Dank Material Shell backend";
     homepage = "https://github.com/AvengeMedia/DankMaterialShell";
     license = lib.licenses.mit;
     mainProgram = "dms";

@@ -44,7 +44,21 @@ func (a app) newRootCommand() *cobra.Command {
 	}
 	cmd.CompletionOptions.DisableDefaultCmd = true
 	addBootstrapFlags(cmd, &rootOpts)
-	cmd.AddCommand(a.newBootstrapCommand(), a.newDepsCommand(), a.newFirewallCommand(), a.newFlatpaksCommand(), a.newPullGUIConfigCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	cmd.AddCommand(a.newAtopCommand(), a.newBootstrapCommand(), a.newDepsCommand(), a.newFirewallCommand(), a.newFlatpaksCommand(), a.newPullGUIConfigCommand(), a.newCleanupCommand(), a.newVerifyCommand())
+	return cmd
+}
+
+func (a app) newAtopCommand() *cobra.Command {
+	opts := atopOptions{}
+	cmd := &cobra.Command{
+		Use:   "atop",
+		Short: "Check or apply persistent atop sampling",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.runAtop(opts)
+		},
+	}
+	cmd.Flags().BoolVar(&opts.apply, "apply", false, "install atop config and enable persistent sampling")
 	return cmd
 }
 

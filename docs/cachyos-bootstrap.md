@@ -25,14 +25,16 @@ The fresh-machine logic is not embedded in large shell scripts. It is split into
 - `bootstrap/cachyos.toml`: declarative package, command, profile, and Flatpak
   policy
 - `bootstrap/ufw/`: repo-owned UFW application profiles
+- `bootstrap/atop/`: root-owned persistent sampling policy installed by the
+  bootstrap
 - `bootstrap/bin/cachyos-bootstrap`: committed Linux amd64 binary that can run
   immediately after `git clone`
 - `tools/cachyos-bootstrap/`: Go source for the binary
 - `bootstrap/cachyos.sh`: thin compatibility wrapper
 
-Routine repair, firewall policy, Flatpak catch-up, GUI config import, cleanup,
-and verification are subcommands of the same binary:
-`bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh firewall`,
+Routine repair, performance recording, firewall policy, Flatpak catch-up, GUI
+config import, cleanup, and verification are subcommands of the same binary:
+`bootstrap/cachyos.sh deps`, `bootstrap/cachyos.sh atop`, `bootstrap/cachyos.sh firewall`,
 `bootstrap/cachyos.sh flatpaks`, `bootstrap/cachyos.sh pull-gui-config`,
 `bootstrap/cachyos.sh cleanup`, and `bootstrap/cachyos.sh verify`.
 
@@ -79,6 +81,8 @@ What it does:
   from Home Manager
 - adds the current user to profile-required groups such as `openrazer`
 - installs LocalSend's UFW profile and allows TCP/UDP port 53317
+- installs `atop`, records system and per-process state every 10 seconds,
+  retains seven daily logs, and enables daily rotation
 - switches the matching Home Manager flake output
 - defers Flathub apps plus the local Code Studio Flatpak package to an
   explicit catch-up command
@@ -115,6 +119,13 @@ Check or repair only LocalSend's host firewall policy with:
 ```bash
 ~/.config/nix/bootstrap/cachyos.sh firewall
 ~/.config/nix/bootstrap/cachyos.sh firewall --apply
+```
+
+Check or repair only persistent performance sampling with:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh atop
+~/.config/nix/bootstrap/cachyos.sh atop --apply
 ```
 
 ## GUI Config Import

@@ -98,6 +98,9 @@ func (v *verifier) run() {
 		v.fail("runtime profile marker does not match %s", v.profile)
 	}
 	v.checkUserGroups()
+	if v.profile == "desktop" {
+		v.checkAtop()
+	}
 
 	if v.has("ghostty") {
 		v.checkSymlink(".config/ghostty/config")
@@ -164,6 +167,30 @@ func (v *verifier) run() {
 	v.checkDesktopRuntime()
 }
 
+func (v *verifier) checkAtop() {
+	if !commandExists("atop") {
+		v.fail("atop is missing from the desktop host dependencies")
+		return
+	}
+
+	config := readFile(atopConfigPath)
+	if lineHasValue(config, "LOGINTERVAL", "10") &&
+		lineHasValue(config, "LOGGENERATIONS", "7") &&
+		lineHasValue(config, "LOGPATH", "/var/log/atop") {
+		v.pass("atop records 10-second samples with 7-day retention")
+	} else {
+		v.fail("atop sampling policy is missing or stale")
+	}
+
+	if commandOK("systemctl", "is-enabled", "--quiet", "atop.service") &&
+		commandOK("systemctl", "is-enabled", "--quiet", "atop-rotate.timer") &&
+		commandOK("systemctl", "is-active", "--quiet", "atop.service") {
+		v.pass("atop recorder and daily rotation are enabled and active")
+	} else {
+		v.fail("atop recorder or daily rotation is not enabled and active")
+	}
+}
+
 func (v *verifier) checkLocalSend() {
 	if commandExists("localsend_app") && commandExists("localsend") {
 		v.pass("LocalSend is installed through the Home Manager profile")
@@ -220,7 +247,10 @@ func (v *verifier) checkGUIFiles() {
 		".config/autostart/ahdg-mihomo-party.desktop",
 		".config/autostart/ahdg-zen-browser-warmup.desktop",
 		".config/autostart/com.abdownloadmanager.desktop",
+		".config/autostart/com.shellyorg.shelly-notifications.desktop",
+		".config/systemd/user/ahdg-disable-dms-clipboard.service",
 		".config/systemd/user/ahdg-mango-dms.service",
+		".config/systemd/user/copyq.service",
 		".config/systemd/user/mango-session.target",
 		".config/menus/plasma-applications.menu",
 		".local/share/plasma/look-and-feel/Catppuccin-Macchiato-Lavender",
@@ -627,17 +657,28 @@ func (v *verifier) checkDesktopRuntime() {
 		abdmAutostart := readFile(v.path(".config/autostart/ahdg-abdm-tray.desktop"))
 		abdmVendorAutostart := readFile(v.path(".config/autostart/com.abdownloadmanager.desktop"))
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
+		mangoMainConfig := readFile(v.path(".config/mango/config.conf"))
+		copyqService := commandOutput("systemctl", "--user", "cat", "copyq.service")
+		disableDmsClipboardService := commandOutput("systemctl", "--user", "cat", "ahdg-disable-dms-clipboard.service")
 		dmsService := commandOutput("systemctl", "--user", "cat", "ahdg-mango-dms.service")
 		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
 		if strings.Contains(copyqAutostart, "Exec=/nix/store/") &&
 			fileContainsRegex(copyqAutostart, `(?m)^Hidden=true$`) &&
+			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*/bin/copyq$`).MatchString(copyqService) &&
+			strings.Contains(copyqService, "WantedBy=mango-session.target") &&
+			strings.Contains(disableDmsClipboardService, "Disable DMS clipboard tracking") &&
+			strings.Contains(disableDmsClipboardService, "WantedBy=mango-session.target") &&
 			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*/ahdg-mango-dms-autostart$`).MatchString(dmsService) &&
 			strings.Contains(dmsService, "PartOf=mango-session.target") &&
 			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
+			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME=kde") &&
+			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME_QT6=kde") &&
+			strings.Contains(copyqService, "QT_PLUGIN_PATH=/nix/store/") &&
+			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,/nix/store/.*/bin/copyq toggle$`).MatchString(mangoMainConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
-			v.pass("DMS owns Mango clipboard history as a restartable session service while CopyQ autostart remains disabled as a fallback")
+			v.pass("CopyQ owns Mango clipboard history as a restartable session service while DMS clipboard tracking stays disabled")
 		} else {
-			v.fail("managed DMS service, CopyQ fallback, or the Mango dex runner is incomplete")
+			v.fail("managed CopyQ service, DMS shell service, or the Mango dex runner is incomplete")
 		}
 		if strings.Contains(abdmAutostart, "Exec="+v.path(".local/bin/abdm-tray")) &&
 			!fileContainsRegex(abdmAutostart, `(?m)^Hidden=true$`) &&

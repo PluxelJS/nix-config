@@ -30,11 +30,27 @@ func TestBundledConfigValidates(t *testing.T) {
 	if stringInSlice("ufw", cfg.Packages.Features["gui"]) {
 		t.Fatal("UFW should follow the LocalSend feature, not the generic GUI feature")
 	}
+	if !stringInSlice("atop", cfg.Packages.Profiles["desktop"]) {
+		t.Fatal("desktop profile should install atop for persistent incident sampling")
+	}
 	if stringInSlice("peazip", cfg.AURPackages["desktop"]) || stringInSlice("peazip-qt-bin", cfg.AURPackages["desktop"]) {
 		t.Fatal("PeaZip has been retired in favor of the Nix-owned KDE Ark runtime")
 	}
 	if stringInSlice("notepadnext-bin", cfg.AURPackages["desktop"]) {
 		t.Fatal("Notepad Next has been retired in favor of the Nix-owned Kate runtime")
+	}
+}
+
+func TestBundledAtopPolicy(t *testing.T) {
+	config := readFile(filepath.Join("..", "..", "bootstrap", "atop", "default"))
+	if !lineHasValue(config, "LOGINTERVAL", "10") {
+		t.Fatal("atop should sample every 10 seconds")
+	}
+	if !lineHasValue(config, "LOGGENERATIONS", "7") {
+		t.Fatal("atop should retain 7 daily logs")
+	}
+	if !lineHasValue(config, "LOGPATH", "/var/log/atop") {
+		t.Fatal("atop should write persistent logs under /var/log/atop")
 	}
 }
 
@@ -141,7 +157,7 @@ func TestRootHelpIncludesSubcommands(t *testing.T) {
 	}
 
 	help := out.String()
-	for _, want := range []string{"bootstrap", "deps", "firewall", "flatpaks", "pull-gui-config", "cleanup", "verify"} {
+	for _, want := range []string{"atop", "bootstrap", "deps", "firewall", "flatpaks", "pull-gui-config", "cleanup", "verify"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("help output missing %q:\n%s", want, help)
 		}

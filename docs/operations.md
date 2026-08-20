@@ -95,6 +95,36 @@ Check or repair the LocalSend UFW application profile and TCP/UDP 53317 rules:
 ~/.config/nix/bootstrap/cachyos.sh firewall --apply
 ```
 
+## Performance Incident Recording
+
+The desktop bootstrap installs the host `atop` package and enables its system
+recorder. It captures whole-system and per-process CPU, memory, swap, disk, and
+network accounting every 10 seconds. Daily raw logs live under
+`/var/log/atop/`, and logs older than seven daily generations are removed by
+the package's rotation timer. Ten-second `/proc` sampling has negligible CPU
+cost on this workstation while remaining fine-grained enough to catch the
+onset of memory reclaim or zram thrashing.
+
+Check or repair only this policy:
+
+```bash
+~/.config/nix/bootstrap/cachyos.sh atop
+~/.config/nix/bootstrap/cachyos.sh atop --apply
+```
+
+After a reboot, open the previous incident day's raw log and restrict playback
+to the relevant window:
+
+```bash
+sudo atop -r /var/log/atop/atop_20260820 -b 15:30 -e 15:45
+```
+
+Useful playback keys are `t`/`T` for the next/previous sample, `c` for full
+commands, `m` for memory, `d` for disk, `n` for network, and `q` to quit. For a
+suspected memory-pressure incident, first compare process memory and swap in
+the `m` view; high zram activity can consume CPU even when the leaking process
+is not itself at 100% CPU.
+
 Install or catch up slower Flatpak app installs after the desktop base is up:
 
 ```bash

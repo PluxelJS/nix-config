@@ -27,7 +27,6 @@ let
   ];
   scriptFiles = [
     "scripts/browser-activate.sh"
-    "scripts/clipboard-image-dump.sh"
     "scripts/dump-active-window.sh"
     "scripts/force-kill-focused.sh"
     "scripts/lid-internal-output.sh"
@@ -51,6 +50,7 @@ lib.mkIf config.ahdg.features.gui {
   home.activation.installMangoConfig = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     install -dm755 "${mangoTarget}"
     rm -f "${mangoTarget}"/config.conf.backup*
+    rm -f "${mangoTarget}/scripts/clipboard-image-dump.sh"
     rm -f "${mangoTarget}/dms/outputs.conf"
     rm -rf "${mangoTarget}/dms/profiles"
 
@@ -111,6 +111,7 @@ lib.mkIf config.ahdg.features.gui {
       "${mangoTarget}/dms.conf"
 
     sed -i \
+      -e 's|@COPYQ@|${lib.getExe pkgs.copyq}|g' \
       -e 's|@DMS@|${lib.getExe pkgs.dms}|g' \
       "${mangoTarget}/config.conf"
   '';

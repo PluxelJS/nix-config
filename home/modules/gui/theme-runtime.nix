@@ -156,5 +156,9 @@ in
     };
 
     home.sessionVariables = baseSessionVariables;
+    # GUI services do not necessarily inherit the compositor's env.conf.
+    # Publish the same toolkit policy to the user manager so Qt applications
+    # started as systemd units also resolve the KDE platform theme.
+    systemd.user.sessionVariables = baseSessionVariables;
   };
 }

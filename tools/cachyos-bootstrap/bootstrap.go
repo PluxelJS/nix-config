@@ -224,6 +224,12 @@ func (a app) checkDeps(opts depOptions) (depResult, error) {
 			return result, err
 		}
 	}
+	if opts.profile == "desktop" {
+		fmt.Println()
+		if err := a.runAtop(atopOptions{apply: opts.apply, sudoReady: opts.sudoReady}); err != nil {
+			return result, err
+		}
+	}
 
 	return result, nil
 }

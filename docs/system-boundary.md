@@ -81,6 +81,7 @@ Needed from Arch repositories:
 - baseline: `zsh`, `pkgfile`
 - desktop runtime: `fcitx5`, `fcitx5-gtk`, `fcitx5-qt`, `fcitx5-rime`
 - integration: `flatpak`, `podman`, `dbus`, `ufw`
+- diagnostics: `atop`, with a root-owned recorder and daily log rotation
 - Mango/DMS helpers: `wlr-randr`, `gtk3`, `python`
 - desktop extras: `ab-download-manager`, `baloo`, `blueman`,
   `dms-shell`, `easyeffects`, `flatseal`, `libappindicator`,
@@ -115,10 +116,14 @@ Mango session startup is user-layer and Home Manager-owned:
   target started by Mango's `exec-once`
 - Home Manager writes shared XDG autostart entries for ABDM tray, Mihomo Party,
   and browser warmup; Plasma consumes shared entries natively and Mango consumes
-  the same files through `dex`. DMS runs as a `mango-session.target` user
-  service so clipboard IPC is restartable after Home Manager switches. The
-  managed CopyQ entry is disabled: the package remains available as a manual
-  fallback, while DMS exclusively owns clipboard history.
+  the same files through `dex`. DMS and CopyQ run as `mango-session.target`
+  user services so their IPC survives Home Manager switches. The managed CopyQ
+  autostart entry is disabled because `copyq.service` owns the clipboard
+  manager process. DMS's clipboard widget is hidden, and its backend tracking is
+  disabled by an ordered one-shot service after the DMS backend becomes ready.
+- Cachy-Update is the sole graphical update notifier. A hidden per-user desktop
+  entry suppresses Shelly's legacy notification helper, avoiding duplicate
+  checks and stale-settings errors during login.
 - Mango-only XDG entries use the extension desktop ID `OnlyShowIn=X-Mango;`, while the compositor's
   `startup.conf` is reserved for one-shot session hardware helpers
 - package-provided XDG autostart entries and unrelated user overrides remain
@@ -146,21 +151,26 @@ theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
 `dolphinui.rc` are writable regular files. A Home Manager switch never replaces
 or rewrites an existing live KDE preference file.
 
-CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ is
-installed as a manual fallback; Mango uses DMS's native Wayland clipboard
-backend with a 20,000-entry retention limit. The Nix-managed DMS command stays
-on the host UI's 1.5.3 release but patches history replay for `text/uri-list`:
-file lists are restored as KDE/GNOME-compatible copy offers instead of reading
-the first URI as file content. Ark and
-its 7z, RAR, Unarchiver, and Info-ZIP backends belong to the coherent KDE
-runtime above. CopyQ is pinned to 16.0.0 until nixpkgs catches up because that
-release line fixes the long-running clipboard process leak; meatshell is pinned
-to the verified upstream 0.6.10 release artifact; GPU-backed meatshell and Zed
-launch through the CachyOS nixGL bridge.
+CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ owns
+clipboard history with a 20,000-entry retention limit and no automatic expiry;
+DMS clipboard tracking is explicitly disabled after the DMS backend starts.
+CopyQ is pinned to 16.0.0 until nixpkgs catches up because that release line
+fixes the long-running clipboard process leak. Ark and its 7z, RAR,
+Unarchiver, and Info-ZIP backends belong to the coherent KDE runtime above;
+meatshell is pinned to the verified upstream 0.6.10 release artifact;
+GPU-backed meatshell and Zed launch through the CachyOS nixGL bridge.
 
 Small user glue scripts such as `abdm-launch` and
 `protontricks-launch-mangohud` are Home Manager-owned under `~/.local/bin`; the
 large applications they call stay in the host package layer.
+
+Persistent performance sampling is another deliberate split-boundary case.
+The bootstrap installs the trusted-repository `atop` package, owns
+`/etc/default/atop`, and enables its system service because complete process and
+kernel accounting must start at boot and write under `/var/log/atop`. The
+policy records every 10 seconds and retains seven daily logs. Home Manager does
+not replace this with a user service, which would miss system processes and
+fail when the desktop user manager is unhealthy.
 
 Desktop Flatpaks are handled by `bootstrap/cachyos.sh --apply`
 when they are part of the current workflow or validation canaries.

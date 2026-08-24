@@ -36,12 +36,12 @@ nix build --impure \
 
 The Wanxiang input-method payload has an explicit end-to-end chain:
 
-1. The Wanxiang v17.2.4 base archive is fetched through immutable GitHub
-   release asset ID `504043698` and checked against SHA-256
-   `6427bd629c7cc9f36d34f864407463145dd22b42a504f8669262bec401efa64b`.
-2. The 420255788-byte zh-Hans grammar is fetched through GitHub release asset
-   ID `506440692`, not the mutable `LTS` alias, and is checked against
-   SHA-256 `316dbce6fcad232d8679bbca39d5a6820c870b3fe954a5b98e4838ade9b2a831`.
+1. The Wanxiang v17.5.8 base archive is fetched through immutable GitHub
+   release asset ID `526392386` and checked against SHA-256
+   `cccfa9350abc4f789d1c1c1164dc57208ae3b1fa5edb6d55b36378248ca1ece7`.
+2. The 420250668-byte zh-Hans grammar is fetched through GitHub release asset
+   ID `526165714`, not the mutable `LTS` alias, and is checked against
+   SHA-256 `01ffe37f22607bf8a5cd5d82a3349f6df97744369464aee4577585112d85469d`.
 3. Repo-owned `default.yaml`, custom phrases, and schema patches are added in a
    Nix derivation.
 4. That derivation generates `.nix-resource-manifest.sha256` over every static

@@ -86,10 +86,19 @@ git config --global user.email "you@example.com"
 Switch configurations:
 
 ```bash
+nixup
 home-manager switch --flake ~/.config/nix#current --impure
 home-manager switch --flake ~/.config/nix#current-shell --impure
 home-manager switch --flake ~/.config/nix#current-container --impure
 ```
+
+`nixup` is the normal maintenance command. It fetches `origin/main`, refuses
+dirty or diverged checkouts, fast-forwards the repository, preserves the active
+profile, and applies the repository's committed `flake.lock`. Use
+`nixup --check` to preview published changes or `nixup --home` to update and
+switch only Home Manager. It deliberately does not run `nix flake update`.
+Before the command is present in the active Home Manager generation, run it as
+`nix run --impure ~/.config/nix#nixup -- --check`.
 
 If `home-manager` is not installed globally:
 

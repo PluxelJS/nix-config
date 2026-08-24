@@ -89,6 +89,14 @@ func commandOK(name string, args ...string) bool {
 	return cmd.Run() == nil
 }
 
+func commandOKEnv(env []string, name string, args ...string) bool {
+	cmd := exec.Command(name, args...)
+	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run() == nil
+}
+
 func run(name string, args ...string) error {
 	fmt.Println("+ " + shellJoin(append([]string{name}, args...)))
 	cmd := exec.Command(name, args...)

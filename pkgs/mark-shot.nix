@@ -28,13 +28,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "mark-shot";
-  version = "0.1.48";
+  version = "0.1.49";
 
   src = fetchFromGitHub {
     owner = "jswysnemc";
     repo = "mark-shot";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-sZDRXp862CWvnml8SYxecL+uSxsum+oi2eho4tri2/4=";
+    hash = "sha256-r1LX4BUMKbEPbC9uDTMfhFxSQgYIxyCtubo5Sp4KrRw=";
   };
 
   nativeBuildInputs = [

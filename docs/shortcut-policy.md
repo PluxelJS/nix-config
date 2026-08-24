@@ -61,7 +61,7 @@ This file is the source of truth for cross-app shortcut decisions.
 
 ## MangoWC
 
-- `Ctrl+\``: toggle the CopyQ main window.
+- `Ctrl+\``: show the CopyQ main window; dismiss it with `Esc`.
 - `Super+Shift+M`: launch `SongRec` in `gui-norecording` mode first.
 - `Super+Shift+R`: reload the MangoWC config.
 

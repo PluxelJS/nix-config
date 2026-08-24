@@ -472,7 +472,11 @@ func (v *verifier) checkFlatpakApps() {
 	} else {
 		v.fail("Telegram Flatpak is still missing part of the materialized theme stack")
 	}
-	if commandOK("flatpak", "run", "--command=sh", "org.telegram.desktop", "-c", "test -f ~/.config/fcitx5/config && test -f ~/.local/share/fcitx5/themes/plasma/theme.conf && test -f ~/.local/share/fcitx5/rime/default.yaml && printenv XMODIFIERS | grep -qx '@im=fcitx' && printenv QT_IM_MODULES | grep -qx 'wayland;fcitx'") {
+	if commandOKEnv(
+		[]string{"XMODIFIERS=@im=fcitx", "QT_IM_MODULES=wayland;fcitx"},
+		"flatpak", "run", "--command=sh", "org.telegram.desktop", "-c",
+		"test -f ~/.config/fcitx5/config && test -f ~/.local/share/fcitx5/themes/plasma/theme.conf && test -f ~/.local/share/fcitx5/rime/default.yaml && printenv XMODIFIERS | grep -qx '@im=fcitx' && printenv QT_IM_MODULES | grep -qx 'wayland;fcitx'",
+	) {
 		v.pass("Telegram Flatpak can read the managed fcitx and rime stack")
 	} else {
 		v.fail("Telegram Flatpak is still missing part of the fcitx or rime stack")
@@ -668,13 +672,13 @@ func (v *verifier) checkDesktopRuntime() {
 			strings.Contains(copyqService, "WantedBy=mango-session.target") &&
 			strings.Contains(disableDmsClipboardService, "Disable DMS clipboard tracking") &&
 			strings.Contains(disableDmsClipboardService, "WantedBy=mango-session.target") &&
-			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*/ahdg-mango-dms-autostart$`).MatchString(dmsService) &&
+			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*ahdg-mango-dms-autostart$`).MatchString(dmsService) &&
 			strings.Contains(dmsService, "PartOf=mango-session.target") &&
 			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME=kde") &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME_QT6=kde") &&
 			strings.Contains(copyqService, "QT_PLUGIN_PATH=/nix/store/") &&
-			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,/nix/store/.*/bin/copyq toggle$`).MatchString(mangoMainConfig) &&
+			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,/nix/store/.*/bin/copyq show$`).MatchString(mangoMainConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
 			v.pass("CopyQ owns Mango clipboard history as a restartable session service while DMS clipboard tracking stays disabled")
 		} else {

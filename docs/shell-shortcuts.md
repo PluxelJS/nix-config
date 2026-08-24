@@ -54,6 +54,9 @@ the operator-facing cheatsheet.
 
 ## Built-in Helpers
 
+- `nixup`: safely update to the published Nix config and apply the active profile.
+- `nixup --check`: show published updates without moving `HEAD` or switching.
+- `nixup --home`: update and switch Home Manager without host reconciliation.
 - `o`: open the current directory, or explicit paths, through `xdg-open`.
 - `z`: jump to a known directory by frecency.
 - `f` / `fix`: rerun the previous command through `pay-respects`.

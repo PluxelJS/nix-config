@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: nixup [--check | --home]
+
+Safely fast-forward the Nix config checkout to its published version and apply it.
+
+  --check  Fetch and show available changes without updating or switching
+  --home   Update the checkout and switch Home Manager only
+  -h       Show this help
+
+The default command updates the checkout and runs the repository setup flow for
+the currently active profile. It follows the committed flake.lock; it does not
+run `nix flake update`.
+EOF
+}
+
+mode=full
+case "${1:-}" in
+  "") ;;
+  --check) mode=check ;;
+  --home) mode=home ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+if (( $# > 1 )); then
+  usage >&2
+  exit 2
+fi
+
+repo="${AHDG_NIX_REPO:-${XDG_CONFIG_HOME:-$HOME/.config}/nix}"
+remote="${NIXUP_REMOTE:-origin}"
+branch="${NIXUP_BRANCH:-main}"
+
+if [[ ! -d "$repo/.git" ]]; then
+  echo "nixup: not a Git checkout: $repo" >&2
+  exit 1
+fi
+if [[ ! -x "$repo/setup" ]]; then
+  echo "nixup: repository setup entrypoint is missing or not executable: $repo/setup" >&2
+  exit 1
+fi
+
+current_branch="$(git -C "$repo" branch --show-current)"
+if [[ "$current_branch" != "$branch" ]]; then
+  echo "nixup: expected branch '$branch', currently on '${current_branch:-detached HEAD}'" >&2
+  exit 1
+fi
+if ! git -C "$repo" remote get-url "$remote" >/dev/null 2>&1; then
+  echo "nixup: Git remote '$remote' does not exist" >&2
+  exit 1
+fi
+
+dirty=false
+if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
+  dirty=true
+  if [[ "$mode" != check ]]; then
+    echo "nixup: local changes detected; commit or stash them before updating:" >&2
+    git -C "$repo" status --short >&2
+    exit 1
+  fi
+fi
+
+echo "Fetching $remote/$branch..."
+git -C "$repo" fetch --prune "$remote" "$branch"
+
+current="$(git -C "$repo" rev-parse HEAD)"
+target="$(git -C "$repo" rev-parse FETCH_HEAD)"
+
+if git -C "$repo" merge-base --is-ancestor "$current" "$target"; then
+  if [[ "$current" == "$target" ]]; then
+    echo "Already at the latest published Nix config: ${current:0:12}"
+  else
+    echo
+    echo "Available Nix config updates:"
+    git -C "$repo" log --oneline --decorate "$current..$target"
+  fi
+elif git -C "$repo" merge-base --is-ancestor "$target" "$current"; then
+  echo "Local branch is ahead of $remote/$branch; no published update to apply."
+else
+  echo "nixup: local branch has diverged from $remote/$branch; refusing to merge" >&2
+  exit 1
+fi
+
+if [[ "$mode" == check ]]; then
+  if [[ "$dirty" == true ]]; then
+    echo
+    echo "Local changes currently block nixup:"
+    git -C "$repo" status --short
+  fi
+  exit 0
+fi
+
+if [[ "$current" != "$target" ]] && git -C "$repo" merge-base --is-ancestor "$current" "$target"; then
+  git -C "$repo" merge --ff-only "$target"
+fi
+if [[ ! -x "$repo/setup" ]]; then
+  echo "nixup: updated revision has no executable setup entrypoint: $repo/setup" >&2
+  exit 1
+fi
+applied="$(git -C "$repo" rev-parse HEAD)"
+
+profile_file="${XDG_CONFIG_HOME:-$HOME/.config}/ahdg/profile"
+profile=desktop
+if [[ -s "$profile_file" ]]; then
+  profile="$(<"$profile_file")"
+  profile="${profile//$'\n'/}"
+fi
+
+case "$profile" in
+  desktop) flake="current" ;;
+  shell) flake="current-shell" ;;
+  container) flake="current-container" ;;
+  *)
+    echo "nixup: unsupported active profile '$profile' in $profile_file" >&2
+    exit 1
+    ;;
+esac
+
+echo
+echo "Applying profile '$profile' from Nix config ${applied:0:12}..."
+if [[ "$mode" == home ]]; then
+  export NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true'
+  nix run --impure "$repo#home-manager" -- \
+    switch --flake "$repo#$flake" -b pre-nix --impure
+else
+  "$repo/setup" --profile "$profile"
+fi
+
+echo
+echo "Nix config is current and profile '$profile' was applied (${applied:0:12})."

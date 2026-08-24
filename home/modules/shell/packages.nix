@@ -23,6 +23,7 @@ let
       exit 127
     '';
   };
+  nixup = pkgs.callPackage ../../../pkgs/nixup.nix { };
 in {
   home.packages =
     (with pkgs; [
@@ -37,6 +38,7 @@ in {
       zsh-autopair
       zsh-completions
       pkgfileCompat
+      nixup
     ])
     ++ [
       agenix.packages.${pkgs.stdenv.hostPlatform.system}.default

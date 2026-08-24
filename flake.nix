@@ -117,6 +117,7 @@
       # instead of fetching an unrelated latest release during first setup.
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
+        nixup = pkgs.callPackage ./pkgs/nixup.nix { };
         proxy-llm = proxy-llm.packages.${system}.default;
       };
 

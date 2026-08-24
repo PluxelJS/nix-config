@@ -17,6 +17,42 @@ Useful companion operations are `setup --check`, `setup --flatpaks`, and
 dependencies, and then runs the matching Home Manager switch. See
 [docs/cachyos-bootstrap.md](cachyos-bootstrap.md) for the full flow.
 
+After the first installation, update to the latest published configuration and
+apply it with:
+
+```bash
+nixup
+```
+
+This safely fetches and fast-forwards `~/.config/nix` to `origin/main`, reads
+the active profile from `~/.config/ahdg/profile`, and then runs the matching
+setup flow. Local changes or a diverged branch stop the update; the command
+never stashes, overwrites, or creates a merge commit. Available updates can be
+inspected without changing `HEAD` or switching a generation:
+
+```bash
+nixup --check
+```
+
+To update the checkout and switch only Home Manager, skipping host dependency
+reconciliation:
+
+```bash
+nixup --home
+```
+
+“Latest” here means the latest published repository revision together with its
+reviewed, committed `flake.lock`. Advancing nixpkgs, Home Manager, and other
+flake inputs remains a separate maintainer workflow using `nix flake update`,
+followed by review and testing before committing the new lock file.
+
+On an existing checkout whose active generation predates `nixup`, the packaged
+entrypoint can be invoked directly:
+
+```bash
+nix run --impure ~/.config/nix#nixup -- --check
+```
+
 ## Direct Switch Commands
 
 Routine Home Manager switches:

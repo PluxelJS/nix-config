@@ -191,6 +191,9 @@ lib.mkIf config.ahdg.features.gui {
     ];
     Restart = lib.mkForce "always";
     RestartSec = 2;
+    # CopyQ's wrapper converts the expected SIGTERM during a managed restart
+    # into exit code 143. Do not leave the user manager degraded after switch.
+    SuccessExitStatus = 143;
   };
 
   home.activation.ensureDmsService = lib.hm.dag.entryAfter [ "reloadSystemd" ] ''

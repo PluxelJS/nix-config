@@ -34,6 +34,8 @@ zsh_config_dir="$config_root/zsh"
 nix_profile="$real_home/.local/state/nix/profiles/profile"
 host_code_dir="$real_home/code"
 virtual_code_dir="$virtual_home/code"
+host_download_dir="${XDG_DOWNLOAD_DIR:-$real_home/下载}"
+virtual_download_dir="$virtual_home/下载"
 cli_only=0
 
 # VS Code terminals export VSCODE_* and ELECTRON_* variables. If Code Studio is
@@ -99,19 +101,28 @@ mkdir -p \
   "$ZDOTDIR"
 
 # Keep the private HOME ergonomic without exposing the rest of the host home.
-# Flatpak grants writable access to the real ~/code path; this symlink makes
-# project paths work naturally as ~/code inside terminals and tools.
-if [[ -d "$host_code_dir" ]]; then
-  if [[ -L "$virtual_code_dir" ]]; then
-    current_code_target="$(readlink "$virtual_code_dir" || true)"
-    if [[ "$current_code_target" != "$host_code_dir" ]]; then
-      rm -f "$virtual_code_dir"
-      ln -s "$host_code_dir" "$virtual_code_dir"
+# Flatpak grants access to these two host directories; the links only give
+# them their expected names below the private HOME.
+link_host_directory() {
+  local host_dir="$1"
+  local virtual_dir="$2"
+  local current_target
+
+  if [[ -d "$host_dir" ]]; then
+    if [[ -L "$virtual_dir" ]]; then
+      current_target="$(readlink "$virtual_dir" || true)"
+      if [[ "$current_target" != "$host_dir" ]]; then
+        rm -f "$virtual_dir"
+        ln -s "$host_dir" "$virtual_dir"
+      fi
+    elif [[ ! -e "$virtual_dir" ]]; then
+      ln -s "$host_dir" "$virtual_dir"
     fi
-  elif [[ ! -e "$virtual_code_dir" ]]; then
-    ln -s "$host_code_dir" "$virtual_code_dir"
   fi
-fi
+}
+
+link_host_directory "$host_code_dir" "$virtual_code_dir"
+link_host_directory "$host_download_dir" "$virtual_download_dir"
 
 # GnuPG and OpenSSH reject or warn on group/world-readable private state.
 # Flatpak creates app-private paths safely, but nested tool directories are
@@ -167,6 +178,35 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# The project directory is reachable through both the host mount and the
+# private-HOME convenience link. Use the physical host mount as the launch
+# directory, then rewrite only explicit private-home project paths. Relative
+# arguments remain untouched, so option values such as extension IDs and
+# profile names cannot be mistaken for project paths.
+physical_cwd="$(pwd -P 2>/dev/null || true)"
+case "$physical_cwd" in
+  "$host_code_dir"|"$host_code_dir"/*)
+    cd -- "$physical_cwd"
+    ;;
+esac
+
+normalized_args=()
+for arg in "$@"; do
+  normalized_arg="$arg"
+
+  case "$arg" in
+    "file://$virtual_code_dir"|"file://$virtual_code_dir"/*)
+      normalized_arg="file://$host_code_dir${arg#"file://$virtual_code_dir"}"
+      ;;
+    "$virtual_code_dir"|"$virtual_code_dir"/*)
+      normalized_arg="$host_code_dir${arg#"$virtual_code_dir"}"
+      ;;
+  esac
+
+  normalized_args+=("$normalized_arg")
+done
+set -- "${normalized_args[@]}"
 
 if [[ "${1:-}" == "--print-code-studio-env" ]]; then
   env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|GIT_CONFIG_GLOBAL|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort

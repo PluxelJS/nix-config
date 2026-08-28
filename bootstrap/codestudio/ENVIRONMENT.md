@@ -116,7 +116,12 @@ the desktop bridge.
 
 Keep these read-only. Do not add host home access or writable desktop config access to the global override.
 
-`CodeStudio` has one app-specific writable host path, `~/code`, declared in its Flatpak manifest. Keep project access app-specific rather than putting writable host paths in the global override.
+`CodeStudio` has two app-specific writable host paths declared in its Flatpak
+manifest: `~/code` for projects and `xdg-download` for explicit file exchange.
+Keep this access app-specific rather than putting writable host paths in the
+global override. `/home/$USER/code` is the canonical project spelling; the
+launcher normalizes paths received through the private-home `~/code` link to
+that host path before starting VS Code.
 
 ## App-Specific State
 

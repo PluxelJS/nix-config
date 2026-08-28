@@ -8,7 +8,8 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
 - Pin upstream VS Code to a known-good build.
 - Keep all editor, shell, Codex, extension, and tool state under the app-private
   Flatpak home: `~/.var/app/io.github.trumank.CodeStudio/home`.
-- Expose only `~/code` as writable host project storage.
+- Expose only `~/code` as writable host project storage, plus the XDG download
+  directory for explicit imports, exports, and downloaded artifacts.
 - Expose the rootless Podman user socket and provide a sandbox-local `docker`
   compatibility command for Dev Containers; the container engine remains on
   the host.
@@ -25,7 +26,15 @@ The launcher creates:
 
 ```text
 ~/.var/app/io.github.trumank.CodeStudio/home/code -> ~/code
+~/.var/app/io.github.trumank.CodeStudio/home/下载 -> ~/下载
 ```
+
+The host path `/home/$USER/code` is the canonical project path. The launcher
+normalizes project arguments that arrive through the private-home `~/code`
+link before handing them to VS Code, so coding agents and workspace history do
+not accumulate both spellings for the same checkout. Existing recent-workspace
+entries are not rewritten; reopen an affected project once through
+`/home/$USER/code` to replace its old entry.
 
 Home Manager creates `~/code` before applying the Flatpak override, so fresh
 machines get the same private-home layout.

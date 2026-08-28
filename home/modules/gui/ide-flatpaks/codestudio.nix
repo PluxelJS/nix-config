@@ -42,6 +42,7 @@ let
     devices = [ "kvm" ];
     talkNames = ideLib.sharedSecretTalkNames;
     filesystems = ideLib.sharedFilesystems ++ [
+      "xdg-download:create"
       "xdg-run/podman/podman.sock"
     ];
     persists = codeStudioPersistDirs;

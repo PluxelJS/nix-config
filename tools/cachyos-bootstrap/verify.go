@@ -517,6 +517,11 @@ func (v *verifier) checkCodeStudio() {
 	} else {
 		v.fail("Code Studio should keep Codex state under app-private CODEX_HOME instead of persistent ~/.codex")
 	}
+	if fileContainsRegex(commandOutput("flatpak", "override", "--user", "--show", appID), `(?m)^filesystems=(.*;)?xdg-download:create(;|$)`) {
+		v.pass("Code Studio can read and write the XDG download directory")
+	} else {
+		v.fail("Code Studio is missing access to the XDG download directory")
+	}
 	if flatpakShell(appID, fmt.Sprintf("! grep -q \" %s/.codex/config.toml %s/.codex/config.toml \" /proc/self/mountinfo", v.home, v.home)) {
 		v.pass("Code Studio exposes Codex config through a directory mount for atomic writes")
 	} else {

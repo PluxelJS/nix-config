@@ -114,19 +114,22 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
-The desktop profile consumes the official Proxy-LLM-API flake and starts its
-packaged helper through `proxy-llm.service`; a source checkout is not required.
-The lock file pins the tested upstream module and compose behavior, while local
-credentials and runtime state stay writable outside the store. See
-[docs/operations.md](docs/operations.md).
+The desktop profile consumes the official Proxy-LLM-API flake and still ships
+its packaged helper. The legacy `proxy-llm.service` stays declared for a safe
+in-place transition, but it is no longer re-added to login autostart; the
+dev-runtime target is the next service owner. See [docs/operations.md](docs/operations.md).
 
 The desktop profile also installs `dev-runtime`, a local Podman Compose helper
 for development databases and observability. Home Manager starts shared
 PostgreSQL and Dragonfly on new machines by default; VictoriaMetrics,
-VictoriaLogs, the parallel Proxy LLM stack, and even the default database
-targets are selected per machine under `~/.local/state/dev-runtime/`, not in
-Nix. PostgreSQL is shared as one local container but isolated per service with
+VictoriaLogs, Proxy LLM, and even the default database targets are selected
+per machine under `~/.local/state/dev-runtime/`, not in Nix. PostgreSQL is
+shared as one local container but isolated per service with
 separate managed databases and roles via `dev-runtime pg-create <name>`.
+
+Repository-owned helper CLIs carry `usage.kdl` specs. The Nix packages lint
+those specs and install generated shell completions for commands such as
+`nixup` and `dev-runtime`; the scripts also expose `--usage` for tooling.
 
 ## Structure
 

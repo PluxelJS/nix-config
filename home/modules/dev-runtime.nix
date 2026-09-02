@@ -8,6 +8,7 @@ in
       home.packages = [
         devRuntime
         pkgs.podman-compose
+        config.services.proxyLlm.package
       ];
 
       systemd.user.services.dev-runtime = {

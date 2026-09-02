@@ -115,7 +115,7 @@ PostgreSQL is shared as one local container and one local cluster, but service
 access is isolated by database and login role. The admin URL printed as
 `DATABASE_URL` is for local maintenance. Proxy LLM uses
 `PROXY_LLM_DB_NAME=claude_code_hub`, `PROXY_LLM_DB_USER=proxy_llm`, and a
-machine-generated `PROXY_LLM_DB_PASSWORD`; `dev-runtime enable proxy-llm`
+machine-generated `PROXY_LLM_DB_PASSWORD`; starting the `proxy-llm` target
 creates that role/database before starting the hub. New local services should
 get their own managed database instead of reusing the admin or proxy URL:
 
@@ -142,6 +142,7 @@ dev-runtime disable dragonfly
 dev-runtime enable postgres dragonfly
 dev-runtime enable vmetrics
 dev-runtime enable vlogs
+dev-runtime enable --no-start proxy-llm
 dev-runtime disable vlogs
 ```
 
@@ -152,12 +153,24 @@ dev-runtime start vlogs
 dev-runtime stop vlogs
 ```
 
-The parallel Proxy LLM target is deliberately off by default while the existing
-`proxy-llm.service` is still the active session dependency. If enabled for
-testing, it uses separate state and ports by default:
+The dev-runtime Proxy LLM target is deliberately off by default while the
+existing `proxy-llm.service` is still the active session dependency. It uses
+the upstream default ports, so it must not be started while the old service is
+still active. To prepare the next boot without touching the current session:
 
 ```bash
-dev-runtime enable proxy-llm
+dev-runtime enable --no-start proxy-llm
+systemctl --user disable proxy-llm.service
+```
+
+The desktop profile still declares `proxy-llm.service` for the current
+generation but sets `services.proxyLlm.autoStart = false`; Home Manager removes
+the boot relationship without stopping the active service. After reboot,
+`dev-runtime.service` owns the selected targets. Once the old service is no
+longer running, use:
+
+```bash
+dev-runtime start proxy-llm
 dev-runtime proxy-secrets
 dev-runtime proxy-login codex-device
 ```
@@ -166,25 +179,47 @@ Proxy LLM depends on PostgreSQL and Dragonfly. `dev-runtime enable proxy-llm`
 therefore persistently enables those two dependencies as well, while
 `dev-runtime start proxy-llm` only starts them for the current run. The CLI
 refuses to persistently disable either dependency while `proxy-llm` remains
-enabled.
+enabled. It also refuses to start the dev-runtime `proxy-llm` target while
+`proxy-llm.service` is active, unless `DEV_RUNTIME_ALLOW_ACTIVE_PROXY_LLM_SERVICE=1`
+is set for an explicit override.
 
 Proxy LLM and VictoriaLogs are separate targets. `vlogs` is only the
 VictoriaLogs storage/query service on port `9428`; `proxy-llm` starts the hub
 and CLIProxyAPI services on their own ports and consumes PostgreSQL plus
 Dragonfly as dependencies.
 
-Default parallel ports are `127.0.0.1:23001` for the Hub and `127.0.0.1:8318`
-for CLIProxyAPI, with state under `~/.local/state/proxy-llm-dev-runtime/`.
-Do not stop or migrate the current `proxy-llm.service` until the parallel stack
-has been verified and an explicit data cutover has been prepared.
+Default ports are `127.0.0.1:23000` for the Hub and `127.0.0.1:8317` for
+CLIProxyAPI, with OAuth callback ports `1455`, `54545`, and `51121`. The target
+uses the official state directory `~/.local/state/proxy-llm/` so existing
+CLIProxyAPI config, OAuth credentials, logs, and plugins remain available after
+the service owner changes. Database contents are not copied automatically; run
+an explicit dump/restore if the old internal Postgres volume contains state
+that must survive the cutover.
+
+## Helper CLI Specs
+
+Repository-owned helper CLIs use `usage.kdl` as their machine-readable command
+spec. The Nix packages lint these specs during build and install generated zsh
+and bash completion scripts. Current covered commands:
+
+```bash
+nixup --usage
+dev-runtime --usage
+```
+
+`dev-runtime` completions include command, target, service, provider, and
+managed PostgreSQL database names. The managed database completion reads
+`~/.local/state/dev-runtime/postgres-databases/` directly and does not start
+containers.
 
 ## Proxy LLM Service
 
 The desktop profile imports the official, lock-pinned Proxy-LLM-API Home
 Manager module. Its package in the Nix store owns compose files and lifecycle
 helpers; no `~/code/_ACode` checkout is needed after an optional one-time
-migration. Startup is queued asynchronously so a slow image pull cannot block
-Home Manager activation.
+migration. The legacy `proxy-llm.service` remains declared so the active
+session survives Home Manager switches, but it is no longer re-added to login
+autostart. Use the dev-runtime target for the next boot.
 
 ```bash
 systemctl --user status proxy-llm.service

@@ -1,0 +1,101 @@
+min_usage_version "4.0"
+name "dev-runtime"
+bin "dev-runtime"
+repository "https://github.com/PluxelJS/nix-config"
+about "Manage local development databases, observability, and Proxy LLM targets"
+usage "dev-runtime [COMMAND] [ARGS]"
+
+flag "--usage" help="Output this usage.kdl spec" effect=read
+flag "-h --help" help="Show help"
+
+cmd "up" help="Start enabled targets, or selected targets" effect=write {
+  alias "start"
+  arg "[targets]..." help="Targets to start" required=#false var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "enable" help="Persist targets locally and start them unless skipped" effect=write {
+  flag "--no-start" help="Persist the target set without starting services now"
+  arg "<targets>..." help="Targets to enable" var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "disable" help="Remove targets from local persistence and stop them" effect=write {
+  arg "<targets>..." help="Targets to disable" var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "stop" help="Stop selected targets without changing local enablement" effect=write {
+  arg "<targets>..." help="Targets to stop" var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "down" help="Stop the whole dev runtime project" effect=write
+
+cmd "restart" help="Restart selected targets, or all enabled targets" effect=write {
+  arg "[targets]..." help="Targets to restart" required=#false var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "status" help="Show compose status and health checks" effect=write {
+  alias "ps"
+}
+
+cmd "check" help="Run health checks for enabled or selected targets" effect=write {
+  arg "[targets]..." help="Targets to check" required=#false var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "logs" help="Follow compose logs" effect=read {
+  arg "[services]..." help="Compose services" required=#false var=#true {
+    choices "postgres" "dragonfly" "vmetrics" "vlogs" "proxy-llm" "cli-proxy-api"
+  }
+}
+
+cmd "pull" help="Pull images for selected targets" effect=write {
+  arg "[targets]..." help="Targets to pull" required=#false var=#true {
+    choices "postgres" "pgsql" "postgresql" "pg" "dragonfly" "dragonflydb" "redis" "vmetrics" "victoria-metrics" "victoriametrics" "vm" "metrics" "vlogs" "victoria-logs" "victorialogs" "proxy-llm" "proxy" "llm" "base" "default" "all"
+  }
+}
+
+cmd "env" help="Print local connection strings" effect=write
+
+cmd "pg-create" help="Create an isolated PostgreSQL database and URL" effect=write {
+  arg "<name>" help="New database name"
+}
+
+cmd "pg-url" help="Print a managed PostgreSQL database URL" effect=write {
+  arg "<database>" help="Managed database name"
+}
+
+cmd "pg-list" help="List managed PostgreSQL databases" effect=write
+
+cmd "psql" help="Run psql inside the shared postgres container" effect=write {
+  arg "[args]..." help="Arguments passed to psql" required=#false var=#true
+}
+
+cmd "redis-cli" help="Run redis-cli inside the shared dragonfly container" effect=write {
+  arg "[args]..." help="Arguments passed to redis-cli" required=#false var=#true
+}
+
+cmd "proxy-login" help="Run CLIProxyAPI login in the shared proxy container" effect=write {
+  arg "<provider>" help="Login provider" {
+    choices "codex-device" "codex" "claude" "antigravity" "kimi" "xai"
+  }
+  arg "[args]..." help="Provider-specific arguments" required=#false var=#true
+}
+
+cmd "proxy-secrets" help="Show Proxy LLM generated secrets" effect=write
+cmd "list" help="Show locally enabled targets" effect=write
+cmd "config" help="Render compose config" effect=write {
+  arg "[args]..." help="Arguments passed to compose config" required=#false var=#true
+}
+cmd "init" help="Create local state without starting containers" effect=write
+
+complete "database" run=#"d="${DEV_RUNTIME_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dev-runtime}/postgres-databases"; [ -d "$d" ] || exit 0; for f in "$d"/*.env; do [ -e "$f" ] || continue; name="${f##*/}"; printf '%s\n' "${name%.env}"; done"#

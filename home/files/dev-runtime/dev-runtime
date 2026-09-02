@@ -3,6 +3,7 @@ set -euo pipefail
 
 resource_root="@resourceRoot@"
 compose_file="$resource_root/compose.yaml"
+usage_spec_file="$resource_root/dev-runtime.usage.kdl"
 
 : "${HOME:?HOME must be set}"
 state_dir="${DEV_RUNTIME_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dev-runtime}"
@@ -17,7 +18,8 @@ Usage: dev-runtime <command> [targets]
 
 Commands:
   up|start [targets]       Start enabled targets, or selected targets
-  enable <targets>         Persist targets locally and start them
+  enable [--no-start] <targets>
+                          Persist targets locally and start them unless skipped
   disable <targets>        Remove targets locally and stop them
   stop <targets>           Stop selected targets without changing local enablement
   down                     Stop the whole dev runtime project
@@ -49,6 +51,11 @@ EOF
 die() {
   printf 'dev-runtime: %s\n' "$*" >&2
   exit 1
+}
+
+print_usage_spec() {
+  [[ -r "$usage_spec_file" ]] || die "usage spec is missing: $usage_spec_file"
+  cat "$usage_spec_file"
 }
 
 dotenv_value_from_file() {
@@ -99,6 +106,13 @@ env_has_key() {
     $1 == key { found = 1; exit }
     END { exit !found }
   ' "$env_file"
+}
+
+replace_env_value_if_current() {
+  local key="$1" old_value="$2" new_value="$3"
+  if [[ "$(dotenv_value "$key")" == "$old_value" ]]; then
+    set_env_value "$key" "$new_value"
+  fi
 }
 
 set_env_value() {
@@ -188,18 +202,18 @@ VLOGS_BIND_ADDRESS=127.0.0.1
 VLOGS_PORT=9428
 VLOGS_RETENTION=7d
 
-PROXY_LLM_STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm-dev-runtime
+PROXY_LLM_STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm
 PROXY_LLM_DB_NAME=claude_code_hub
 PROXY_LLM_DB_USER=proxy_llm
 PROXY_LLM_DB_PASSWORD=$proxy_db_password
 PROXY_LLM_BIND_ADDRESS=127.0.0.1
-PROXY_LLM_PORT=23001
+PROXY_LLM_PORT=23000
 CLIPROXY_BIND_ADDRESS=127.0.0.1
-CLIPROXY_PORT=8318
+CLIPROXY_PORT=8317
 CLIPROXY_CALLBACK_BIND_ADDRESS=127.0.0.1
-CLIPROXY_CODEX_CALLBACK_PORT=1456
-CLIPROXY_CLAUDE_CALLBACK_PORT=54546
-CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51122
+CLIPROXY_CODEX_CALLBACK_PORT=1455
+CLIPROXY_CLAUDE_CALLBACK_PORT=54545
+CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51121
 EOF
     chmod 600 "$tmp"
     mv "$tmp" "$env_file"
@@ -207,9 +221,21 @@ EOF
   ensure_env_value PROXY_LLM_DB_USER proxy_llm
   ensure_env_value PROXY_LLM_DB_PASSWORD "$(generate_secret 24)"
 
+  if [[ "$schema_version" != 3 ]]; then
+    replace_env_value_if_current \
+      PROXY_LLM_STATE_DIR \
+      "${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm-dev-runtime" \
+      "${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm"
+    replace_env_value_if_current PROXY_LLM_PORT 23001 23000
+    replace_env_value_if_current CLIPROXY_PORT 8318 8317
+    replace_env_value_if_current CLIPROXY_CODEX_CALLBACK_PORT 1456 1455
+    replace_env_value_if_current CLIPROXY_CLAUDE_CALLBACK_PORT 54546 54545
+    replace_env_value_if_current CLIPROXY_ANTIGRAVITY_CALLBACK_PORT 51122 51121
+  fi
+
   if [[ ! -f "$enabled_file" ]]; then
     printf '%s\n' postgres dragonfly >"$enabled_file"
-  elif [[ "$schema_version" != 2 ]]; then
+  elif [[ "$schema_version" != 2 && "$schema_version" != 3 ]]; then
     local enabled_tmp
     enabled_tmp="$(mktemp "$state_dir/enabled.XXXXXX")"
     {
@@ -218,7 +244,7 @@ EOF
     } | awk 'NF && !seen[$0]++' >"$enabled_tmp"
     mv "$enabled_tmp" "$enabled_file"
   fi
-  printf '2\n' >"$schema_file"
+  printf '3\n' >"$schema_file"
   mkdir -p "$database_dir"
   chmod 600 "$env_file" "$enabled_file" "$schema_file"
   chmod 700 "$database_dir"
@@ -406,7 +432,7 @@ compose_profile_args() {
 }
 
 proxy_state_dir() {
-  env_or_default PROXY_LLM_STATE_DIR "${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm-dev-runtime"
+  env_or_default PROXY_LLM_STATE_DIR "${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm"
 }
 
 export_proxy_paths() {
@@ -427,6 +453,18 @@ ensure_proxy_llm() {
     die "proxy-llm is not installed"
   fi
   proxy-llm init --no-show-secrets >/dev/null
+}
+
+legacy_proxy_service_active() {
+  command -v systemctl >/dev/null 2>&1 || return 1
+  systemctl --user is-active --quiet proxy-llm.service >/dev/null 2>&1
+}
+
+assert_proxy_llm_can_start() {
+  [[ "${DEV_RUNTIME_ALLOW_ACTIVE_PROXY_LLM_SERVICE:-}" != 1 ]] || return 0
+  if legacy_proxy_service_active; then
+    die "proxy-llm.service is active; use dev-runtime enable --no-start proxy-llm for next boot, or stop the old service before starting dev-runtime proxy-llm"
+  fi
 }
 
 container_id() {
@@ -467,10 +505,10 @@ check_one() {
       ;;
     proxy-llm)
       host="$(env_or_default PROXY_LLM_BIND_ADDRESS 127.0.0.1)"
-      port="$(env_or_default PROXY_LLM_PORT 23001)"
+      port="$(env_or_default PROXY_LLM_PORT 23000)"
       curl --fail --silent --show-error "http://$host:$port/api/actions/health" >/dev/null
       host="$(env_or_default CLIPROXY_BIND_ADDRESS 127.0.0.1)"
-      port="$(env_or_default CLIPROXY_PORT 8318)"
+      port="$(env_or_default CLIPROXY_PORT 8317)"
       curl --fail --silent --show-error "http://$host:$port/healthz" >/dev/null
       ;;
     *)
@@ -619,6 +657,7 @@ run_up() {
   local targets=() profiles=() services=() profile_args=()
   mapfile -t targets < <(targets_from_args "$@")
   if contains proxy-llm "${targets[@]}"; then
+    assert_proxy_llm_can_start
     ensure_proxy_llm
     compose up -d postgres dragonfly
     wait_targets postgres dragonfly
@@ -651,7 +690,31 @@ run_stop() {
 persist_targets() {
   local mode="$1"
   shift
-  local requested=() requested_with_deps=() current=() next=() tmp target
+  local action start_after=true requested=() requested_with_deps=() current=() next=() tmp target
+  case "$mode" in
+    add) action=enable ;;
+    remove) action=disable ;;
+    *) die "unsupported persistence mode: $mode" ;;
+  esac
+  while (($#)); do
+    case "$1" in
+      --no-start)
+        [[ "$mode" == add ]] || die "--no-start is only valid with enable"
+        start_after=false
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        die "unsupported $action option: $1"
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
   mapfile -t requested < <(selected_targets_from_args "$@")
   mapfile -t current < <(read_enabled_targets)
   tmp="$(mktemp "$state_dir/enabled.XXXXXX")"
@@ -666,7 +729,9 @@ persist_targets() {
       validate_enabled_targets "${next[@]}"
       mv "$tmp" "$enabled_file"
       chmod 600 "$enabled_file"
-      run_up
+      if $start_after; then
+        run_up
+      fi
       ;;
     remove)
       for target in "${current[@]}"; do
@@ -749,7 +814,7 @@ print_env() {
     "$(env_or_default VLOGS_PORT 9428)"
   printf 'PROXY_LLM_URL=http://%s:%s\n' \
     "$(env_or_default PROXY_LLM_BIND_ADDRESS 127.0.0.1)" \
-    "$(env_or_default PROXY_LLM_PORT 23001)"
+    "$(env_or_default PROXY_LLM_PORT 23000)"
 }
 
 list_targets() {
@@ -773,6 +838,10 @@ shift || true
 case "$command" in
   help|-h|--help)
     usage
+    exit 0
+    ;;
+  --usage)
+    print_usage_spec
     exit 0
     ;;
 esac
@@ -830,7 +899,6 @@ case "$command" in
     compose "${profile_args[@]}" pull "${services[@]}"
     ;;
   env)
-    init_state
     print_env
     ;;
   pg-create)
@@ -856,7 +924,6 @@ case "$command" in
     proxy-llm secrets
     ;;
   list)
-    init_state
     list_targets
     ;;
   config)

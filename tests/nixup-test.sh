@@ -11,6 +11,10 @@ fail() {
   exit 1
 }
 
+usage_spec="$("$nixup" --usage)"
+[[ "$usage_spec" == *'flag "--latest"'* ]] || fail "--usage did not expose --latest"
+[[ "$usage_spec" == *'flag "--check"'* ]] || fail "--usage did not expose --check"
+
 git_init() {
   git -c init.defaultBranch=main init "$1" >/dev/null
   git -C "$1" config user.name Test

@@ -34,6 +34,7 @@ in {
       nodejs
       pandoc
       ripgrep
+      usage
       yazi
       zsh-autopair
       zsh-completions

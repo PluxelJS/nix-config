@@ -1,15 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+usage_spec_file="${NIXUP_USAGE_SPEC_FILE:-@usageSpec@}"
+
+print_usage_spec() {
+  if [[ -r "$usage_spec_file" ]]; then
+    cat "$usage_spec_file"
+  elif [[ -r "$script_dir/nixup.usage.kdl" ]]; then
+    cat "$script_dir/nixup.usage.kdl"
+  else
+    echo "nixup: usage spec is missing" >&2
+    exit 1
+  fi
+}
+
 usage() {
   cat <<'EOF'
-Usage: nixup [--check | --home | --latest]
+Usage: nixup [--check | --home | --latest | --usage]
 
 Safely fast-forward the Nix config checkout to its published version and apply it.
 
   --check  Fetch and show available changes without updating or switching
   --home   Update the checkout and switch Home Manager only
   --latest Update every flake input and switch Home Manager only
+  --usage  Output usage.kdl for completions and tooling
   -h       Show this help
 
 The default command updates the checkout and runs the repository setup flow for
@@ -25,6 +40,10 @@ case "${1:-}" in
   --check) mode=check ;;
   --home) mode=home ;;
   --latest) mode=latest ;;
+  --usage)
+    print_usage_spec
+    exit 0
+    ;;
   -h | --help)
     usage
     exit 0

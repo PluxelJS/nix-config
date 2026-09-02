@@ -1,0 +1,869 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+resource_root="@resourceRoot@"
+compose_file="$resource_root/compose.yaml"
+
+: "${HOME:?HOME must be set}"
+state_dir="${DEV_RUNTIME_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dev-runtime}"
+env_file="$state_dir/.env"
+enabled_file="$state_dir/enabled"
+schema_file="$state_dir/schema-version"
+database_dir="$state_dir/postgres-databases"
+
+usage() {
+  cat <<'EOF'
+Usage: dev-runtime <command> [targets]
+
+Commands:
+  up|start [targets]       Start enabled targets, or selected targets
+  enable <targets>         Persist targets locally and start them
+  disable <targets>        Remove targets locally and stop them
+  stop <targets>           Stop selected targets without changing local enablement
+  down                     Stop the whole dev runtime project
+  restart [targets]        Restart selected targets
+  status|ps                Show compose status and health checks
+  check [targets]          Run health checks
+  logs [services]          Follow compose logs
+  pull [targets]           Pull images for selected targets
+  env                      Print local connection strings
+  pg-create <name>         Create an isolated PostgreSQL database and URL
+  pg-url <name>            Print a managed PostgreSQL database URL
+  pg-list                  List managed PostgreSQL databases
+  psql [args...]           Run psql inside the shared postgres container
+  redis-cli [args...]      Run redis-cli inside the shared dragonfly container
+  proxy-login <provider>   Run CLIProxyAPI login in the shared proxy container
+  proxy-secrets            Show Proxy-LLM generated secrets
+  list                     Show locally enabled targets
+  config                   Render compose config
+  init                     Create local state without starting containers
+
+Targets:
+  postgres, dragonfly, vmetrics, vlogs, proxy-llm, base/default, all
+
+Local state:
+  DEV_RUNTIME_STATE_DIR or ~/.local/state/dev-runtime
+EOF
+}
+
+die() {
+  printf 'dev-runtime: %s\n' "$*" >&2
+  exit 1
+}
+
+dotenv_value_from_file() {
+  local source_file="$1" key="$2"
+  [[ -f "$source_file" ]] || return 0
+  awk -F= -v key="$key" '
+    $0 ~ "^[[:space:]]*#" { next }
+    $1 == key {
+      sub(/^[^=]*=/, "")
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+      if (($0 ~ /^".*"$/) || ($0 ~ /^\047.*\047$/)) {
+        $0 = substr($0, 2, length($0) - 2)
+      }
+      print
+      exit
+    }
+  ' "$source_file"
+}
+
+dotenv_value() {
+  dotenv_value_from_file "$env_file" "$1"
+}
+
+env_or_default() {
+  local key="$1" default="$2" value
+  value="$(dotenv_value "$key")"
+  if [[ -n "$value" ]]; then
+    printf '%s' "$value"
+  else
+    printf '%s' "$default"
+  fi
+}
+
+generate_secret() {
+  local bytes="${1:-24}"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex "$bytes"
+  else
+    od -An -N "$bytes" -tx1 /dev/urandom | tr -d ' \n'
+  fi
+}
+
+env_has_key() {
+  local key="$1"
+  [[ -f "$env_file" ]] || return 1
+  awk -F= -v key="$key" '
+    $0 ~ "^[[:space:]]*#" { next }
+    $1 == key { found = 1; exit }
+    END { exit !found }
+  ' "$env_file"
+}
+
+set_env_value() {
+  local key="$1" value="$2" tmp
+  tmp="$(mktemp "$state_dir/.env.XXXXXX")"
+  awk -v key="$key" -v value="$value" '
+    index($0, key "=") == 1 {
+      if (!written) print key "=" value
+      written = 1
+      next
+    }
+    { print }
+    END { if (!written) print key "=" value }
+  ' "$env_file" >"$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$env_file"
+}
+
+ensure_env_value() {
+  local key="$1" value="$2"
+  if ! env_has_key "$key" || [[ -z "$(dotenv_value "$key")" ]]; then
+    set_env_value "$key" "$value"
+  fi
+}
+
+normalize_pg_database_name() {
+  local raw="$1" normalized
+  [[ "$raw" =~ ^[a-z][a-z0-9_-]{0,56}$ ]] \
+    || die "PostgreSQL database names must match ^[a-z][a-z0-9_-]{0,56}$"
+  normalized="${raw//-/_}"
+  case "$normalized" in
+    postgres|template0|template1)
+      die "reserved PostgreSQL database name: $normalized"
+      ;;
+  esac
+  printf '%s' "$normalized"
+}
+
+managed_pg_file() {
+  local database
+  database="$(normalize_pg_database_name "$1")"
+  printf '%s/%s.env' "$database_dir" "$database"
+}
+
+local_postgres_url() {
+  local user="$1" password="$2" database="$3" host port
+  host="$(env_or_default POSTGRES_BIND_ADDRESS 127.0.0.1)"
+  port="$(env_or_default POSTGRES_PORT 5432)"
+  printf 'postgresql://%s:%s@%s:%s/%s' "$user" "$password" "$host" "$port" "$database"
+}
+
+init_state() {
+  mkdir -p "$state_dir"
+  local schema_version=""
+  if [[ -f "$schema_file" ]]; then
+    schema_version="$(<"$schema_file")"
+  fi
+  if [[ ! -f "$env_file" ]]; then
+    local tmp proxy_db_password
+    proxy_db_password="$(generate_secret 24)"
+    tmp="$(mktemp "$state_dir/.env.XXXXXX")"
+    cat >"$tmp" <<EOF
+DEV_RUNTIME_PROJECT_NAME=ahdg-dev
+TZ=Asia/Taipei
+
+POSTGRES_IMAGE=postgres:18
+POSTGRES_BIND_ADDRESS=127.0.0.1
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=postgres
+POSTGRES_EXTRA_DATABASES=
+
+DRAGONFLY_IMAGE=docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.0
+DRAGONFLY_BIND_ADDRESS=127.0.0.1
+DRAGONFLY_PORT=6379
+DRAGONFLY_MAXMEMORY=1gb
+DRAGONFLY_THREADS=2
+
+VMETRICS_IMAGE=victoriametrics/victoria-metrics:latest
+VMETRICS_BIND_ADDRESS=127.0.0.1
+VMETRICS_PORT=8428
+VMETRICS_RETENTION=30d
+
+VLOGS_IMAGE=victoriametrics/victoria-logs:latest
+VLOGS_BIND_ADDRESS=127.0.0.1
+VLOGS_PORT=9428
+VLOGS_RETENTION=7d
+
+PROXY_LLM_STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm-dev-runtime
+PROXY_LLM_DB_NAME=claude_code_hub
+PROXY_LLM_DB_USER=proxy_llm
+PROXY_LLM_DB_PASSWORD=$proxy_db_password
+PROXY_LLM_BIND_ADDRESS=127.0.0.1
+PROXY_LLM_PORT=23001
+CLIPROXY_BIND_ADDRESS=127.0.0.1
+CLIPROXY_PORT=8318
+CLIPROXY_CALLBACK_BIND_ADDRESS=127.0.0.1
+CLIPROXY_CODEX_CALLBACK_PORT=1456
+CLIPROXY_CLAUDE_CALLBACK_PORT=54546
+CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51122
+EOF
+    chmod 600 "$tmp"
+    mv "$tmp" "$env_file"
+  fi
+  ensure_env_value PROXY_LLM_DB_USER proxy_llm
+  ensure_env_value PROXY_LLM_DB_PASSWORD "$(generate_secret 24)"
+
+  if [[ ! -f "$enabled_file" ]]; then
+    printf '%s\n' postgres dragonfly >"$enabled_file"
+  elif [[ "$schema_version" != 2 ]]; then
+    local enabled_tmp
+    enabled_tmp="$(mktemp "$state_dir/enabled.XXXXXX")"
+    {
+      printf '%s\n' postgres dragonfly
+      grep -Ev '^[[:space:]]*(#|$)' "$enabled_file" || true
+    } | awk 'NF && !seen[$0]++' >"$enabled_tmp"
+    mv "$enabled_tmp" "$enabled_file"
+  fi
+  printf '2\n' >"$schema_file"
+  mkdir -p "$database_dir"
+  chmod 600 "$env_file" "$enabled_file" "$schema_file"
+  chmod 700 "$database_dir"
+
+  local target has_postgres=false has_dragonfly=false has_proxy=false
+  while IFS= read -r target; do
+    case "$target" in
+      ""|\#*)
+        ;;
+      postgres)
+        has_postgres=true
+        ;;
+      dragonfly)
+        has_dragonfly=true
+        ;;
+      vmetrics|vlogs)
+        ;;
+      proxy-llm)
+        has_proxy=true
+        ;;
+      *)
+        die "unknown target in $enabled_file: $target"
+        ;;
+    esac
+  done <"$enabled_file"
+
+  if $has_proxy && ! $has_postgres; then
+    die "proxy-llm requires postgres; disable proxy-llm first or enable postgres"
+  fi
+  if $has_proxy && ! $has_dragonfly; then
+    die "proxy-llm requires dragonfly; disable proxy-llm first or enable dragonfly"
+  fi
+}
+
+compose_project() {
+  env_or_default DEV_RUNTIME_PROJECT_NAME ahdg-dev
+}
+
+compose() {
+  init_state
+  export POSTGRES_INIT_SCRIPT="$resource_root/postgres-init.sh"
+  if ! command -v podman >/dev/null 2>&1; then
+    die "podman is required"
+  fi
+  podman compose --env-file "$env_file" -f "$compose_file" -p "$(compose_project)" "$@"
+}
+
+contains() {
+  local needle="$1"
+  shift
+  local item
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+normalize_targets() {
+  local target
+  for target in "$@"; do
+    case "$target" in
+      base|default)
+        printf '%s\n' postgres dragonfly
+        ;;
+      all)
+        printf '%s\n' postgres dragonfly vmetrics vlogs proxy-llm
+        ;;
+      pg|pgsql|postgres|postgresql)
+        printf '%s\n' postgres
+        ;;
+      dragonfly|dragonflydb|redis)
+        printf '%s\n' dragonfly
+        ;;
+      vmetrics|victoria-metrics|victoriametrics|vm|metrics)
+        printf '%s\n' vmetrics
+        ;;
+      vlogs|victoria-logs|victorialogs)
+        printf '%s\n' vlogs
+        ;;
+      proxy|proxy-llm|llm)
+        printf '%s\n' proxy-llm
+        ;;
+      "")
+        ;;
+      *)
+        die "unknown target: $target"
+        ;;
+    esac
+  done
+}
+
+read_enabled_targets() {
+  init_state
+  local target
+  while IFS= read -r target; do
+    case "$target" in
+      ""|\#*)
+        ;;
+      postgres|dragonfly|vmetrics|vlogs|proxy-llm)
+        printf '%s\n' "$target"
+        ;;
+      *)
+        die "unknown target in $enabled_file: $target"
+        ;;
+    esac
+  done <"$enabled_file"
+}
+
+default_targets() {
+  read_enabled_targets | awk '!seen[$0]++'
+}
+
+target_dependencies() {
+  local target
+  for target in "$@"; do
+    case "$target" in
+      proxy-llm)
+        printf '%s\n' postgres dragonfly
+        ;;
+    esac
+  done
+}
+
+with_dependencies() {
+  {
+    printf '%s\n' "$@"
+    target_dependencies "$@"
+  } | awk 'NF && !seen[$0]++'
+}
+
+selected_targets_from_args() {
+  (($#)) || die "missing target"
+  normalize_targets "$@" | awk '!seen[$0]++'
+}
+
+targets_from_args() {
+  local targets=()
+  if (($#)); then
+    mapfile -t targets < <(normalize_targets "$@")
+  else
+    mapfile -t targets < <(default_targets)
+  fi
+  with_dependencies "${targets[@]}"
+}
+
+validate_enabled_targets() {
+  if contains proxy-llm "$@" && ! contains postgres "$@"; then
+    die "proxy-llm requires postgres; disable proxy-llm first or disable both together"
+  fi
+  if contains proxy-llm "$@" && ! contains dragonfly "$@"; then
+    die "proxy-llm requires dragonfly; disable proxy-llm first or disable both together"
+  fi
+}
+
+target_profiles() {
+  local target
+  for target in "$@"; do
+    case "$target" in
+      vmetrics|vlogs|proxy-llm)
+        printf '%s\n' "$target"
+        ;;
+    esac
+  done | awk '!seen[$0]++'
+}
+
+target_services() {
+  local target
+  for target in "$@"; do
+    case "$target" in
+      postgres|dragonfly|vmetrics|vlogs)
+        printf '%s\n' "$target"
+        ;;
+      proxy-llm)
+        printf '%s\n' proxy-llm cli-proxy-api
+        ;;
+    esac
+  done | awk '!seen[$0]++'
+}
+
+compose_profile_args() {
+  local profile
+  for profile in "$@"; do
+    printf '%s\n%s\n' --profile "$profile"
+  done
+}
+
+proxy_state_dir() {
+  env_or_default PROXY_LLM_STATE_DIR "${XDG_STATE_HOME:-$HOME/.local/state}/proxy-llm-dev-runtime"
+}
+
+export_proxy_paths() {
+  local proxy_state
+  proxy_state="$(proxy_state_dir)"
+  export PROXY_LLM_STATE_DIR="$proxy_state"
+  export PROXY_LLM_ENV_FILE="$proxy_state/.env"
+  export PROXY_LLM_CONFIG_PATH="$proxy_state/cliproxyapi/config.yaml"
+  export PROXY_LLM_AUTH_PATH="$proxy_state/cliproxyapi/oa"
+  export PROXY_LLM_LOG_PATH="$proxy_state/cliproxyapi/logs"
+  export PROXY_LLM_PLUGIN_PATH="$proxy_state/cliproxyapi/plugins"
+}
+
+ensure_proxy_llm() {
+  init_state
+  export_proxy_paths
+  if ! command -v proxy-llm >/dev/null 2>&1; then
+    die "proxy-llm is not installed"
+  fi
+  proxy-llm init --no-show-secrets >/dev/null
+}
+
+container_id() {
+  compose ps -q "$1" 2>/dev/null || true
+}
+
+require_container() {
+  local service="$1" cid
+  cid="$(container_id "$service")"
+  [[ -n "$cid" ]] || die "$service is not running"
+  printf '%s' "$cid"
+}
+
+check_one() {
+  local target="$1" cid host port user database
+  case "$target" in
+    postgres)
+      cid="$(container_id postgres)"
+      [[ -n "$cid" ]] || return 1
+      user="$(env_or_default POSTGRES_USER postgres)"
+      database="$(env_or_default POSTGRES_DB postgres)"
+      podman exec "$cid" pg_isready -U "$user" -d "$database" >/dev/null
+      ;;
+    dragonfly)
+      cid="$(container_id dragonfly)"
+      [[ -n "$cid" ]] || return 1
+      podman exec "$cid" /usr/local/bin/healthcheck.sh >/dev/null
+      ;;
+    vmetrics)
+      host="$(env_or_default VMETRICS_BIND_ADDRESS 127.0.0.1)"
+      port="$(env_or_default VMETRICS_PORT 8428)"
+      curl --fail --silent --show-error "http://$host:$port/health" >/dev/null
+      ;;
+    vlogs)
+      host="$(env_or_default VLOGS_BIND_ADDRESS 127.0.0.1)"
+      port="$(env_or_default VLOGS_PORT 9428)"
+      curl --fail --silent --show-error "http://$host:$port/health" >/dev/null
+      ;;
+    proxy-llm)
+      host="$(env_or_default PROXY_LLM_BIND_ADDRESS 127.0.0.1)"
+      port="$(env_or_default PROXY_LLM_PORT 23001)"
+      curl --fail --silent --show-error "http://$host:$port/api/actions/health" >/dev/null
+      host="$(env_or_default CLIPROXY_BIND_ADDRESS 127.0.0.1)"
+      port="$(env_or_default CLIPROXY_PORT 8318)"
+      curl --fail --silent --show-error "http://$host:$port/healthz" >/dev/null
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+check_targets() {
+  local failed=0 target
+  for target in "$@"; do
+    if check_one "$target"; then
+      printf 'OK    %s\n' "$target"
+    else
+      printf 'FAIL  %s\n' "$target"
+      failed=1
+    fi
+  done
+  return "$failed"
+}
+
+wait_targets() {
+  local target
+  for _ in {1..60}; do
+    local failed=0
+    for target in "$@"; do
+      check_one "$target" >/dev/null 2>&1 || failed=1
+    done
+    [[ "$failed" -eq 0 ]] && return 0
+    sleep 2
+  done
+  check_targets "$@"
+}
+
+ensure_pg_database() {
+  local database="$1" role="$2" password="$3" admin_user main_db cid
+  [[ -n "$database" ]] || return 0
+  [[ -n "$role" ]] || die "PostgreSQL role must not be empty"
+  [[ -n "$password" ]] || die "PostgreSQL password must not be empty"
+  admin_user="$(env_or_default POSTGRES_USER postgres)"
+  main_db="$(env_or_default POSTGRES_DB postgres)"
+  cid="$(require_container postgres)"
+  podman exec -i "$cid" psql -U "$admin_user" -d "$main_db" \
+    -v ON_ERROR_STOP=1 \
+    -v "target_db=$database" \
+    -v "target_role=$role" \
+    -v "target_password=$password" <<'SQL'
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'target_role', :'target_password')
+WHERE NOT EXISTS (
+  SELECT 1 FROM pg_roles WHERE rolname = :'target_role'
+)\gexec
+SELECT format('ALTER ROLE %I LOGIN PASSWORD %L', :'target_role', :'target_password')\gexec
+SELECT format('CREATE DATABASE %I OWNER %I', :'target_db', :'target_role')
+WHERE NOT EXISTS (
+  SELECT 1 FROM pg_database WHERE datname = :'target_db'
+)\gexec
+SELECT format('ALTER DATABASE %I OWNER TO %I', :'target_db', :'target_role')\gexec
+SELECT format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', :'target_db', :'target_role')\gexec
+SQL
+  podman exec -i "$cid" psql -U "$admin_user" -d "$database" \
+    -v ON_ERROR_STOP=1 \
+    -v "target_role=$role" <<'SQL'
+GRANT USAGE, CREATE ON SCHEMA public TO :"target_role";
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO :"target_role";
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO :"target_role";
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO :"target_role";
+SQL
+}
+
+ensure_postgres_ready() {
+  compose up -d postgres
+  wait_targets postgres
+}
+
+ensure_proxy_database() {
+  ensure_pg_database \
+    "$(env_or_default PROXY_LLM_DB_NAME claude_code_hub)" \
+    "$(env_or_default PROXY_LLM_DB_USER proxy_llm)" \
+    "$(env_or_default PROXY_LLM_DB_PASSWORD proxy_llm)"
+}
+
+print_managed_pg_url() {
+  local database="$1" role="$2" password="$3"
+  printf 'DATABASE_URL=%s\n' "$(local_postgres_url "$role" "$password" "$database")"
+}
+
+pg_create() {
+  (($# == 1)) || die "pg-create requires exactly one database name"
+  local database file role password recorded_database tmp
+  init_state
+  database="$(normalize_pg_database_name "$1")"
+  file="$(managed_pg_file "$database")"
+  if [[ -f "$file" ]]; then
+    recorded_database="$(dotenv_value_from_file "$file" PGDATABASE)"
+    role="$(dotenv_value_from_file "$file" PGUSER)"
+    password="$(dotenv_value_from_file "$file" PGPASSWORD)"
+    [[ "$recorded_database" == "$database" ]] \
+      || die "managed PostgreSQL metadata name mismatch in $file"
+    [[ -n "$role" && -n "$password" ]] \
+      || die "managed PostgreSQL metadata is incomplete in $file"
+  else
+    role="${database}_owner"
+    password="$(generate_secret 24)"
+    tmp="$(mktemp "$database_dir/$database.XXXXXX")"
+    cat >"$tmp" <<EOF
+PGDATABASE=$database
+PGUSER=$role
+PGPASSWORD=$password
+EOF
+    chmod 600 "$tmp"
+    mv "$tmp" "$file"
+  fi
+  ensure_postgres_ready
+  ensure_pg_database "$database" "$role" "$password"
+  print_managed_pg_url "$database" "$role" "$password"
+}
+
+pg_url() {
+  (($# == 1)) || die "pg-url requires exactly one database name"
+  local database file role password
+  init_state
+  database="$(normalize_pg_database_name "$1")"
+  file="$(managed_pg_file "$database")"
+  [[ -f "$file" ]] || die "unknown managed PostgreSQL database: $database; run dev-runtime pg-create $database"
+  role="$(dotenv_value_from_file "$file" PGUSER)"
+  password="$(dotenv_value_from_file "$file" PGPASSWORD)"
+  [[ -n "$role" && -n "$password" ]] \
+    || die "managed PostgreSQL metadata is incomplete in $file"
+  print_managed_pg_url "$database" "$role" "$password"
+}
+
+pg_list() {
+  (($# == 0)) || die "pg-list does not accept arguments"
+  local file files=()
+  init_state
+  shopt -s nullglob
+  files=("$database_dir"/*.env)
+  shopt -u nullglob
+  for file in "${files[@]}"; do
+    file="${file##*/}"
+    printf '%s\n' "${file%.env}"
+  done | sort
+}
+
+run_up() {
+  local targets=() profiles=() services=() profile_args=()
+  mapfile -t targets < <(targets_from_args "$@")
+  if contains proxy-llm "${targets[@]}"; then
+    ensure_proxy_llm
+    compose up -d postgres dragonfly
+    wait_targets postgres dragonfly
+    ensure_proxy_database
+  fi
+
+  mapfile -t profiles < <(target_profiles "${targets[@]}")
+  mapfile -t services < <(target_services "${targets[@]}")
+  mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
+
+  if ((${#services[@]} == 0)); then
+    echo "No dev-runtime targets enabled."
+    return 0
+  fi
+
+  compose "${profile_args[@]}" up -d "${services[@]}"
+  wait_targets "${targets[@]}"
+}
+
+run_stop() {
+  (($#)) || die "stop requires targets; use down to stop the whole project"
+  local targets=() profiles=() services=() profile_args=()
+  mapfile -t targets < <(normalize_targets "$@")
+  mapfile -t profiles < <(target_profiles "${targets[@]}")
+  mapfile -t services < <(target_services "${targets[@]}")
+  mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
+  compose "${profile_args[@]}" stop "${services[@]}"
+}
+
+persist_targets() {
+  local mode="$1"
+  shift
+  local requested=() requested_with_deps=() current=() next=() tmp target
+  mapfile -t requested < <(selected_targets_from_args "$@")
+  mapfile -t current < <(read_enabled_targets)
+  tmp="$(mktemp "$state_dir/enabled.XXXXXX")"
+  case "$mode" in
+    add)
+      mapfile -t requested_with_deps < <(with_dependencies "${requested[@]}")
+      {
+        printf '%s\n' "${current[@]}"
+        printf '%s\n' "${requested_with_deps[@]}"
+      } | awk 'NF && !seen[$0]++' >"$tmp"
+      mapfile -t next <"$tmp"
+      validate_enabled_targets "${next[@]}"
+      mv "$tmp" "$enabled_file"
+      chmod 600 "$enabled_file"
+      run_up
+      ;;
+    remove)
+      for target in "${current[@]}"; do
+        if ! contains "$target" "${requested[@]}"; then
+          next+=("$target")
+        fi
+      done
+      validate_enabled_targets "${next[@]}"
+      if ((${#next[@]})); then
+        printf '%s\n' "${next[@]}" >"$tmp"
+      else
+        : >"$tmp"
+      fi
+      mv "$tmp" "$enabled_file"
+      chmod 600 "$enabled_file"
+      run_stop "${requested[@]}"
+      ;;
+  esac
+}
+
+run_psql() {
+  local cid
+  cid="$(require_container postgres)"
+  podman exec -it "$cid" psql -U "$(env_or_default POSTGRES_USER postgres)" "$@"
+}
+
+run_redis_cli() {
+  local cid
+  cid="$(require_container dragonfly)"
+  podman exec -it "$cid" redis-cli "$@"
+}
+
+proxy_login() {
+  (($#)) || die "proxy-login requires a provider"
+  local provider="$1" login_flag cid interactive_args
+  shift
+  case "$provider" in
+    codex-device) login_flag="-codex-device-login" ;;
+    codex) login_flag="-codex-login" ;;
+    claude) login_flag="-claude-login" ;;
+    antigravity) login_flag="-antigravity-login" ;;
+    kimi) login_flag="-kimi-login" ;;
+    xai) login_flag="-xai-login" ;;
+    *) die "unsupported proxy provider: $provider" ;;
+  esac
+  ensure_proxy_llm
+  run_up proxy-llm
+  cid="$(require_container cli-proxy-api)"
+  if [[ -t 0 && -t 1 ]]; then
+    interactive_args=(-it)
+  else
+    interactive_args=(-i)
+  fi
+  podman exec "${interactive_args[@]}" "$cid" \
+    /CLIProxyAPI/CLIProxyAPI -config /CLIProxyAPI/config.yaml -no-browser "$login_flag" "$@"
+}
+
+print_env() {
+  local pg_host pg_port pg_user pg_password pg_db proxy_pg_user proxy_pg_password redis_host redis_port
+  pg_host="$(env_or_default POSTGRES_BIND_ADDRESS 127.0.0.1)"
+  pg_port="$(env_or_default POSTGRES_PORT 5432)"
+  pg_user="$(env_or_default POSTGRES_USER postgres)"
+  pg_password="$(env_or_default POSTGRES_PASSWORD postgres)"
+  pg_db="$(env_or_default POSTGRES_DB postgres)"
+  proxy_pg_user="$(env_or_default PROXY_LLM_DB_USER proxy_llm)"
+  proxy_pg_password="$(env_or_default PROXY_LLM_DB_PASSWORD proxy_llm)"
+  redis_host="$(env_or_default DRAGONFLY_BIND_ADDRESS 127.0.0.1)"
+  redis_port="$(env_or_default DRAGONFLY_PORT 6379)"
+  printf 'DATABASE_URL=postgresql://%s:%s@%s:%s/%s\n' \
+    "$pg_user" "$pg_password" "$pg_host" "$pg_port" "$pg_db"
+  printf 'PROXY_LLM_DATABASE_URL=postgresql://%s:%s@%s:%s/%s\n' \
+    "$proxy_pg_user" "$proxy_pg_password" "$pg_host" "$pg_port" \
+    "$(env_or_default PROXY_LLM_DB_NAME claude_code_hub)"
+  printf 'REDIS_URL=redis://%s:%s\n' "$redis_host" "$redis_port"
+  printf 'VMETRICS_URL=http://%s:%s\n' \
+    "$(env_or_default VMETRICS_BIND_ADDRESS 127.0.0.1)" \
+    "$(env_or_default VMETRICS_PORT 8428)"
+  printf 'VLOGS_URL=http://%s:%s\n' \
+    "$(env_or_default VLOGS_BIND_ADDRESS 127.0.0.1)" \
+    "$(env_or_default VLOGS_PORT 9428)"
+  printf 'PROXY_LLM_URL=http://%s:%s\n' \
+    "$(env_or_default PROXY_LLM_BIND_ADDRESS 127.0.0.1)" \
+    "$(env_or_default PROXY_LLM_PORT 23001)"
+}
+
+list_targets() {
+  local targets=() target
+  mapfile -t targets < <(read_enabled_targets)
+  printf 'enabled:\n'
+  for target in "${targets[@]}"; do
+    printf '  %s\n' "$target"
+  done
+  printf 'available:\n'
+  printf '  postgres\n'
+  printf '  dragonfly\n'
+  printf '  vmetrics\n'
+  printf '  vlogs\n'
+  printf '  proxy-llm\n'
+}
+
+command="${1:-status}"
+shift || true
+
+case "$command" in
+  help|-h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+init_state
+
+case "$command" in
+  init)
+    ;;
+  up|start)
+    run_up "$@"
+    ;;
+  enable)
+    persist_targets add "$@"
+    ;;
+  disable)
+    persist_targets remove "$@"
+    ;;
+  stop)
+    run_stop "$@"
+    ;;
+  down)
+    compose down "$@"
+    ;;
+  restart)
+    if (($#)); then
+      run_stop "$@"
+      run_up "$@"
+    else
+      compose down
+      run_up
+    fi
+    ;;
+  status|ps)
+    compose ps "$@"
+    mapfile -t targets < <(default_targets)
+    check_targets "${targets[@]}"
+    ;;
+  check)
+    mapfile -t targets < <(targets_from_args "$@")
+    check_targets "${targets[@]}"
+    ;;
+  logs)
+    compose logs -f --tail=200 "$@"
+    ;;
+  pull)
+    mapfile -t targets < <(targets_from_args "$@")
+    mapfile -t profiles < <(target_profiles "${targets[@]}")
+    mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
+    mapfile -t services < <(target_services "${targets[@]}")
+    if ((${#services[@]} == 0)); then
+      echo "No dev-runtime targets enabled."
+      exit 0
+    fi
+    compose "${profile_args[@]}" pull "${services[@]}"
+    ;;
+  env)
+    init_state
+    print_env
+    ;;
+  pg-create)
+    pg_create "$@"
+    ;;
+  pg-url)
+    pg_url "$@"
+    ;;
+  pg-list)
+    pg_list "$@"
+    ;;
+  psql)
+    run_psql "$@"
+    ;;
+  redis-cli)
+    run_redis_cli "$@"
+    ;;
+  proxy-login)
+    proxy_login "$@"
+    ;;
+  proxy-secrets)
+    ensure_proxy_llm
+    proxy-llm secrets
+    ;;
+  list)
+    init_state
+    list_targets
+    ;;
+  config)
+    compose config "$@"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

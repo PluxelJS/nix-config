@@ -11,6 +11,7 @@
     ./modules/git.nix
     ./modules/shell
     ./modules/podman
+    ./modules/dev-runtime.nix
     ./modules/themes.nix
     ./modules/starship.nix
     ./modules/ghostty.nix

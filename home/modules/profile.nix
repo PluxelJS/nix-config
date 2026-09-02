@@ -9,6 +9,7 @@ let
     "fonts"
     "gui"
     "localsend"
+    "devRuntime"
     "portal"
     "flatpak"
     "graphics"
@@ -89,6 +90,7 @@ in
       fonts = lib.mkEnableOption "font packages and fontconfig policy";
       gui = lib.mkEnableOption "desktop theme stack such as GTK, Plasma, and icon assets";
       localsend = lib.mkEnableOption "LocalSend and its CachyOS host integration";
+      devRuntime = lib.mkEnableOption "rootless Podman development services";
       portal = lib.mkEnableOption "xdg-desktop-portal integration";
       flatpak = lib.mkEnableOption "global Flatpak host integration";
       graphics = lib.mkEnableOption "nixGL-based graphics wrappers";

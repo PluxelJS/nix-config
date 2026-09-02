@@ -41,10 +41,22 @@ reconciliation:
 nixup --home
 ```
 
-“Latest” here means the latest published repository revision together with its
-reviewed, committed `flake.lock`. Advancing nixpkgs, Home Manager, and other
-flake inputs remains a separate maintainer workflow using `nix flake update`,
-followed by review and testing before committing the new lock file.
+To advance all flake inputs to their latest available revisions and switch
+Home Manager without running pacman/paru, Flatpak, or other host reconciliation:
+
+```bash
+nixup --latest
+```
+
+This leaves the resulting `flake.lock` change in the checkout for review and
+commit. It requires a clean checkout before starting, like the other mutating
+`nixup` modes.
+
+For plain `nixup`, “latest” means the latest published repository revision
+together with its reviewed, committed `flake.lock`. Advancing nixpkgs, Home
+Manager, and other flake inputs remains an explicit maintainer workflow using
+`nixup --latest` (or `nix flake update` directly), followed by review and
+testing before committing the new lock file.
 
 On an existing checkout whose active generation predates `nixup`, the packaged
 entrypoint can be invoked directly:
@@ -74,6 +86,97 @@ Build activation package only:
 ```bash
 nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
+
+## Dev Runtime
+
+The desktop profile installs `dev-runtime` and queues `dev-runtime.service`
+asynchronously. It is a rootless Podman Compose project, not a Podman pod:
+services share one Compose network and stable service names while keeping
+their own lifecycle, logs, ports, and health checks.
+
+On a new machine the systemd unit starts the default development targets:
+
+```bash
+systemctl --user status dev-runtime.service
+journalctl --user-unit=dev-runtime.service --follow
+dev-runtime status
+dev-runtime env
+```
+
+PostgreSQL and Dragonfly are enabled by default because they are broadly useful
+development dependencies. They bind to `127.0.0.1:5432` and
+`127.0.0.1:6379` by default, but they are still just local targets and can be
+persistently disabled on a host. Machine-local settings live under
+`~/.local/state/dev-runtime/`: `.env` controls ports, images, retention, and
+credentials; `enabled` records the persistent target set. These files are local
+state and do not follow Nix generations.
+
+PostgreSQL is shared as one local container and one local cluster, but service
+access is isolated by database and login role. The admin URL printed as
+`DATABASE_URL` is for local maintenance. Proxy LLM uses
+`PROXY_LLM_DB_NAME=claude_code_hub`, `PROXY_LLM_DB_USER=proxy_llm`, and a
+machine-generated `PROXY_LLM_DB_PASSWORD`; `dev-runtime enable proxy-llm`
+creates that role/database before starting the hub. New local services should
+get their own managed database instead of reusing the admin or proxy URL:
+
+```bash
+dev-runtime pg-create my-service
+dev-runtime pg-url my-service
+dev-runtime pg-list
+```
+
+`pg-create` normalizes `my-service` to `my_service`, creates
+`my_service_owner` with a generated password, creates `my_service` owned by
+that role, and stores only the local metadata under
+`~/.local/state/dev-runtime/postgres-databases/`. It starts PostgreSQL
+transiently if needed, but it does not persistently enable PostgreSQL if this
+host has disabled it. Dragonfly is a shared local cache service; use app-level
+key prefixes for separation.
+
+Persistent enablement controls what comes back after login or after
+`dev-runtime.service` restarts:
+
+```bash
+dev-runtime disable postgres
+dev-runtime disable dragonfly
+dev-runtime enable postgres dragonfly
+dev-runtime enable vmetrics
+dev-runtime enable vlogs
+dev-runtime disable vlogs
+```
+
+Transient start/stop does not rewrite `~/.local/state/dev-runtime/enabled`:
+
+```bash
+dev-runtime start vlogs
+dev-runtime stop vlogs
+```
+
+The parallel Proxy LLM target is deliberately off by default while the existing
+`proxy-llm.service` is still the active session dependency. If enabled for
+testing, it uses separate state and ports by default:
+
+```bash
+dev-runtime enable proxy-llm
+dev-runtime proxy-secrets
+dev-runtime proxy-login codex-device
+```
+
+Proxy LLM depends on PostgreSQL and Dragonfly. `dev-runtime enable proxy-llm`
+therefore persistently enables those two dependencies as well, while
+`dev-runtime start proxy-llm` only starts them for the current run. The CLI
+refuses to persistently disable either dependency while `proxy-llm` remains
+enabled.
+
+Proxy LLM and VictoriaLogs are separate targets. `vlogs` is only the
+VictoriaLogs storage/query service on port `9428`; `proxy-llm` starts the hub
+and CLIProxyAPI services on their own ports and consumes PostgreSQL plus
+Dragonfly as dependencies.
+
+Default parallel ports are `127.0.0.1:23001` for the Hub and `127.0.0.1:8318`
+for CLIProxyAPI, with state under `~/.local/state/proxy-llm-dev-runtime/`.
+Do not stop or migrate the current `proxy-llm.service` until the parallel stack
+has been verified and an explicit data cutover has been prepared.
 
 ## Proxy LLM Service
 
@@ -287,6 +390,7 @@ from this flake:
 - `~/.config/git/config`
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
+- `~/.config/systemd/user/dev-runtime.service`
 - `~/.config/systemd/user/proxy-llm.service`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
@@ -321,6 +425,11 @@ Some files remain outside strict Nix ownership on purpose:
 - `~/.local/state/proxy-llm/` and its Podman volumes
   Proxy-LLM-API credentials, OAuth tokens, local configuration, logs, and
   databases remain writable machine state outside the Nix store.
+
+- `~/.local/state/dev-runtime/` and its Podman volumes
+  Development runtime enablement, ports, database credentials, and service data
+  are machine-local. Nix installs the helper and unit; this directory decides
+  which targets are active on the host.
 
 - `~/.config/mimeapps.list`
   This is the writable, higher-priority MIME override layer used by desktop

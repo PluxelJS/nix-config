@@ -3,17 +3,19 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: nixup [--check | --home]
+Usage: nixup [--check | --home | --latest]
 
 Safely fast-forward the Nix config checkout to its published version and apply it.
 
   --check  Fetch and show available changes without updating or switching
   --home   Update the checkout and switch Home Manager only
+  --latest Update every flake input and switch Home Manager only
   -h       Show this help
 
 The default command updates the checkout and runs the repository setup flow for
 the currently active profile. It follows the committed flake.lock; it does not
-run `nix flake update`.
+run `nix flake update`. --latest advances flake.lock locally and deliberately
+skips the non-Nix host reconciliation performed by setup.
 EOF
 }
 
@@ -22,6 +24,7 @@ case "${1:-}" in
   "") ;;
   --check) mode=check ;;
   --home) mode=home ;;
+  --latest) mode=latest ;;
   -h | --help)
     usage
     exit 0
@@ -127,7 +130,16 @@ esac
 
 echo
 echo "Applying profile '$profile' from Nix config ${applied:0:12}..."
-if [[ "$mode" == home ]]; then
+if [[ "$mode" == latest ]]; then
+  export NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true'
+  echo "Updating all flake inputs to their latest available revisions..."
+  (
+    cd "$repo"
+    nix flake update
+  )
+  nix run --impure "$repo#home-manager" -- \
+    switch --flake "$repo#$flake" -b pre-nix --impure
+elif [[ "$mode" == home ]]; then
   export NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true'
   nix run --impure "$repo#home-manager" -- \
     switch --flake "$repo#$flake" -b pre-nix --impure
@@ -136,4 +148,8 @@ else
 fi
 
 echo
-echo "Nix config is current and profile '$profile' was applied (${applied:0:12})."
+if [[ "$mode" == latest ]]; then
+  echo "Flake inputs are current and profile '$profile' was applied. Review flake.lock before committing."
+else
+  echo "Nix config is current and profile '$profile' was applied (${applied:0:12})."
+fi

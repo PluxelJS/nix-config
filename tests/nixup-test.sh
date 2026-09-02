@@ -53,6 +53,24 @@ HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" >/de
 [[ "$(<"$work/flake.lock")" == updated ]] || fail "nixup did not update flake.lock"
 [[ "$(<"$home/setup-args")" == "--profile shell" ]] || fail "nixup did not preserve active profile"
 
+fake_bin="$test_root/bin"
+mkdir -p "$fake_bin"
+cat >"$fake_bin/nix" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == flake && "${2:-}" == update ]]; then
+  printf 'latest\n' >flake.lock
+  exit 0
+fi
+printf '%s\n' "$*" >"$HOME/nix-args"
+EOF
+chmod +x "$fake_bin/nix"
+rm -f "$home/setup-args"
+PATH="$fake_bin:$PATH" HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" --latest >/dev/null
+[[ "$(<"$work/flake.lock")" == latest ]] || fail "--latest did not update flake inputs"
+[[ ! -e "$home/setup-args" ]] || fail "--latest unexpectedly ran setup"
+[[ "$(<"$home/nix-args")" == *"#current-shell"* ]] || fail "--latest did not switch the active profile"
+
 echo dirty >>"$work/flake.lock"
 if HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" >"$test_root/dirty.out" 2>&1; then
   fail "nixup accepted a dirty checkout"

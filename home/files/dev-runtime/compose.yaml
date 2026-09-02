@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:18}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_EXTRA_DATABASES: ${POSTGRES_EXTRA_DATABASES:-}
+      PGDATA: /data/pgdata
+      TZ: ${TZ:-Asia/Taipei}
+      PGTZ: ${TZ:-Asia/Taipei}
+    ports:
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ${POSTGRES_DATA_SOURCE:-postgres-data}:/data
+      - ${POSTGRES_INIT_SCRIPT:-/dev/null}:/docker-entrypoint-initdb.d/10-dev-runtime.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  dragonfly:
+    image: ${DRAGONFLY_IMAGE:-docker.dragonflydb.io/dragonflydb/dragonfly:v1.40.0}
+    restart: unless-stopped
+    ulimits:
+      memlock: -1
+    ports:
+      - "${DRAGONFLY_BIND_ADDRESS:-127.0.0.1}:${DRAGONFLY_PORT:-6379}:6379"
+    volumes:
+      - ${DRAGONFLY_DATA_SOURCE:-dragonfly-data}:/data
+    command:
+      - "--logtostderr"
+      - "--dir=/data"
+      - "--dbfilename=dump"
+      - "--snapshot_cron=*/5 * * * *"
+      - "--maxmemory=${DRAGONFLY_MAXMEMORY:-1gb}"
+      - "--proactor_threads=${DRAGONFLY_THREADS:-2}"
+      - "--default_lua_flags=allow-undeclared-keys"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  vmetrics:
+    image: ${VMETRICS_IMAGE:-victoriametrics/victoria-metrics:latest}
+    profiles: ["vmetrics"]
+    restart: unless-stopped
+    ports:
+      - "${VMETRICS_BIND_ADDRESS:-127.0.0.1}:${VMETRICS_PORT:-8428}:8428"
+    volumes:
+      - ${VMETRICS_DATA_SOURCE:-vmetrics-data}:/storage
+    command:
+      - "-storageDataPath=/storage"
+      - "-retentionPeriod=${VMETRICS_RETENTION:-30d}"
+      - "-httpListenAddr=:8428"
+
+  vlogs:
+    image: ${VLOGS_IMAGE:-victoriametrics/victoria-logs:latest}
+    profiles: ["vlogs"]
+    restart: unless-stopped
+    ports:
+      - "${VLOGS_BIND_ADDRESS:-127.0.0.1}:${VLOGS_PORT:-9428}:9428"
+    volumes:
+      - ${VLOGS_DATA_SOURCE:-vlogs-data}:/storage
+    command:
+      - "-storageDataPath=/storage"
+      - "-retentionPeriod=${VLOGS_RETENTION:-7d}"
+      - "-httpListenAddr=:9428"
+
+  proxy-llm:
+    image: ${PROXY_LLM_HUB_IMAGE:-ghcr.io/ding113/claude-code-hub:latest}
+    profiles: ["proxy-llm"]
+    restart: unless-stopped
+    env_file:
+      - ${PROXY_LLM_ENV_FILE:-/dev/null}
+    environment:
+      NODE_ENV: production
+      DSN: postgresql://${PROXY_LLM_DB_USER:-proxy_llm}:${PROXY_LLM_DB_PASSWORD:-proxy_llm}@postgres:5432/${PROXY_LLM_DB_NAME:-claude_code_hub}
+      REDIS_URL: redis://dragonfly:6379
+      AUTO_MIGRATE: ${PROXY_LLM_AUTO_MIGRATE:-true}
+      TZ: ${TZ:-Asia/Taipei}
+    ports:
+      - "${PROXY_LLM_BIND_ADDRESS:-127.0.0.1}:${PROXY_LLM_PORT:-23001}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/actions/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  cli-proxy-api:
+    image: ${PROXY_LLM_API_IMAGE:-ghcr.io/pluxeljs/proxy-llm-api:latest}
+    profiles: ["proxy-llm"]
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "${CLIPROXY_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_PORT:-8318}:8317"
+      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_CODEX_CALLBACK_PORT:-1456}:1455"
+      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_CLAUDE_CALLBACK_PORT:-54546}:54545"
+      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_ANTIGRAVITY_CALLBACK_PORT:-51122}:51121"
+    volumes:
+      - ${PROXY_LLM_CONFIG_PATH:-/dev/null}:/CLIProxyAPI/config.yaml:ro
+      - ${PROXY_LLM_AUTH_PATH:-/dev/null}:/data/auth
+      - ${PROXY_LLM_LOG_PATH:-/dev/null}:/CLIProxyAPI/logs
+      - ${PROXY_LLM_PLUGIN_PATH:-/dev/null}:/CLIProxyAPI/plugins
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8317/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  postgres-data:
+  dragonfly-data:
+  vmetrics-data:
+  vlogs-data:

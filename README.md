@@ -96,7 +96,9 @@ home-manager switch --flake ~/.config/nix#current-container --impure
 dirty or diverged checkouts, fast-forwards the repository, preserves the active
 profile, and applies the repository's committed `flake.lock`. Use
 `nixup --check` to preview published changes or `nixup --home` to update and
-switch only Home Manager. It deliberately does not run `nix flake update`.
+switch only Home Manager. `nixup --latest` updates every flake input and then
+switches Home Manager without running the non-Nix host setup, paru, or Flatpak.
+The default command deliberately does not run `nix flake update`.
 Before the command is present in the active Home Manager generation, run it as
 `nix run --impure ~/.config/nix#nixup -- --check`.
 
@@ -118,11 +120,20 @@ The lock file pins the tested upstream module and compose behavior, while local
 credentials and runtime state stay writable outside the store. See
 [docs/operations.md](docs/operations.md).
 
+The desktop profile also installs `dev-runtime`, a local Podman Compose helper
+for development databases and observability. Home Manager starts shared
+PostgreSQL and Dragonfly on new machines by default; VictoriaMetrics,
+VictoriaLogs, the parallel Proxy LLM stack, and even the default database
+targets are selected per machine under `~/.local/state/dev-runtime/`, not in
+Nix. PostgreSQL is shared as one local container but isolated per service with
+separate managed databases and roles via `dev-runtime pg-create <name>`.
+
 ## Structure
 
 - `flake.nix`: top-level Home Manager entrypoints
 - `home/default.nix`: shared module root
 - `home/modules/profile.nix`: base profiles plus feature overrides
+- `home/modules/dev-runtime.nix`: user-scoped development service unit
 - `home/modules/shell/`: shell behavior and CLI tooling
 - `home/modules/gui/`: fonts, GTK, Plasma, input method, portals, Flatpak, LocalSend
 - `home/modules/podman/`: user-scoped Podman client/runtime defaults

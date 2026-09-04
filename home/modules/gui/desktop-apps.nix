@@ -82,6 +82,7 @@ lib.mkIf config.ahdg.features.gui {
 
     # Both applications use GPU-backed native rendering. On CachyOS they need
     # the same host GL bridge as Ghostty and LocalSend.
+    (config.lib.nixGL.wrap pkgs.chatgpt)
     (config.lib.nixGL.wrap pkgs.meatshell)
   ];
 

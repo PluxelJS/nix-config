@@ -47,9 +47,9 @@ let
     hash = "sha256-zM+pNQq8T3idHBwRZNxXIIrjsfpe221Vs2N4JIyh7Oc=";
   };
   wanxiangGrammar = pkgs.fetchurl {
-    # Asset 526165714 identifies this exact 420250668-byte object. Unlike the
+    # Asset 541313682 identifies this exact 420354092-byte object. Unlike the
     # mutable LTS download alias, replacing the release asset creates a new ID.
-    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/526165714";
+    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/541313682";
     name = "wanxiang-lts-zh-hans.gram";
     curlOptsList = [
       "-H"
@@ -57,7 +57,7 @@ let
       "-H"
       "X-GitHub-Api-Version: 2022-11-28"
     ];
-    hash = "sha256-Af/jfyJge/ilzV2CozSfbfl3RDaUZK7kV3WFES2FRp0=";
+    hash = "sha256-9YNinibKBZmnADjBsLgEGwofirfm3lpmW5zkRqrYHCI=";
   };
 
   rimeStaticPayload =

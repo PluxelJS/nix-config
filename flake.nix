@@ -39,6 +39,7 @@
         overlays = [
           (final: prev: {
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
+            chatgpt = final.callPackage ./pkgs/chatgpt.nix { };
             meatshell = final.callPackage ./pkgs/meatshell.nix { };
             dms = final.callPackage ./pkgs/dms.nix { };
             copyq = prev.copyq.overrideAttrs (old: {
@@ -117,6 +118,7 @@
       # instead of fetching an unrelated latest release during first setup.
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
+        chatgpt = pkgs.chatgpt;
         dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix { };
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
         proxy-llm = proxy-llm.packages.${system}.default;

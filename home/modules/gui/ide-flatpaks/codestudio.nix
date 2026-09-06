@@ -4,7 +4,13 @@ let
 
   codeStudioDocker = pkgs.writeShellApplication {
     name = "docker";
-    runtimeInputs = [ pkgs.podman-compose ];
+    # `podman compose` delegates to podman-compose, which in turn invokes
+    # `podman` through PATH.  Keep both sides of that hand-off store-backed
+    # so the Flatpak never needs Podman Desktop or a host /usr/bin/podman.
+    runtimeInputs = [
+      pkgs.podman
+      pkgs.podman-compose
+    ];
     text = ''
       socket="unix://''${XDG_RUNTIME_DIR:?}/podman/podman.sock"
 
@@ -15,9 +21,40 @@ let
     '';
   };
 
+  # Electron asks gio to remove files.  Inside Flatpak that routes through the
+  # Trash portal, which declines paths from Code Studio's host-backed project
+  # mount.  Use the host implementation only for `gio trash`; other gio
+  # subcommands retain their sandbox-native behavior.
+  codeStudioGio = pkgs.writeShellApplication {
+    name = "gio";
+    text = ''
+      if [[ "''${1:-}" == "trash" ]]; then
+        exec /usr/bin/flatpak-spawn --host /usr/bin/gio "$@"
+      fi
+
+      exec /usr/bin/gio "$@"
+    '';
+  };
+
+  # Wine is a host application rather than a Flatpak device permission.  Keep
+  # its prefix app-private, while running Wine on the host so its complete
+  # loader and library set are available to Code Studio terminals and tasks.
+  codeStudioWine = pkgs.writeShellApplication {
+    name = "wine";
+    text = ''
+      wine_prefix="''${WINEPREFIX:-$HOME/.wine}"
+
+      exec /usr/bin/flatpak-spawn --host \
+        --env="WINEPREFIX=$wine_prefix" \
+        /usr/bin/wine "$@"
+    '';
+  };
+
   codeStudioPath =
     lib.concatStringsSep ":" ([
       "${codeStudioDocker}/bin"
+      "${codeStudioGio}/bin"
+      "${codeStudioWine}/bin"
       "${ideLib.codeStudioHomeDir}/.local/share/mise/shims"
     ] ++ ideLib.hostToolHomePathEntries ++ [
       ideLib.profileBinDir
@@ -40,7 +77,8 @@ let
     ];
     noFilesystems = [ "host" ];
     devices = [ "kvm" ];
-    talkNames = ideLib.sharedSecretTalkNames;
+    # Needed by flatpak-spawn for the host gio/Wine bridges above.
+    talkNames = ideLib.sharedSecretTalkNames ++ [ "org.freedesktop.Flatpak" ];
     filesystems = ideLib.sharedFilesystems ++ [
       "xdg-download:create"
       "xdg-run/podman/podman.sock"

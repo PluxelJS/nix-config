@@ -81,7 +81,9 @@ let
     talkNames = ideLib.sharedSecretTalkNames ++ [ "org.freedesktop.Flatpak" ];
     filesystems = ideLib.sharedFilesystems ++ [
       "xdg-download:create"
-      "xdg-run/podman/podman.sock"
+      # The user socket is recreated by systemd during service restarts. Mount
+      # its otherwise private directory rather than a single stale inode.
+      "xdg-run/podman"
     ];
     persists = codeStudioPersistDirs;
     env = {

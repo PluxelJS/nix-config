@@ -153,24 +153,11 @@ dev-runtime start vlogs
 dev-runtime stop vlogs
 ```
 
-The dev-runtime Proxy LLM target is deliberately off by default while the
-existing `proxy-llm.service` is still the active session dependency. It uses
-the upstream default ports, so it must not be started while the old service is
-still active. To prepare the next boot without touching the current session:
+`dev-runtime` is the sole service owner for Proxy LLM. Enable its target to
+start it now and restore it after future `dev-runtime.service` restarts:
 
 ```bash
-dev-runtime enable --no-start proxy-llm
-systemctl --user disable proxy-llm.service
-```
-
-The desktop profile still declares `proxy-llm.service` for the current
-generation but sets `services.proxyLlm.autoStart = false`; Home Manager removes
-the boot relationship without stopping the active service. After reboot,
-`dev-runtime.service` owns the selected targets. Once the old service is no
-longer running, use:
-
-```bash
-dev-runtime start proxy-llm
+dev-runtime enable proxy-llm
 dev-runtime proxy-secrets
 dev-runtime proxy-login codex-device
 ```
@@ -179,9 +166,7 @@ Proxy LLM depends on PostgreSQL and Dragonfly. `dev-runtime enable proxy-llm`
 therefore persistently enables those two dependencies as well, while
 `dev-runtime start proxy-llm` only starts them for the current run. The CLI
 refuses to persistently disable either dependency while `proxy-llm` remains
-enabled. It also refuses to start the dev-runtime `proxy-llm` target while
-`proxy-llm.service` is active, unless `DEV_RUNTIME_ALLOW_ACTIVE_PROXY_LLM_SERVICE=1`
-is set for an explicit override.
+enabled.
 
 Proxy LLM and VictoriaLogs are separate targets. `vlogs` is only the
 VictoriaLogs storage/query service on port `9428`; `proxy-llm` starts the hub
@@ -190,11 +175,9 @@ Dragonfly as dependencies.
 
 Default ports are `127.0.0.1:23000` for the Hub and `127.0.0.1:8317` for
 CLIProxyAPI, with OAuth callback ports `1455`, `54545`, and `51121`. The target
-uses the official state directory `~/.local/state/proxy-llm/` so existing
-CLIProxyAPI config, OAuth credentials, logs, and plugins remain available after
-the service owner changes. Database contents are not copied automatically; run
-an explicit dump/restore if the old internal Postgres volume contains state
-that must survive the cutover.
+uses `~/.local/state/proxy-llm/` for CLIProxyAPI config, OAuth credentials,
+logs, and plugins. The Proxy LLM database lives in dev-runtime's managed
+PostgreSQL instance.
 
 ## Helper CLI Specs
 
@@ -212,47 +195,30 @@ managed PostgreSQL database names. The managed database completion reads
 `~/.local/state/dev-runtime/postgres-databases/` directly and does not start
 containers.
 
-## Proxy LLM Service
+## Proxy LLM State
 
-The desktop profile imports the official, lock-pinned Proxy-LLM-API Home
-Manager module. Its package in the Nix store owns compose files and lifecycle
-helpers; no `~/code/_ACode` checkout is needed after an optional one-time
-migration. The legacy `proxy-llm.service` remains declared so the active
-session survives Home Manager switches, but it is no longer re-added to login
-autostart. Use the dev-runtime target for the next boot.
+The desktop profile retains the official, lock-pinned Proxy-LLM-API helper for
+initializing the shared Proxy LLM configuration. It does not declare a
+`proxy-llm.service`; use `dev-runtime` for every lifecycle operation:
 
 ```bash
-systemctl --user status proxy-llm.service
-systemctl --user restart proxy-llm.service
-journalctl --user-unit=proxy-llm.service --follow
-proxy-llm status
-proxy-llm secrets
+systemctl --user status dev-runtime.service
+dev-runtime status
+dev-runtime logs proxy-llm cli-proxy-api
+dev-runtime proxy-secrets
+dev-runtime proxy-login codex-device
 ```
 
 Machine-local files live under `~/.local/state/proxy-llm/`: `.env`,
 CLIProxyAPI config, OAuth credentials, logs, plugins, and generated sing-box
-config. PostgreSQL, Dragonfly, and sing-box data use stable Podman named volumes
-unless `.env` explicitly selects legacy bind directories. Back up both the
-state directory and required named volumes while the service is stopped.
+config. They are mounted by the dev-runtime Proxy LLM target and must be kept.
+The Proxy LLM database and Dragonfly storage are owned separately by
+dev-runtime's Podman volumes.
 
-The upstream helper enables sing-box only when `.env` explicitly sets
+The helper enables sing-box only when `.env` explicitly sets
 `SINGBOX_NODE_URL` or `SINGBOX_CONFIG_PATH`. With neither value configured,
 CLIProxyAPI connects directly and no sing-box container or proxy environment is
-added. Use `proxy-llm` for initialization, status, updates, logs, login, and
-proxy testing. For upstream development without changing `flake.lock`, build or
-switch with `--override-input proxy-llm "git+file://$HOME/code/_ACode"`.
-
-When upgrading a workstation that still runs from the old checkout, perform
-the guarded one-time cutover before switching Home Manager:
-
-```bash
-PROXY_LLM_STATE_DIR="$HOME/.local/state/proxy-llm" \
-  nix run ~/.config/nix#proxy-llm -- cutover "$HOME/code/_ACode"
-```
-
-The new packaged helper health-checks the running old stack before stopping
-it, preserves its Compose project identity and rootless UID/GID data, and
-automatically restores the old service on any failure.
+added.
 
 Check or repair only the Arch-side runtime base:
 
@@ -426,7 +392,6 @@ from this flake:
 - `~/.config/gtk-3.0/settings.ini`
 - `~/.config/gtk-4.0/`
 - `~/.config/systemd/user/dev-runtime.service`
-- `~/.config/systemd/user/proxy-llm.service`
 - `~/.config/starship/starship.toml`
 - `~/.config/user-dirs.dirs`
 - `~/.config/user-dirs.locale`

@@ -114,10 +114,9 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
-The desktop profile consumes the official Proxy-LLM-API flake and still ships
-its packaged helper. The legacy `proxy-llm.service` stays declared for a safe
-in-place transition, but it is no longer re-added to login autostart; the
-dev-runtime target is the next service owner. See [docs/operations.md](docs/operations.md).
+The desktop profile consumes the official Proxy-LLM-API flake only for its
+packaged helper. `dev-runtime` is the sole owner of the local Proxy LLM stack;
+the old `proxy-llm.service` is not declared. See [docs/operations.md](docs/operations.md).
 
 The desktop profile also installs `dev-runtime`, a local Podman Compose helper
 for development databases and observability. Home Manager starts shared

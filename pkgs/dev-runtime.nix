@@ -9,6 +9,7 @@
   gnugrep,
   gnused,
   openssl,
+  proxyLlm,
   usage,
 }:
 let
@@ -20,6 +21,7 @@ let
     gnugrep
     gnused
     openssl
+    proxyLlm
   ];
 in
 stdenvNoCC.mkDerivation {

@@ -84,17 +84,6 @@ set -euo pipefail
 EOF
 chmod +x "$fake_bin/proxy-llm"
 
-cat >"$fake_bin/systemctl" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "$*" == "--user is-active --quiet proxy-llm.service" ]]; then
-  [[ "${DEV_RUNTIME_TEST_LEGACY_PROXY_ACTIVE:-}" == 1 ]]
-  exit
-fi
-exit 1
-EOF
-chmod +x "$fake_bin/systemctl"
-
 env_prefix=(
   "PATH=$fake_bin:$PATH"
   "HOME=$home"
@@ -246,13 +235,6 @@ grep -q -- 'exec -i postgres-container psql -U postgres -d claude_code_hub.*targ
   || fail "proxy database schema privileges were not granted before startup"
 grep -q -- 'compose .* --profile vmetrics --profile proxy-llm up -d postgres dragonfly vmetrics proxy-llm cli-proxy-api' "$log" \
   || fail "proxy profile was not started with shared base services"
-
-if env "${env_prefix[@]}" DEV_RUNTIME_TEST_LEGACY_PROXY_ACTIVE=1 "$script" start proxy-llm \
-    >"$test_root/active-proxy.out" 2>&1; then
-  fail "dev-runtime proxy-llm started while legacy proxy-llm.service was active"
-fi
-grep -q 'proxy-llm.service is active' "$test_root/active-proxy.out" \
-  || fail "active legacy proxy service error was unclear"
 
 env "${env_prefix[@]}" "$script" disable vmetrics >/dev/null
 if grep -qx 'vmetrics' "$state/enabled"; then

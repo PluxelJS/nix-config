@@ -1,6 +1,9 @@
 { config, lib, pkgs, ... }:
 let
-  devRuntime = pkgs.callPackage ../../pkgs/dev-runtime.nix { };
+  proxyLlm = config.services.proxyLlm.package;
+  devRuntime = pkgs.callPackage ../../pkgs/dev-runtime.nix {
+    inherit proxyLlm;
+  };
 in
 {
   config = lib.mkMerge [
@@ -8,7 +11,7 @@ in
       home.packages = [
         devRuntime
         pkgs.podman-compose
-        config.services.proxyLlm.package
+        proxyLlm
       ];
 
       systemd.user.services.dev-runtime = {

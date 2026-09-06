@@ -119,7 +119,9 @@
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
         chatgpt = pkgs.chatgpt;
-        dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix { };
+        dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix {
+          proxyLlm = proxy-llm.packages.${system}.default;
+        };
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
         proxy-llm = proxy-llm.packages.${system}.default;
       };

@@ -455,18 +455,6 @@ ensure_proxy_llm() {
   proxy-llm init --no-show-secrets >/dev/null
 }
 
-legacy_proxy_service_active() {
-  command -v systemctl >/dev/null 2>&1 || return 1
-  systemctl --user is-active --quiet proxy-llm.service >/dev/null 2>&1
-}
-
-assert_proxy_llm_can_start() {
-  [[ "${DEV_RUNTIME_ALLOW_ACTIVE_PROXY_LLM_SERVICE:-}" != 1 ]] || return 0
-  if legacy_proxy_service_active; then
-    die "proxy-llm.service is active; use dev-runtime enable --no-start proxy-llm for next boot, or stop the old service before starting dev-runtime proxy-llm"
-  fi
-}
-
 container_id() {
   compose ps -q "$1" 2>/dev/null || true
 }
@@ -657,7 +645,6 @@ run_up() {
   local targets=() profiles=() services=() profile_args=()
   mapfile -t targets < <(targets_from_args "$@")
   if contains proxy-llm "${targets[@]}"; then
-    assert_proxy_llm_can_start
     ensure_proxy_llm
     compose up -d postgres dragonfly
     wait_targets postgres dragonfly

@@ -9,7 +9,7 @@
   gnugrep,
   gnused,
   openssl,
-  proxyLlm,
+  podman-compose,
   usage,
 }:
 let
@@ -21,7 +21,6 @@ let
     gnugrep
     gnused
     openssl
-    proxyLlm
   ];
 in
 stdenvNoCC.mkDerivation {
@@ -58,6 +57,7 @@ stdenvNoCC.mkDerivation {
     usage generate completion -f "$resourceRoot/dev-runtime.usage.kdl" bash dev-runtime \
       > "$out/share/bash-completion/completions/dev-runtime"
     wrapProgram "$out/bin/dev-runtime" \
+      --set PODMAN_COMPOSE_PROVIDER ${lib.getExe podman-compose} \
       --prefix PATH : ${lib.makeBinPath runtimeInputs}
 
     runHook postInstall

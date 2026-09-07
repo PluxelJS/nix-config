@@ -72,53 +72,31 @@ services:
       - "-retentionPeriod=${VLOGS_RETENTION:-7d}"
       - "-httpListenAddr=:9428"
 
-  proxy-llm:
-    image: ${PROXY_LLM_HUB_IMAGE:-ghcr.io/ding113/claude-code-hub:latest}
-    profiles: ["proxy-llm"]
+  new-api:
+    image: ${NEW_API_IMAGE:-docker.io/calciumion/new-api:v0.13.2}
+    profiles: ["new-api"]
     restart: unless-stopped
-    env_file:
-      - ${PROXY_LLM_ENV_FILE:-/dev/null}
     environment:
-      NODE_ENV: production
-      DSN: postgresql://${PROXY_LLM_DB_USER:-proxy_llm}:${PROXY_LLM_DB_PASSWORD:-proxy_llm}@postgres:5432/${PROXY_LLM_DB_NAME:-claude_code_hub}
-      REDIS_URL: redis://dragonfly:6379
-      AUTO_MIGRATE: ${PROXY_LLM_AUTO_MIGRATE:-true}
       TZ: ${TZ:-Asia/Taipei}
+      SESSION_SECRET: ${NEW_API_SESSION_SECRET:-}
+      SQLITE_PATH: /data/new-api.db
+      ERROR_LOG_ENABLED: "true"
+      GIN_MODE: release
     ports:
-      - "${PROXY_LLM_BIND_ADDRESS:-127.0.0.1}:${PROXY_LLM_PORT:-23000}:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      dragonfly:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/actions/health || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
-  cli-proxy-api:
-    image: ${PROXY_LLM_API_IMAGE:-ghcr.io/pluxeljs/proxy-llm-api:latest}
-    profiles: ["proxy-llm"]
-    restart: unless-stopped
-    user: "0:0"
-    ports:
-      - "${CLIPROXY_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_PORT:-8317}:8317"
-      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_CODEX_CALLBACK_PORT:-1455}:1455"
-      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_CLAUDE_CALLBACK_PORT:-54545}:54545"
-      - "${CLIPROXY_CALLBACK_BIND_ADDRESS:-127.0.0.1}:${CLIPROXY_ANTIGRAVITY_CALLBACK_PORT:-51121}:51121"
+      - "${NEW_API_BIND_ADDRESS:-127.0.0.1}:${NEW_API_PORT:-23000}:3000"
     volumes:
-      - ${PROXY_LLM_CONFIG_PATH:-/dev/null}:/CLIProxyAPI/config.yaml:ro
-      - ${PROXY_LLM_AUTH_PATH:-/dev/null}:/data/auth
-      - ${PROXY_LLM_LOG_PATH:-/dev/null}:/CLIProxyAPI/logs
-      - ${PROXY_LLM_PLUGIN_PATH:-/dev/null}:/CLIProxyAPI/plugins
+      - ${NEW_API_DATA_DIR:-/dev/null}:/data
+    logging:
+      driver: k8s-file
+      options:
+        max-size: "16mb"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8317/healthz"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/status || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+
 
 volumes:
   postgres-data:

@@ -47,8 +47,21 @@ if [[ "${1:-}" == compose ]]; then
   shift
   log compose "$@"
   if contains_arg ps "$@" && contains_arg -q "$@"; then
-    printf '%s-container\n' "${@: -1}"
+    echo 'podman-compose ps does not accept service arguments' >&2
+    exit 2
   fi
+  exit 0
+fi
+
+if [[ "${1:-}" == ps ]]; then
+  log "$@"
+  for arg in "$@"; do
+    case "$arg" in
+      label=com.docker.compose.service=*)
+        printf '%s-container\n' "${arg#label=com.docker.compose.service=}"
+        ;;
+    esac
+  done
   exit 0
 fi
 
@@ -73,16 +86,6 @@ set -euo pipefail
 EOF
 chmod +x "$fake_bin/curl"
 
-cat >"$fake_bin/proxy-llm" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-{
-  printf 'proxy-llm state=%s' "${PROXY_LLM_STATE_DIR:-}"
-  printf ' %s' "$@"
-  printf '\n'
-} >>"${DEV_RUNTIME_TEST_LOG:?}"
-EOF
-chmod +x "$fake_bin/proxy-llm"
 
 env_prefix=(
   "PATH=$fake_bin:$PATH"
@@ -93,7 +96,7 @@ env_prefix=(
 
 usage_spec="$(env "${env_prefix[@]}" "$script" --usage)"
 [[ "$usage_spec" == *'cmd "pg-create"'* ]] || fail "--usage did not expose pg-create"
-[[ "$usage_spec" == *'cmd "proxy-login"'* ]] || fail "--usage did not expose proxy-login"
+[[ "$usage_spec" == *'"new-api"'* ]] || fail "--usage did not expose new-api"
 [[ ! -e "$state" ]] || fail "--usage unexpectedly initialized state"
 
 env "${env_prefix[@]}" "$script" init
@@ -110,55 +113,14 @@ grep -qx 'postgres' "$state/enabled" || fail "postgres was not enabled by defaul
 grep -qx 'dragonfly' "$state/enabled" || fail "dragonfly was not enabled by default"
 grep -qx 'POSTGRES_EXTRA_DATABASES=' "$state/.env" \
   || fail "proxy database was still pre-created through extra database defaults"
-grep -qx 'PROXY_LLM_STATE_DIR=.*/proxy-llm' "$state/.env" \
-  || fail "proxy state dir did not use the upstream default"
-grep -qx 'PROXY_LLM_DB_USER=proxy_llm' "$state/.env" \
-  || fail "proxy database role was not isolated"
-grep -qx 'PROXY_LLM_DB_PASSWORD=[[:xdigit:]]\{48\}' "$state/.env" \
-  || fail "proxy database password was not generated"
-grep -qx 'PROXY_LLM_PORT=23000' "$state/.env" || fail "proxy hub port did not use the upstream default"
-grep -qx 'CLIPROXY_PORT=8317' "$state/.env" || fail "proxy api port did not use the upstream default"
-grep -qx 'CLIPROXY_CODEX_CALLBACK_PORT=1455' "$state/.env" || fail "codex callback port did not use the upstream default"
-grep -qx 'CLIPROXY_CLAUDE_CALLBACK_PORT=54545' "$state/.env" || fail "claude callback port did not use the upstream default"
-grep -qx 'CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51121' "$state/.env" || fail "antigravity callback port did not use the upstream default"
-
-proxy_db_password="$(sed -n 's/^PROXY_LLM_DB_PASSWORD=//p' "$state/.env")"
+grep -qx 'NEW_API_PORT=23000' "$state/.env" || fail "New API default port changed"
+secret="$(sed -n 's/^NEW_API_SESSION_SECRET=//p' "$state/.env")"
+[[ ${#secret} == 64 ]] || fail "session secret missing"
+env "${env_prefix[@]}" "$script" init
+[[ "$(sed -n 's/^NEW_API_SESSION_SECRET=//p' "$state/.env")" == "$secret" ]] || fail "session secret rotated on init"
+[[ "$(stat -c %a "$state/new-api")" == 700 ]] || fail "New API data directory is not private"
 env_output="$(env "${env_prefix[@]}" "$script" env)"
-[[ "$env_output" == *"DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres"* ]] \
-  || fail "env did not print base postgres URL"
-[[ "$env_output" == *"PROXY_LLM_DATABASE_URL=postgresql://proxy_llm:$proxy_db_password@127.0.0.1:5432/claude_code_hub"* ]] \
-  || fail "env did not print isolated proxy postgres URL"
-[[ "$env_output" == *"PROXY_LLM_URL=http://127.0.0.1:23000"* ]] \
-  || fail "env did not print the upstream default proxy URL"
-
-port_migration_state="$test_root/port-migration-state"
-mkdir -p "$port_migration_state"
-cp "$state/.env" "$port_migration_state/.env"
-printf '%s\n' postgres dragonfly >"$port_migration_state/enabled"
-printf '%s\n' 2 >"$port_migration_state/schema-version"
-sed -i \
-  -e 's#/proxy-llm$#/proxy-llm-dev-runtime#' \
-  -e 's/^PROXY_LLM_PORT=23000$/PROXY_LLM_PORT=23001/' \
-  -e 's/^CLIPROXY_PORT=8317$/CLIPROXY_PORT=8318/' \
-  -e 's/^CLIPROXY_CODEX_CALLBACK_PORT=1455$/CLIPROXY_CODEX_CALLBACK_PORT=1456/' \
-  -e 's/^CLIPROXY_CLAUDE_CALLBACK_PORT=54545$/CLIPROXY_CLAUDE_CALLBACK_PORT=54546/' \
-  -e 's/^CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51121$/CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51122/' \
-  "$port_migration_state/.env"
-env "${env_prefix[@]}" DEV_RUNTIME_STATE_DIR="$port_migration_state" "$script" init
-grep -qx 'PROXY_LLM_STATE_DIR=.*/proxy-llm' "$port_migration_state/.env" \
-  || fail "old proxy state dir default was not migrated"
-grep -qx 'PROXY_LLM_PORT=23000' "$port_migration_state/.env" \
-  || fail "old proxy hub port default was not migrated"
-grep -qx 'CLIPROXY_PORT=8317' "$port_migration_state/.env" \
-  || fail "old proxy api port default was not migrated"
-grep -qx 'CLIPROXY_CODEX_CALLBACK_PORT=1455' "$port_migration_state/.env" \
-  || fail "old codex callback port default was not migrated"
-grep -qx 'CLIPROXY_CLAUDE_CALLBACK_PORT=54545' "$port_migration_state/.env" \
-  || fail "old claude callback port default was not migrated"
-grep -qx 'CLIPROXY_ANTIGRAVITY_CALLBACK_PORT=51121' "$port_migration_state/.env" \
-  || fail "old antigravity callback port default was not migrated"
-grep -qx '3' "$port_migration_state/schema-version" \
-  || fail "port migration state was not marked as migrated"
+[[ "$env_output" == *"NEW_API_URL=http://127.0.0.1:23000"* ]] || fail "New API URL missing"
 
 : >"$log"
 app_url="$(env "${env_prefix[@]}" "$script" pg-create sample-api)"
@@ -191,7 +153,7 @@ env "${env_prefix[@]}" DEV_RUNTIME_STATE_DIR="$legacy_state" "$script" init
 grep -qx 'postgres' "$legacy_state/enabled" || fail "legacy enabled state did not gain postgres"
 grep -qx 'dragonfly' "$legacy_state/enabled" || fail "legacy enabled state did not gain dragonfly"
 grep -qx 'vlogs' "$legacy_state/enabled" || fail "legacy enabled state did not keep existing target"
-grep -qx '3' "$legacy_state/schema-version" || fail "legacy state was not marked as migrated"
+grep -qx '4' "$legacy_state/schema-version" || fail "legacy state was not marked as migrated"
 
 typo_state="$test_root/typo-state"
 mkdir -p "$typo_state"
@@ -204,59 +166,21 @@ fi
 grep -q 'unknown target' "$test_root/typo.out" \
   || fail "unknown enabled target error was unclear"
 
-no_start_state="$test_root/no-start-state"
-mkdir -p "$no_start_state"
+# New API has no database dependencies, including on persistent enablement.
+env "${env_prefix[@]}" "$script" disable postgres dragonfly >/dev/null
 : >"$log"
-env "${env_prefix[@]}" DEV_RUNTIME_STATE_DIR="$no_start_state" "$script" enable --no-start proxy-llm >/dev/null
-grep -qx 'proxy-llm' "$no_start_state/enabled" \
-  || fail "enable --no-start did not persist proxy-llm"
-grep -qx 'postgres' "$no_start_state/enabled" \
-  || fail "enable --no-start did not persist proxy-llm postgres dependency"
-grep -qx 'dragonfly' "$no_start_state/enabled" \
-  || fail "enable --no-start did not persist proxy-llm dragonfly dependency"
-if [[ -s "$log" ]]; then
-  fail "enable --no-start unexpectedly started services"
+env "${env_prefix[@]}" "$script" enable --no-start new-api >/dev/null
+[[ "$(cat "$state/enabled")" == new-api ]] || fail "New API enabled dependencies"
+[[ ! -s "$log" ]] || fail "--no-start started containers"
+env "${env_prefix[@]}" "$script" up >/dev/null
+grep -q -- '--profile new-api up -d new-api' "$log" || fail "New API was not started"
+if grep -q -- 'psql\|proxy-llm\|up -d postgres' "$log"; then
+  fail "New API invoked legacy gateway or PostgreSQL"
 fi
-
-env "${env_prefix[@]}" "$script" enable vmetrics >/dev/null
-grep -qx 'vmetrics' "$state/enabled" || fail "enable did not persist vmetrics"
-grep -q -- 'compose .* --profile vmetrics up -d postgres dragonfly vmetrics' "$log" \
-  || fail "vmetrics profile was not passed before up"
-
-env "${env_prefix[@]}" "$script" enable proxy-llm >/dev/null
-grep -qx 'proxy-llm' "$state/enabled" || fail "enable did not persist proxy-llm"
-grep -qx 'postgres' "$state/enabled" || fail "proxy-llm did not keep postgres enabled"
-grep -qx 'dragonfly' "$state/enabled" || fail "proxy-llm did not keep dragonfly enabled"
-grep -q -- 'proxy-llm state=.*/proxy-llm init --no-show-secrets' "$log" \
-  || fail "proxy init did not use the upstream state dir"
-grep -q -- 'exec -i postgres-container psql -U postgres -d postgres.*target_db=claude_code_hub.*target_role=proxy_llm.*target_password='"$proxy_db_password" "$log" \
-  || fail "proxy database role was not created before startup"
-grep -q -- 'exec -i postgres-container psql -U postgres -d claude_code_hub.*target_role=proxy_llm' "$log" \
-  || fail "proxy database schema privileges were not granted before startup"
-grep -q -- 'compose .* --profile vmetrics --profile proxy-llm up -d postgres dragonfly vmetrics proxy-llm cli-proxy-api' "$log" \
-  || fail "proxy profile was not started with shared base services"
-
-env "${env_prefix[@]}" "$script" disable vmetrics >/dev/null
-if grep -qx 'vmetrics' "$state/enabled"; then
-  fail "disable did not remove vmetrics"
-fi
-grep -q -- 'compose .* --profile vmetrics stop vmetrics' "$log" \
-  || fail "disable did not stop the optional vmetrics service"
-
-if env "${env_prefix[@]}" "$script" disable postgres >"$test_root/disable-postgres.out" 2>&1; then
-  fail "disable postgres succeeded while proxy-llm still required it"
-fi
-grep -q 'proxy-llm requires postgres' "$test_root/disable-postgres.out" \
-  || fail "dependency error for postgres was unclear"
-
-env "${env_prefix[@]}" "$script" disable proxy-llm postgres dragonfly >/dev/null
-if [[ -s "$state/enabled" ]]; then
-  fail "disable proxy-llm postgres dragonfly did not clear enabled targets"
-fi
-
+env "${env_prefix[@]}" "$script" disable new-api >/dev/null
+[[ ! -s "$state/enabled" ]] || fail "disable did not persist"
+grep -q -- 'stop new-api' "$log" || fail "disable did not stop New API"
 : >"$log"
-env "${env_prefix[@]}" "$script" start vlogs >/dev/null
-grep -q -- 'compose .* --profile vlogs up -d vlogs' "$log" \
-  || fail "transient vlogs start unexpectedly pulled in default services"
-
+env "${env_prefix[@]}" "$script" down >/dev/null
+grep -Fq -- '--profile vmetrics --profile vlogs --profile new-api down' "$log" || fail "down omitted optional profiles"
 echo "dev-runtime tests passed"

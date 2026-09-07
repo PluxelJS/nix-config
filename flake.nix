@@ -16,10 +16,6 @@
       url = "github:nix-community/nixGL";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    proxy-llm = {
-      url = "github:PluxelJS/Proxy-LLM-API/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -28,7 +24,6 @@
       home-manager,
       agenix,
       nixgl,
-      proxy-llm,
       ...
     }:
     let
@@ -89,7 +84,6 @@
           };
           modules = [
             agenix.homeManagerModules.default
-            proxy-llm.homeManagerModules.default
             ./home/default.nix
             ./home/profiles/${profile}.nix
             {
@@ -119,11 +113,8 @@
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
         chatgpt = pkgs.chatgpt;
-        dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix {
-          proxyLlm = proxy-llm.packages.${system}.default;
-        };
+        dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix { };
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
-        proxy-llm = proxy-llm.packages.${system}.default;
       };
 
       homeModules.default = ./home/default.nix;

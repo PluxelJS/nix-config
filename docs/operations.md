@@ -123,11 +123,9 @@ state and do not follow Nix generations.
 
 PostgreSQL is shared as one local container and one local cluster, but service
 access is isolated by database and login role. The admin URL printed as
-`DATABASE_URL` is for local maintenance. Proxy LLM uses
-`PROXY_LLM_DB_NAME=claude_code_hub`, `PROXY_LLM_DB_USER=proxy_llm`, and a
-machine-generated `PROXY_LLM_DB_PASSWORD`; starting the `proxy-llm` target
-creates that role/database before starting the hub. New local services should
-get their own managed database instead of reusing the admin or proxy URL:
+`DATABASE_URL` is for local maintenance. New local services should get their
+own managed database instead of reusing the admin URL. New API uses its own
+SQLite database and does not need this PostgreSQL instance.
 
 ```bash
 dev-runtime pg-create my-service
@@ -152,7 +150,7 @@ dev-runtime disable dragonfly
 dev-runtime enable postgres dragonfly
 dev-runtime enable vmetrics
 dev-runtime enable vlogs
-dev-runtime enable --no-start proxy-llm
+dev-runtime enable --no-start new-api
 dev-runtime disable vlogs
 ```
 
@@ -163,31 +161,59 @@ dev-runtime start vlogs
 dev-runtime stop vlogs
 ```
 
-`dev-runtime` is the sole service owner for Proxy LLM. Enable its target to
-start it now and restore it after future `dev-runtime.service` restarts:
+New API is the local AI gateway, with a Web dashboard and persistent token
+usage logs. It uses SQLite and has no PostgreSQL or Dragonfly dependency:
 
 ```bash
-dev-runtime enable proxy-llm
-dev-runtime proxy-secrets
-dev-runtime proxy-login codex-device
+dev-runtime enable new-api
+dev-runtime check new-api
+dev-runtime logs new-api
+dev-runtime restart new-api
 ```
 
-Proxy LLM depends on PostgreSQL and Dragonfly. `dev-runtime enable proxy-llm`
-therefore persistently enables those two dependencies as well, while
-`dev-runtime start proxy-llm` only starts them for the current run. The CLI
-refuses to persistently disable either dependency while `proxy-llm` remains
-enabled.
+Open `http://127.0.0.1:23000` for the dashboard; API clients use
+`http://127.0.0.1:23000/v1`. On a fresh installation, complete the setup page,
+choose self-use mode, add an OpenAI channel with the upstream origin (without
+`/v1`), and create client tokens. The migrated machine retains its existing
+client keys and uses the `admin` account with the previously chosen password.
+Credentials are machine-local and are never stored in this repository.
 
-Proxy LLM and VictoriaLogs are separate targets. `vlogs` is only the
-VictoriaLogs storage/query service on port `9428`; `proxy-llm` starts the hub
-and CLIProxyAPI services on their own ports and consumes PostgreSQL plus
-Dragonfly as dependencies.
+`~/.local/state/dev-runtime/.env` controls `NEW_API_PORT`,
+`NEW_API_BIND_ADDRESS`, `NEW_API_IMAGE`, `NEW_API_DATA_DIR`, and the generated
+persistent `NEW_API_SESSION_SECRET`. The default is loopback port 23000 and
+the pinned release `docker.io/calciumion/new-api:v0.13.2`. Image upgrades are
+explicit: back up first, change `NEW_API_IMAGE`, then pull and restart.
 
-Default ports are `127.0.0.1:23000` for the Hub and `127.0.0.1:8317` for
-CLIProxyAPI, with OAuth callback ports `1455`, `54545`, and `51121`. The target
-uses `~/.local/state/proxy-llm/` for CLIProxyAPI config, OAuth credentials,
-logs, and plugins. The Proxy LLM database lives in dev-runtime's managed
-PostgreSQL instance.
+SQLite data and consumption logs live in `~/.local/state/dev-runtime/new-api/`.
+For local builds and tests, CPU admission rejection is disabled in the New API
+admin settings: `performance_setting.monitor_cpu_threshold=0`. In v0.13.2,
+zero disables the CPU check; the change applies live and persists in SQLite.
+Memory and disk thresholds remain at their defaults. CPU saturation can still
+increase latency, but no longer triggers the gateway's CPU-overload 503.
+
+Container diagnostic logs are capped at 16 MB. Dashboard consumption records
+are retained in SQLite until explicitly deleted. For a consistent backup,
+stop `new-api`, copy its data directory to a private backup location, then
+start it again. Preserve the session secret alongside the backup. Restore
+with the same image version before attempting an upgrade.
+
+The migration imports the upstream and nine models directly, without a second
+proxy hop. Model and default-group multipliers are set to 1 for local quota
+accounting;
+cached tokens use weight 1, while output weights follow New API's effective
+model rules (for example GPT-5.6 output uses 8 even if the stored completion
+map says 1). The input baseline is $2 per million tokens, not a verified
+upstream price list. The admin account initially had $200 of local credit. Administrators can add credit under
+User Management; it does not fund the upstream API account. Earlier zero-priced
+requests keep their original token records and zero cost. Configure actual
+model prices before using these reports as an upstream billing estimate.
+Existing Hub statistics are retained in the old PostgreSQL volume,
+not merged into New API history.
+
+PostgreSQL and Dragonfly remain independent development targets. Disabling
+them preserves their data volumes. The old Hub and CLIProxyAPI targets,
+helper dependency, and login commands have been retired. Their local state
+and database volumes remain available for archival or manual rollback.
 
 ## Helper CLI Specs
 
@@ -200,35 +226,18 @@ nixup --usage
 dev-runtime --usage
 ```
 
-`dev-runtime` completions include command, target, service, provider, and
+`dev-runtime` completions include command, target, service, and
 managed PostgreSQL database names. The managed database completion reads
 `~/.local/state/dev-runtime/postgres-databases/` directly and does not start
 containers.
 
-## Proxy LLM State
+## Gateway State
 
-The desktop profile retains the official, lock-pinned Proxy-LLM-API helper for
-initializing the shared Proxy LLM configuration. It does not declare a
-`proxy-llm.service`; use `dev-runtime` for every lifecycle operation:
-
-```bash
-systemctl --user status dev-runtime.service
-dev-runtime status
-dev-runtime logs proxy-llm cli-proxy-api
-dev-runtime proxy-secrets
-dev-runtime proxy-login codex-device
-```
-
-Machine-local files live under `~/.local/state/proxy-llm/`: `.env`,
-CLIProxyAPI config, OAuth credentials, logs, plugins, and generated sing-box
-config. They are mounted by the dev-runtime Proxy LLM target and must be kept.
-The Proxy LLM database and Dragonfly storage are owned separately by
-dev-runtime's Podman volumes.
-
-The helper enables sing-box only when `.env` explicitly sets
-`SINGBOX_NODE_URL` or `SINGBOX_CONFIG_PATH`. With neither value configured,
-CLIProxyAPI connects directly and no sing-box container or proxy environment is
-added.
+`dev-runtime.service` is the sole lifecycle owner for New API. Machine-local
+enablement is stored in `~/.local/state/dev-runtime/enabled`; `enable` and
+`disable` persist it across login and Home Manager switches. Old gateway
+credentials remain archived under `~/.local/state/proxy-llm/` and should be
+protected like the New API SQLite database.
 
 Check or repair only the Arch-side runtime base:
 

@@ -1,7 +1,6 @@
 {
   lib,
   stdenvNoCC,
-  fetchurl,
   dpkg,
   autoPatchelfHook,
   makeWrapper,
@@ -40,16 +39,25 @@
   wayland,
   xorg,
 }:
-stdenvNoCC.mkDerivation (finalAttrs: {
-  pname = "chatgpt";
-  # The upstream Linux desktop app is named ChatGPT, while its bundled coding
-  # experience and deep-link scheme are Codex. Keep the exact upstream build
-  # version here rather than making the mutable `latest` URL impure.
-  version = "26.901.20858";
 
-  src = fetchurl {
+stdenvNoCC.mkDerivation {
+  pname = "chatgpt";
+
+  # ChatGPT for Linux is a rolling desktop application. Upstream publishes the
+  # current build through a mutable `latest` URL, so deliberately keep this
+  # package impure instead of pinning a hash that would break Home Manager on
+  # every upstream update.
+  version = "latest";
+
+  # Intentionally uses builtins.fetchurl without a hash.
+  #
+  # This requires impure evaluation (`--impure`), which is already how this
+  # Home Manager configuration is invoked. When upstream replaces the latest
+  # .deb, Nix can fetch the new object instead of failing with a fixed-output
+  # hash mismatch.
+  src = builtins.fetchurl {
     url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb";
-    hash = "sha256-QqZHfyL0E21iMh7ae0aXp52h62bWHcuFqwQghgoaUiM=";
+    name = "chatgpt_amd64.deb";
   };
 
   nativeBuildInputs = [
@@ -94,18 +102,21 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   # The bundle carries prebuilt musl Node addons beside the glibc ones. They
   # cannot run on this target and are never selected by the x86_64 glibc app.
-  autoPatchelfIgnoreMissingDeps = [ "libc.musl-x86_64.so.1" ];
+  autoPatchelfIgnoreMissingDeps = [
+    "libc.musl-x86_64.so.1"
+  ];
 
   # Do not put Qt 5 and Qt 6 in buildInputs together: their setup hooks are
   # intentionally mutually exclusive. Both are nevertheless needed to patch
-  # the vendor's optional compatibility shims, so add their libraries only to
-  # autoPatchelf's search path.
+  # the vendor's optional compatibility shims, so expose their libraries only
+  # to autoPatchelf.
   preFixup = ''
     addAutoPatchelfSearchPath "${qt5.qtbase}/lib" "${qt6.qtbase}/lib"
   '';
 
-  # The .deb installs a root-owned updater repository in postinst. Nix only
-  # extracts its application payload, so package updates remain declarative.
+  # The .deb normally installs an updater repository from its maintainer
+  # scripts. Nix only extracts the application payload; package acquisition is
+  # handled by this expression instead.
   unpackCmd = "dpkg-deb -x $curSrc source";
 
   installPhase = ''
@@ -114,9 +125,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     install -dm755 "$out"
     mv usr "$out/"
 
-    # The packaged launcher resolves its own location through `readlink -f`.
-    # Expose a Nix-profile executable that invokes the actual app directly,
-    # without depending on mutable /usr paths.
+    # Expose a stable executable in the Nix profile while invoking the bundled
+    # application directly.
     makeWrapper "$out/usr/lib/chatgpt/ChatGPT" "$out/bin/chatgpt"
 
     runHook postInstall
@@ -128,6 +138,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     license = lib.licenses.unfreeRedistributable;
     mainProgram = "chatgpt";
     platforms = [ "x86_64-linux" ];
-    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    sourceProvenance = with lib.sourceTypes; [
+      binaryNativeCode
+    ];
   };
-})
+}

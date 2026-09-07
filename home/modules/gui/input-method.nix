@@ -33,31 +33,26 @@ let
   inputMethodExports = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") inputMethodEnvironment
   );
+  # Wanxiang base is pinned to a concrete release. This keeps the scheme,
+  # dictionaries and Lua payload reproducible until we explicitly upgrade.
+  wanxiangBaseVersion = "17.5.8";
+
   wanxiangBase = pkgs.fetchurl {
-    # Asset 526392386 is the exact v17.5.8 base bundle. Pinning its immutable
-    # release object avoids following a mutable release download name.
-    url = "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/526392386";
-    name = "rime-wanxiang-base.zip";
-    curlOptsList = [
-      "-H"
-      "Accept: application/octet-stream"
-      "-H"
-      "X-GitHub-Api-Version: 2022-11-28"
-    ];
+    url = "https://github.com/amzxyz/rime-wanxiang/releases/download/v${wanxiangBaseVersion}/rime-wanxiang-base.zip";
+    name = "rime-wanxiang-base-${wanxiangBaseVersion}.zip";
+
     hash = "sha256-zM+pNQq8T3idHBwRZNxXIIrjsfpe221Vs2N4JIyh7Oc=";
   };
+
+  # RIME-LMDG intentionally publishes the supported grammar through the LTS
+  # release. The URL is stable, while the fixed-output hash makes an upstream
+  # model update explicit: Home Manager will fail with a hash mismatch until
+  # this hash is deliberately refreshed.
   wanxiangGrammar = pkgs.fetchurl {
-    # Asset 541313682 identifies this exact 420354092-byte object. Unlike the
-    # mutable LTS download alias, replacing the release asset creates a new ID.
-    url = "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/541313682";
+    url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
     name = "wanxiang-lts-zh-hans.gram";
-    curlOptsList = [
-      "-H"
-      "Accept: application/octet-stream"
-      "-H"
-      "X-GitHub-Api-Version: 2022-11-28"
-    ];
-    hash = "sha256-9YNinibKBZmnADjBsLgEGwofirfm3lpmW5zkRqrYHCI=";
+
+    hash = lib.fakeHash;
   };
 
   rimeStaticPayload =

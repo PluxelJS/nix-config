@@ -17,13 +17,14 @@ print_usage_spec() {
 
 usage() {
   cat <<'EOF'
-Usage: nixup [--check | --home | --latest | --usage]
+Usage: nixup [--check | --home | --latest | --local | --usage]
 
 Safely fast-forward the Nix config checkout to its published version and apply it.
 
   --check  Fetch and show available changes without updating or switching
   --home   Update the checkout and switch Home Manager only
   --latest Update every flake input and switch Home Manager only
+  --local  Switch the current workspace, including uncommitted files, without updating
   --usage  Output usage.kdl for completions and tooling
   -h       Show this help
 
@@ -40,6 +41,7 @@ case "${1:-}" in
   --check) mode=check ;;
   --home) mode=home ;;
   --latest) mode=latest ;;
+  --local) mode=local ;;
   --usage)
     print_usage_spec
     exit 0
@@ -71,6 +73,32 @@ if [[ ! -x "$repo/setup" ]]; then
   exit 1
 fi
 
+profile_file="${XDG_CONFIG_HOME:-$HOME/.config}/ahdg/profile"
+profile=desktop
+if [[ -s "$profile_file" ]]; then
+  profile="$(<"$profile_file")"
+  profile="${profile//$'\n'/}"
+fi
+
+case "$profile" in
+  desktop) flake="current" ;;
+  shell) flake="current-shell" ;;
+  container) flake="current-container" ;;
+  *)
+    echo "nixup: unsupported active profile '$profile' in $profile_file" >&2
+    exit 1
+    ;;
+esac
+
+if [[ "$mode" == local ]]; then
+  export NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true'
+  echo "Applying local profile '$profile' from $repo (including uncommitted files)..."
+  nix run --impure "path:$repo#home-manager" -- \
+    switch --flake "path:$repo#$flake" -b pre-nix --impure
+  echo "Local profile '$profile' was applied."
+  exit 0
+fi
+
 current_branch="$(git -C "$repo" branch --show-current)"
 if [[ "$current_branch" != "$branch" ]]; then
   echo "nixup: expected branch '$branch', currently on '${current_branch:-detached HEAD}'" >&2
@@ -85,7 +113,7 @@ dirty=false
 if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
   dirty=true
   if [[ "$mode" != check ]]; then
-    echo "nixup: local changes detected; commit or stash them before updating:" >&2
+    echo "nixup: local changes detected; use nixup --local to test them, or commit/stash before updating:" >&2
     git -C "$repo" status --short >&2
     exit 1
   fi
@@ -129,23 +157,6 @@ if [[ ! -x "$repo/setup" ]]; then
   exit 1
 fi
 applied="$(git -C "$repo" rev-parse HEAD)"
-
-profile_file="${XDG_CONFIG_HOME:-$HOME/.config}/ahdg/profile"
-profile=desktop
-if [[ -s "$profile_file" ]]; then
-  profile="$(<"$profile_file")"
-  profile="${profile//$'\n'/}"
-fi
-
-case "$profile" in
-  desktop) flake="current" ;;
-  shell) flake="current-shell" ;;
-  container) flake="current-container" ;;
-  *)
-    echo "nixup: unsupported active profile '$profile' in $profile_file" >&2
-    exit 1
-    ;;
-esac
 
 echo
 echo "Applying profile '$profile' from Nix config ${applied:0:12}..."

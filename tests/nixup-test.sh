@@ -84,4 +84,14 @@ grep -q "local changes detected" "$test_root/dirty.out" || fail "dirty checkout 
 dirty_check="$(HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" --check)"
 [[ "$dirty_check" == *"Local changes currently block nixup"* ]] || fail "--check did not report dirty blocker"
 
+git -C "$work" checkout -b local-test >/dev/null
+git -C "$work" remote remove origin
+local_before="$(git -C "$work" status --porcelain)"
+lock_before="$(cat "$work/flake.lock")"
+PATH="$fake_bin:$PATH" HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" --local >/dev/null
+[[ "$(<"$home/nix-args")" == *"switch --flake path:$work#current-shell"* ]] || fail "--local did not switch the workspace path and active profile"
+[[ "$(git -C "$work" status --porcelain)" == "$local_before" ]] || fail "--local changed the checkout"
+[[ "$(cat "$work/flake.lock")" == "$lock_before" ]] || fail "--local changed flake.lock"
+[[ ! -e "$home/setup-args" ]] || fail "--local unexpectedly ran setup"
+
 echo "nixup integration tests passed"

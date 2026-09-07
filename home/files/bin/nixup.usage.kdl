@@ -8,5 +8,6 @@ usage "nixup [OPTIONS]"
 flag "--check" help="Fetch and show available published changes without updating or switching" effect=read
 flag "--home" help="Update the checkout and switch Home Manager only" effect=write
 flag "--latest" help="Update every flake input and switch Home Manager only" effect=write
+flag "--local" help="Switch the local workspace including uncommitted files without updating" effect=write
 flag "--usage" help="Output this usage.kdl spec" effect=read
 flag "-h --help" help="Show help"

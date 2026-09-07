@@ -49,8 +49,18 @@ nixup --latest
 ```
 
 This leaves the resulting `flake.lock` change in the checkout for review and
-commit. It requires a clean checkout before starting, like the other mutating
+commit. It requires a clean checkout before starting, like the other updating
 `nixup` modes.
+
+To test local edits without committing, fetching, or updating inputs:
+
+```bash
+nixup --local
+```
+
+This switches only Home Manager using the active profile and a `path:` flake,
+so untracked files are included too. It also works on a local branch without
+an upstream remote. The default `nixup` keeps its clean-checkout requirement.
 
 For plain `nixup`, “latest” means the latest published repository revision
 together with its reviewed, committed `flake.lock`. Advancing nixpkgs, Home

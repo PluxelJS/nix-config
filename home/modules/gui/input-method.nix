@@ -51,6 +51,8 @@ let
   wanxiangGrammar = pkgs.fetchurl {
     url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
     name = "wanxiang-lts-zh-hans.gram";
+
+    hash = "sha256-ZU1/H+Sxvz1CX4wKRKxhQj3tWMeEJntN8DJWAw1yIz8=";
   };
 
   rimeStaticPayload =

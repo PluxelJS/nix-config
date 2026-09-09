@@ -73,6 +73,7 @@ services:
       - "-httpListenAddr=:9428"
 
   new-api:
+    networks: [default, llm]
     image: ${NEW_API_IMAGE:-docker.io/calciumion/new-api:v0.13.2}
     profiles: ["new-api"]
     restart: unless-stopped
@@ -103,3 +104,9 @@ volumes:
   dragonfly-data:
   vmetrics-data:
   vlogs-data:
+
+networks:
+  default: {}
+  llm:
+    external: true
+    name: ${DEV_RUNTIME_LLM_NETWORK:-ahdg-dev-llm}

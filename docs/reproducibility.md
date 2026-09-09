@@ -16,8 +16,8 @@ The Home Manager layer is the strongest boundary:
   TsangerJinKai font is committed directly under `home/assets/fonts/custom/`.
 - GTK/KDE themes, icons, cursors, fontconfig policy, input-method policy, and
   Flatpak-facing materialized copies are generated from the locked closure.
-- The official Proxy-LLM-API package, Home Manager module, and compose behavior
-  are pinned as a flake input. Container tags remain an application-runtime
+- The official Proxy-LLM-API helper is pinned by GitHub revision and NAR hash
+  in `flake.lock`. Container tags remain an application-runtime
   update boundary rather than bit-for-bit image locks.
 - Code Studio's editor, SDK, and shell form an explicitly pinned compatibility
   baseline selected by immutable archive hashes and a fixed runtime branch. It

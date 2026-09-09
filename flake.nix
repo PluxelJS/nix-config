@@ -12,6 +12,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+    proxy-llm = {
+      url = "github:PluxelJS/Proxy-LLM-API";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixgl = {
       url = "github:nix-community/nixGL";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,6 +28,7 @@
       home-manager,
       agenix,
       nixgl,
+      proxy-llm,
       ...
     }:
     let
@@ -33,6 +38,7 @@
         config.allowUnfree = true;
         overlays = [
           (final: prev: {
+            cliproxy-runtime = proxy-llm.packages.${system}.cliproxy-runtime;
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             chatgpt = final.callPackage ./pkgs/chatgpt.nix { };
             meatshell = final.callPackage ./pkgs/meatshell.nix { };

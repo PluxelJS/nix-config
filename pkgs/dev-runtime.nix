@@ -11,6 +11,7 @@
   openssl,
   podman-compose,
   usage,
+  cliproxy-runtime,
 }:
 let
   runtimeInputs = [
@@ -49,7 +50,8 @@ stdenvNoCC.mkDerivation {
     install -m644 home/files/dev-runtime/dev-runtime.usage.kdl "$resourceRoot/dev-runtime.usage.kdl"
 
     substituteInPlace "$out/bin/dev-runtime" \
-      --replace-fail '@resourceRoot@' "$resourceRoot"
+      --replace-fail '@resourceRoot@' "$resourceRoot" \
+      --replace-fail '@cliproxyCommand@' "${lib.getExe cliproxy-runtime}"
     usage lint "$resourceRoot/dev-runtime.usage.kdl"
     install -dm755 "$out/share/zsh/site-functions" "$out/share/bash-completion/completions"
     usage generate completion -f "$resourceRoot/dev-runtime.usage.kdl" zsh dev-runtime \

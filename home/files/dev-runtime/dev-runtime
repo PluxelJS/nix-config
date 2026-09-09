@@ -36,10 +36,11 @@ Commands:
   redis-cli [args...]      Run redis-cli inside the shared dragonfly container
   list                     Show locally enabled targets
   config                   Render compose config
+  ui cliproxy              Show the management page address and key
   init                     Create local state without starting containers
 
 Targets:
-  postgres, dragonfly, vmetrics, vlogs, new-api, base/default, all
+  postgres, dragonfly, vmetrics, vlogs, new-api, cliproxy, base/default, all
 
 Local state:
   DEV_RUNTIME_STATE_DIR or ~/.local/state/dev-runtime
@@ -222,7 +223,7 @@ EOF
   local target
   while IFS= read -r target; do
     case "$target" in
-      ""|\#*|postgres|dragonfly|vmetrics|vlogs|new-api) ;;
+      ""|\#*|postgres|dragonfly|vmetrics|vlogs|new-api|cliproxy) ;;
       proxy-llm|cli-proxy-api)
         die "legacy gateway enabled; migrate its configuration to new-api before updating $enabled_file" ;;
       *) die "unknown target in $enabled_file: $target" ;;
@@ -236,12 +237,29 @@ compose_project() {
 
 compose() {
   init_state
+  export DEV_RUNTIME_LLM_NETWORK="$(compose_project)-llm"
   export POSTGRES_INIT_SCRIPT="$resource_root/postgres-init.sh"
   if ! command -v podman >/dev/null 2>&1; then
     die "podman is required"
   fi
   # Keep services independent; podman-compose otherwise creates a shared pod.
   podman compose --in-pod=false --env-file "$env_file" -f "$compose_file" -p "$(compose_project)" "$@"
+}
+
+cliproxy() {
+  CLIPROXY_STATE_DIR="$state_dir/cliproxy" \
+    CLIPROXY_ENGINE=podman CLIPROXY_PROJECT="$(compose_project)-cliproxy" \
+    CLIPROXY_EXTERNAL_NETWORK="$(compose_project)-llm" \
+    "${DEV_RUNTIME_CLIPROXY_COMMAND:-@cliproxyCommand@}" "$@"
+}
+
+cliproxy_deployed() {
+  [[ -f "$state_dir/cliproxy/compose.json" ]]
+}
+
+ensure_llm_network() {
+  local network="$(compose_project)-llm"
+  podman network exists "$network" || podman network create "$network" >/dev/null
 }
 
 contains() {
@@ -262,7 +280,7 @@ normalize_targets() {
         printf '%s\n' postgres dragonfly
         ;;
       all)
-        printf '%s\n' postgres dragonfly vmetrics vlogs new-api
+        printf '%s\n' postgres dragonfly vmetrics vlogs new-api cliproxy
         ;;
       pg|pgsql|postgres|postgresql)
         printf '%s\n' postgres
@@ -275,6 +293,9 @@ normalize_targets() {
         ;;
       vlogs|victoria-logs|victorialogs)
         printf '%s\n' vlogs
+        ;;
+      cliproxy|cli-proxy-api)
+        printf '%s\n' cliproxy
         ;;
       new-api|newapi|proxy|llm)
         printf '%s\n' new-api
@@ -295,7 +316,7 @@ read_enabled_targets() {
     case "$target" in
       ""|\#*)
         ;;
-      postgres|dragonfly|vmetrics|vlogs|new-api)
+      postgres|dragonfly|vmetrics|vlogs|new-api|cliproxy)
         printf '%s\n' "$target"
         ;;
       *)
@@ -395,6 +416,9 @@ check_one() {
       host="$(env_or_default VLOGS_BIND_ADDRESS 127.0.0.1)"
       port="$(env_or_default VLOGS_PORT 9428)"
       curl --fail --silent --show-error "http://$host:$port/health" >/dev/null
+      ;;
+    cliproxy)
+      cliproxy check
       ;;
     new-api)
       host="$(env_or_default NEW_API_BIND_ADDRESS 127.0.0.1)"
@@ -543,13 +567,18 @@ run_up() {
   mapfile -t services < <(target_services "${targets[@]}")
   mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
 
-  if ((${#services[@]} == 0)); then
-    echo "No dev-runtime targets enabled."
-    return 0
+  if contains new-api "${targets[@]}" || contains cliproxy "${targets[@]}"; then
+    ensure_llm_network
   fi
-
-  compose "${profile_args[@]}" up -d "${services[@]}"
-  wait_targets "${targets[@]}"
+  if ((${#services[@]})); then
+    compose "${profile_args[@]}" up -d "${services[@]}"
+    wait_targets "${services[@]}"
+  fi
+  if contains cliproxy "${targets[@]}"; then
+    cliproxy up
+  elif ((${#services[@]} == 0)); then
+    echo "No dev-runtime targets enabled."
+  fi
 }
 
 run_stop() {
@@ -559,7 +588,12 @@ run_stop() {
   mapfile -t profiles < <(target_profiles "${targets[@]}")
   mapfile -t services < <(target_services "${targets[@]}")
   mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
-  compose "${profile_args[@]}" stop "${services[@]}"
+  if contains cliproxy "${targets[@]}" && cliproxy_deployed; then
+    cliproxy down
+  fi
+  if ((${#services[@]})); then
+    compose "${profile_args[@]}" stop "${services[@]}"
+  fi
 }
 
 persist_targets() {
@@ -622,6 +656,9 @@ persist_targets() {
       fi
       mv "$tmp" "$enabled_file"
       chmod 600 "$enabled_file"
+      if contains cliproxy "${requested[@]}" && cliproxy_deployed; then
+        cliproxy down
+      fi
       local retained_services=() requested_services=() stop_services=() profiles=() profile_args=() service
       mapfile -t retained_services < <(target_services "${next[@]}")
       mapfile -t requested_services < <(target_services "${requested[@]}")
@@ -681,6 +718,7 @@ list_targets() {
   done
   printf 'available:\n'
   printf '  new-api\n'
+  printf '  cliproxy\n'
   printf '  postgres\n'
   printf '  dragonfly\n'
   printf '  vmetrics\n'
@@ -719,6 +757,7 @@ case "$command" in
     run_stop "$@"
     ;;
   down)
+    if cliproxy_deployed; then cliproxy down; fi
     compose --profile vmetrics --profile vlogs --profile new-api down "$@"
     ;;
   restart)
@@ -726,11 +765,13 @@ case "$command" in
       run_stop "$@"
       run_up "$@"
     else
+      if cliproxy_deployed; then cliproxy down; fi
       compose --profile vmetrics --profile vlogs --profile new-api down
       run_up
     fi
     ;;
   status|ps)
+    if cliproxy_deployed; then cliproxy status; fi
     compose --profile vmetrics --profile vlogs --profile new-api ps "$@"
     mapfile -t targets < <(default_targets)
     check_targets "${targets[@]}"
@@ -740,6 +781,11 @@ case "$command" in
     check_targets "${targets[@]}"
     ;;
   logs)
+    if [[ "${1:-}" == cliproxy || "${1:-}" == cli-proxy-api ]]; then
+      (($# == 1)) || die "use logs cliproxy separately from other services"
+      cliproxy logs
+      exit 0
+    fi
     compose --profile vmetrics --profile vlogs --profile new-api logs -f --tail=200 "$@"
     ;;
   pull)
@@ -747,11 +793,23 @@ case "$command" in
     mapfile -t profiles < <(target_profiles "${targets[@]}")
     mapfile -t profile_args < <(compose_profile_args "${profiles[@]}")
     mapfile -t services < <(target_services "${targets[@]}")
+    if contains cliproxy "${targets[@]}"; then
+      if [[ "$(dotenv_value_from_file "$state_dir/cliproxy/.env" CLI_PROXY_IMAGE)" == "" ||
+            "$(dotenv_value_from_file "$state_dir/cliproxy/.env" CLI_PROXY_IMAGE)" == localhost/proxy-llm-api/cli-proxy-api:local ]]; then
+        cliproxy build
+      else
+        cliproxy pull
+      fi
+    fi
     if ((${#services[@]} == 0)); then
-      echo "No dev-runtime targets enabled."
+      if ! contains cliproxy "${targets[@]}"; then echo "No dev-runtime targets enabled."; fi
       exit 0
     fi
     compose "${profile_args[@]}" pull "${services[@]}"
+    ;;
+  ui)
+    [[ "$#" == 1 && ( "$1" == cliproxy || "$1" == cli-proxy-api ) ]] || die "usage: dev-runtime ui cliproxy"
+    cliproxy ui
     ;;
   env)
     print_env

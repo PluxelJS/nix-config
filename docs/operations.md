@@ -211,8 +211,8 @@ Existing Hub statistics are retained in the old PostgreSQL volume,
 not merged into New API history.
 
 PostgreSQL and Dragonfly remain independent development targets. Disabling
-them preserves their data volumes. The old Hub and CLIProxyAPI targets,
-helper dependency, and login commands have been retired. Their local state
+them preserves their data volumes. The old Hub target and CLI login commands have been retired.
+CLIProxyAPI is available again as the independent `cliproxy` target, using web management. Their local state
 and database volumes remain available for archival or manual rollback.
 
 ## Helper CLI Specs
@@ -233,7 +233,7 @@ containers.
 
 ## Gateway State
 
-`dev-runtime.service` is the sole lifecycle owner for New API. Machine-local
+`dev-runtime.service` is the sole lifecycle owner for New API and enabled CLIProxyAPI. Machine-local
 enablement is stored in `~/.local/state/dev-runtime/enabled`; `enable` and
 `disable` persist it across login and Home Manager switches. Old gateway
 credentials remain archived under `~/.local/state/proxy-llm/` and should be
@@ -669,3 +669,39 @@ diagnosing a machine and you need every individual result. Installed Flatpaks
 that are undeclared or present in more than one installation are reported as
 warnings: cleanup remains an explicit user decision because uninstalling an app
 can also remove app-private data.
+
+## CLIProxyAPI with optional sing-box
+
+```bash
+dev-runtime enable cliproxy
+dev-runtime ui cliproxy
+dev-runtime check cliproxy
+dev-runtime logs cliproxy
+dev-runtime restart cliproxy
+dev-runtime disable cliproxy
+```
+
+The target delegates to the upstream runtime package with state under
+`~/.local/state/dev-runtime/cliproxy/`. It does not enable a second systemd unit.
+The default local image is built from the official CLIProxyAPI Git source when
+missing; accounts and configuration are managed at `http://127.0.0.1:8317/management.html`.
+The `ui` command explicitly displays the separate management key.
+
+Direct upstream access is the default. To use sing-box, set `SINGBOX_NODE_URL`
+in the target's private `.env` and restart it. `check cliproxy` tests a real HTTP
+request through sing-box from the CLIProxyAPI container. A failed probe prints
+WARNING and leaves the service running. It does not silently change proxy
+settings or retry model calls directly. Clear the link and restart, or choose
+another proxy/direct access in the page. Per-account overrides remain under web
+management. `SINGBOX_CHECK_URL` selects the probe destination.
+
+Cloudflared is not enabled for this machine. New API and CLIProxyAPI join a
+shared `<DEV_RUNTIME_PROJECT_NAME>-llm` network. New API can use
+`http://cli-proxy-api:8317` as a channel origin, with a CLIProxyAPI API key and
+model list. The management password is not a channel API key. Channel creation
+is still explicit in New API; the two applications keep independent data and
+can be enabled or stopped separately. The shared network is retained on down.
+
+The `proxy-llm` flake input uses the published GitHub repository, pinned in
+`flake.lock`. Use `nix flake update proxy-llm` to select a newer runtime helper;
+the local development checkout is not required for deployment.

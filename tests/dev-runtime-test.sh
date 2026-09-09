@@ -87,8 +87,20 @@ EOF
 chmod +x "$fake_bin/curl"
 
 
+cat >"$fake_bin/cliproxy-runtime" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'cliproxy %s state=%s network=%s\n' "$*" "$CLIPROXY_STATE_DIR" "$CLIPROXY_EXTERNAL_NETWORK" >>"${DEV_RUNTIME_TEST_LOG:?}"
+if [[ "$1" == up ]]; then
+  mkdir -p "$CLIPROXY_STATE_DIR"
+  touch "$CLIPROXY_STATE_DIR/compose.json"
+fi
+EOF
+chmod +x "$fake_bin/cliproxy-runtime"
+
 env_prefix=(
   "PATH=$fake_bin:$PATH"
+  "DEV_RUNTIME_CLIPROXY_COMMAND=$fake_bin/cliproxy-runtime"
   "HOME=$home"
   "DEV_RUNTIME_STATE_DIR=$state"
   "DEV_RUNTIME_TEST_LOG=$log"
@@ -183,4 +195,20 @@ grep -q -- 'stop new-api' "$log" || fail "disable did not stop New API"
 : >"$log"
 env "${env_prefix[@]}" "$script" down >/dev/null
 grep -Fq -- '--profile vmetrics --profile vlogs --profile new-api down' "$log" || fail "down omitted optional profiles"
+# CLIProxyAPI is delegated, with its own state but one dev-runtime owner.
+: >"$log"
+env "${env_prefix[@]}" "$script" enable --no-start cliproxy >/dev/null
+[[ "$(cat "$state/enabled")" == cliproxy ]] || fail "cliproxy enablement missing"
+[[ ! -s "$log" ]] || fail "cliproxy --no-start started services"
+env "${env_prefix[@]}" "$script" up >/dev/null
+grep -q 'cliproxy up' "$log" || fail "cliproxy was not started"
+if grep -q 'compose .* up -d' "$log"; then fail "cliproxy started unrelated base services"; fi
+grep -q "state=$state/cliproxy network=ahdg-dev-llm" "$log" || fail "cliproxy state or network incorrect"
+env "${env_prefix[@]}" "$script" check cliproxy >/dev/null
+grep -q 'cliproxy check' "$log" || fail "proxy check not delegated"
+env "${env_prefix[@]}" "$script" ui cliproxy >/dev/null
+grep -q 'cliproxy ui' "$log" || fail "web management not delegated"
+env "${env_prefix[@]}" "$script" disable cliproxy >/dev/null
+grep -q 'cliproxy down' "$log" || fail "cliproxy disable did not stop it"
+[[ ! -s "$state/enabled" ]] || fail "cliproxy disable not persisted"
 echo "dev-runtime tests passed"

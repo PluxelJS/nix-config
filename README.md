@@ -115,13 +115,13 @@ nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
 The desktop profile consumes the official Proxy-LLM-API flake only for its
-packaged helper. `dev-runtime` is the sole owner of the local Proxy LLM stack;
+packaged helper. `dev-runtime` is the sole owner of New API and the optional CLIProxyAPI runtime;
 the old `proxy-llm.service` is not declared. See [docs/operations.md](docs/operations.md).
 
 The desktop profile also installs `dev-runtime`, a local Podman Compose helper
 for development databases and observability. Home Manager starts shared
 PostgreSQL and Dragonfly on new machines by default; VictoriaMetrics,
-VictoriaLogs, Proxy LLM, and even the default database targets are selected
+VictoriaLogs, New API, CLIProxyAPI, and even the default database targets are selected
 per machine under `~/.local/state/dev-runtime/`, not in Nix. PostgreSQL is
 shared as one local container but isolated per service with
 separate managed databases and roles via `dev-runtime pg-create <name>`.

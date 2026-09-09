@@ -8,6 +8,22 @@ let
   runtime = config.ahdg.theme.runtime;
   mangoTarget = "${config.xdg.configHome}/mango";
   mangoSource = ../../files/mango;
+  copyqToggle = pkgs.writeShellScript "copyq-toggle" ''
+    set -euo pipefail
+    # CopyQ can report visible=true without a mapped Wayland surface.
+    # Ask the compositor before deciding which half of the toggle to run.
+    visible=$(mmsg get all-clients | ${lib.getExe pkgs.jq} -r '
+      any(.clients[];
+        ((.appid | ascii_downcase) == "com.github.hluk.copyq" or
+         (.appid | ascii_downcase) == "copyq") and .is_visible)
+    ')
+    if [[ "$visible" == true ]]; then
+      ${lib.getExe pkgs.copyq} hide
+    else
+      ${lib.getExe pkgs.copyq} hide
+      ${lib.getExe pkgs.copyq} show
+    fi
+  '';
   staticFiles = [
     "appearance.conf"
     "config.conf"
@@ -111,7 +127,7 @@ lib.mkIf config.ahdg.features.gui {
       "${mangoTarget}/dms.conf"
 
     sed -i \
-      -e 's|@COPYQ@|${lib.getExe pkgs.copyq}|g' \
+      -e 's|@COPYQ_TOGGLE@|${copyqToggle}|g' \
       -e 's|@DMS@|${lib.getExe pkgs.dms}|g' \
       "${mangoTarget}/config.conf"
   '';

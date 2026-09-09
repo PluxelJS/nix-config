@@ -129,6 +129,12 @@ stdenvNoCC.mkDerivation {
     # application directly.
     makeWrapper "$out/usr/lib/chatgpt/ChatGPT" "$out/bin/chatgpt"
 
+    # Home Manager and XDG launchers discover desktop entries and icons under
+    # share/, not the Debian payload's usr/share/.
+    mv "$out/usr/share" "$out/share"
+    substituteInPlace "$out/share/applications/chatgpt.desktop" \
+      --replace-fail 'Exec=chatgpt %U' "Exec=$out/bin/chatgpt %U"
+
     runHook postInstall
   '';
 

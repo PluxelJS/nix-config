@@ -229,79 +229,89 @@ lib.mkIf config.ahdg.features.gui {
   '';
 
   home.activation.configureCopyqPolicy = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "linkGeneration" ] ''
-    # Stop the server before editing its QSettings file, otherwise it can
-    # write the stale Fusion override back while the generation is switching.
-    ${pkgs.systemd}/bin/systemctl --user stop copyq.service 2>/dev/null || true
-
     copyq_config="${config.xdg.configHome}/copyq/copyq.conf"
-    install -dm755 "$(dirname "$copyq_config")"
-    if [[ ! -e "$copyq_config" ]]; then
-      printf '[Options]\n' > "$copyq_config"
+    # A running server receives policy through IPC below. Only the legacy
+    # style migration needs an offline edit; ordinary switches must preserve
+    # the clipboard monitor and its Wayland window.
+    if ! ${pkgs.systemd}/bin/systemctl --user --quiet is-active copyq.service || awk '
+      /^\[Options\]$/ { in_options = 1; next }
+      /^\[/ { in_options = 0 }
+      in_options && /^style=/ { found = 1 }
+      END { exit !found }
+    ' "$copyq_config"; then
+      if ${pkgs.systemd}/bin/systemctl --user --quiet is-active copyq.service; then
+        ${pkgs.systemd}/bin/systemctl --user stop copyq.service
+      fi
+
+      install -dm755 "$(dirname "$copyq_config")"
+      if [[ ! -e "$copyq_config" ]]; then
+        printf '[Options]\n' > "$copyq_config"
+      fi
+
+      upsert_copyq_option() {
+        local key=$1
+        local value=$2
+        local tmp
+
+        tmp="$(mktemp)"
+        awk -v key="$key" -v value="$value" '
+          /^\[Options\]$/ {
+            seen_options = 1
+            in_options = 1
+            print
+            next
+          }
+
+          /^\[/ {
+            if (in_options && !done) {
+              print key "=" value
+              done = 1
+            }
+            in_options = 0
+          }
+
+          in_options && index($0, key "=") == 1 {
+            if (!done) {
+              print key "=" value
+              done = 1
+            }
+            next
+          }
+
+          { print }
+
+          END {
+            if (!seen_options) {
+              print "[Options]"
+            }
+            if (!done) {
+              print key "=" value
+            }
+          }
+        ' "$copyq_config" > "$tmp"
+        mv "$tmp" "$copyq_config"
+      }
+
+      remove_copyq_option() {
+        local key=$1
+        local tmp
+
+        tmp="$(mktemp)"
+        awk -v key="$key" '
+          /^\[Options\]$/ { in_options = 1; print; next }
+          /^\[/ { in_options = 0 }
+          in_options && index($0, key "=") == 1 { next }
+          { print }
+        ' "$copyq_config" > "$tmp"
+        mv "$tmp" "$copyq_config"
+      }
+
+      # CopyQ previously forced Fusion, which bypassed kdeglobals and made the
+      # window light. With no app-specific style it follows KDE/Darkly normally.
+      remove_copyq_option style
+
+      ${copyqPolicyCommands}
     fi
-
-    upsert_copyq_option() {
-      local key=$1
-      local value=$2
-      local tmp
-
-      tmp="$(mktemp)"
-      awk -v key="$key" -v value="$value" '
-        /^\[Options\]$/ {
-          seen_options = 1
-          in_options = 1
-          print
-          next
-        }
-
-        /^\[/ {
-          if (in_options && !done) {
-            print key "=" value
-            done = 1
-          }
-          in_options = 0
-        }
-
-        in_options && index($0, key "=") == 1 {
-          if (!done) {
-            print key "=" value
-            done = 1
-          }
-          next
-        }
-
-        { print }
-
-        END {
-          if (!seen_options) {
-            print "[Options]"
-          }
-          if (!done) {
-            print key "=" value
-          }
-        }
-      ' "$copyq_config" > "$tmp"
-      mv "$tmp" "$copyq_config"
-    }
-
-    remove_copyq_option() {
-      local key=$1
-      local tmp
-
-      tmp="$(mktemp)"
-      awk -v key="$key" '
-        /^\[Options\]$/ { in_options = 1; print; next }
-        /^\[/ { in_options = 0 }
-        in_options && index($0, key "=") == 1 { next }
-        { print }
-      ' "$copyq_config" > "$tmp"
-      mv "$tmp" "$copyq_config"
-    }
-
-    # CopyQ previously forced Fusion, which bypassed kdeglobals and made the
-    # window light. With no app-specific style it follows KDE/Darkly normally.
-    remove_copyq_option style
-
-    ${copyqPolicyCommands}
   '';
 
   home.activation.applyCopyqRuntimePolicy = lib.hm.dag.entryAfter [ "ensureCopyqService" ] ''

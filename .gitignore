@@ -2,3 +2,4 @@ result
 result-*
 .direnv/
 .flatpak-builder/
+dev-runtime-migration-*.zip

@@ -114,21 +114,15 @@ Build activation package only:
 nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 ```
 
-The desktop profile consumes the official Proxy-LLM-API flake only for its
-packaged helper. `dev-runtime` is the sole owner of New API and the optional CLIProxyAPI runtime;
-the old `proxy-llm.service` is not declared. See [docs/operations.md](docs/operations.md).
+The desktop profile consumes the Go `dev-runtime` package and Home Manager
+module from the pinned `dev-runtime` flake. A single `dev-runtime.service`
+serves the local dashboard at http://127.0.0.1:8318 and starts enabled services.
+The CLI and dashboard share the SQLite workspace at `~/.local/state/dev-runtime/`.
+New API keeps its account, channel and usage data in its separate SQLite database.
+See [docs/operations.md](docs/operations.md) for commands and backup locations.
 
-The desktop profile also installs `dev-runtime`, a local Podman Compose helper
-for development databases and observability. Home Manager starts shared
-PostgreSQL and Dragonfly on new machines by default; VictoriaMetrics,
-VictoriaLogs, New API, CLIProxyAPI, and even the default database targets are selected
-per machine under `~/.local/state/dev-runtime/`, not in Nix. PostgreSQL is
-shared as one local container but isolated per service with
-separate managed databases and roles via `dev-runtime pg-create <name>`.
-
-Repository-owned helper CLIs carry `usage.kdl` specs. The Nix packages lint
-those specs and install generated shell completions for commands such as
-`nixup` and `dev-runtime`; the scripts also expose `--usage` for tooling.
+`dev-runtime` uses Kong and kong-completion; its command definitions generate
+Bash/Zsh/Fish completion. `nixup` continues to use the repository's `usage.kdl` spec.
 
 ## Structure
 

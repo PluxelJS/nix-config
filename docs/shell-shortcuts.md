@@ -60,8 +60,8 @@ the operator-facing cheatsheet.
 - `nixup --latest`: update all flake inputs and switch Home Manager without non-Nix host updates.
 - `nixup --local`: switch the current workspace, including uncommitted and untracked files, without fetching or updating inputs.
 - `dev-runtime`: manage local PostgreSQL, Dragonfly, VictoriaMetrics, VictoriaLogs, and New API targets.
-- `dev-runtime enable new-api`: run the AI gateway and usage dashboard at `http://127.0.0.1:23000`, with persistent SQLite storage.
-- `dev-runtime logs new-api`: follow gateway diagnostic logs; token usage is available in the Web dashboard.
+- `dev-runtime services enable new-api`: run the AI gateway and usage dashboard at `http://127.0.0.1:23000`, with persistent SQLite storage.
+- `dev-runtime logs new-api`: read recent gateway diagnostic logs; token usage is available in the Web dashboard.
 - `usage`: generate help, completion, and machine-readable specs for local helper CLIs.
 - `o`: open the current directory, or explicit paths, through `xdg-open`.
 - `z`: jump to a known directory by frecency.

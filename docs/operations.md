@@ -99,160 +99,65 @@ nix build ~/.config/nix#homeConfigurations.current.activationPackage --impure
 
 ## Dev Runtime
 
-The desktop profile installs `dev-runtime` and queues `dev-runtime.service`
-asynchronously. It is a rootless Podman Compose project, not a Podman pod:
-services share one Compose network and stable service names while keeping
-their own lifecycle, logs, ports, and health checks.
+The pinned `dev-runtime` flake supplies the Go CLI, embedded dashboard and
+Home Manager service. This repository only enables that module; it contains
+no local runtime implementation, Compose project, proxy bridge or second dashboard.
 
-On a new machine the systemd unit starts the default development targets:
+- Management: http://127.0.0.1:8318
+- New API: http://127.0.0.1:23000 (API clients use `/v1`)
+- State: `~/.local/state/dev-runtime/state.db`
+- New API database and logs: `~/.local/state/dev-runtime/new-api/`
 
 ```bash
 systemctl --user status dev-runtime.service
-journalctl --user-unit=dev-runtime.service --follow
-dev-runtime status
-dev-runtime env
-```
-
-PostgreSQL and Dragonfly are enabled by default because they are broadly useful
-development dependencies. They bind to `127.0.0.1:5432` and
-`127.0.0.1:6379` by default, but they are still just local targets and can be
-persistently disabled on a host. Machine-local settings live under
-`~/.local/state/dev-runtime/`: `.env` controls ports, images, retention, and
-credentials; `enabled` records the persistent target set. These files are local
-state and do not follow Nix generations.
-
-PostgreSQL is shared as one local container and one local cluster, but service
-access is isolated by database and login role. The admin URL printed as
-`DATABASE_URL` is for local maintenance. New local services should get their
-own managed database instead of reusing the admin URL. New API uses its own
-SQLite database and does not need this PostgreSQL instance.
-
-```bash
-dev-runtime pg-create my-service
-dev-runtime pg-url my-service
-dev-runtime pg-list
-```
-
-`pg-create` normalizes `my-service` to `my_service`, creates
-`my_service_owner` with a generated password, creates `my_service` owned by
-that role, and stores only the local metadata under
-`~/.local/state/dev-runtime/postgres-databases/`. It starts PostgreSQL
-transiently if needed, but it does not persistently enable PostgreSQL if this
-host has disabled it. Dragonfly is a shared local cache service; use app-level
-key prefixes for separation.
-
-Persistent enablement controls what comes back after login or after
-`dev-runtime.service` restarts:
-
-```bash
-dev-runtime disable postgres
-dev-runtime disable dragonfly
-dev-runtime enable postgres dragonfly
-dev-runtime enable vmetrics
-dev-runtime enable vlogs
-dev-runtime enable --no-start new-api
-dev-runtime disable vlogs
-```
-
-Transient start/stop does not rewrite `~/.local/state/dev-runtime/enabled`:
-
-```bash
-dev-runtime start vlogs
-dev-runtime stop vlogs
-```
-
-New API is the local AI gateway, with a Web dashboard and persistent token
-usage logs. It uses SQLite and has no PostgreSQL or Dragonfly dependency:
-
-```bash
-dev-runtime enable new-api
-dev-runtime check new-api
+journalctl --user -u dev-runtime.service --follow
+dev-runtime --json status
+dev-runtime services enable new-api
+dev-runtime diagnose new-api
 dev-runtime logs new-api
-dev-runtime restart new-api
 ```
 
-Open `http://127.0.0.1:23000` for the dashboard; API clients use
-`http://127.0.0.1:23000/v1`. On a fresh installation, complete the setup page,
-choose self-use mode, add an OpenAI channel with the upstream origin (without
-`/v1`), and create client tokens. The migrated machine retains its existing
-client keys and uses the `admin` account with the previously chosen password.
-Credentials are machine-local and are never stored in this repository.
+Service enablement, images, ports, argv and secrets live in the local SQLite
+workspace, outside Nix generations. Use the dashboard's service editor or
+`config export --reveal`, `config save` and `config apply SERVICE`.
+Saving configuration and applying it are separate operations; revision conflicts
+require reloading the current configuration. Exports containing secrets must be
+stored privately (`umask 077`).
 
-`~/.local/state/dev-runtime/.env` controls `NEW_API_PORT`,
-`NEW_API_BIND_ADDRESS`, `NEW_API_IMAGE`, `NEW_API_DATA_DIR`, and the generated
-persistent `NEW_API_SESSION_SECRET`. The default is loopback port 23000 and
-the pinned release `docker.io/calciumion/new-api:v0.13.2`. Image upgrades are
-explicit: back up first, change `NEW_API_IMAGE`, then pull and restart.
+PostgreSQL and Dragonfly are enabled on a fresh workspace. This machine retains
+its explicitly selected services. New API uses SQLite independently of PostgreSQL.
 
-SQLite data and consumption logs live in `~/.local/state/dev-runtime/new-api/`.
-For local builds and tests, CPU admission rejection is disabled in the New API
-admin settings: `performance_setting.monitor_cpu_threshold=0`. In v0.13.2,
-zero disables the CPU check; the change applies live and persists in SQLite.
-Memory and disk thresholds remain at their defaults. CPU saturation can still
-increase latency, but no longer triggers the gateway's CPU-overload 503.
+```bash
+dev-runtime services start postgres
+dev-runtime pg database create my_service --generate-password
+dev-runtime pg connection my_service --reveal
+dev-runtime pg user grant reader --database my_service --permission readonly
+dev-runtime pg backup my_service --name before-change
+```
 
-Container diagnostic logs are capped at 16 MB. Dashboard consumption records
-are retained in SQLite until explicitly deleted. For a consistent backup,
-stop `new-api`, copy its data directory to a private backup location, then
-start it again. Preserve the session secret alongside the backup. Restore
-with the same image version before attempting an upgrade.
+The 2026-09-10 New API migration preserves the existing image, session secret,
+accounts, channels, tokens, quota/pricing options and usage records. It changes
+only lifecycle ownership. A stopped, consistent copy of the previous workspace,
+container metadata and database verification report is kept under
+`~/.local/state/dev-runtime-archive-*/`. Historical PostgreSQL/Dragonfly volumes
+are retained; they are not attached to fresh databases or deleted by cleanup.
 
-The migration imports the upstream and nine models directly, without a second
-proxy hop. Model and default-group multipliers are set to 1 for local quota
-accounting;
-cached tokens use weight 1, while output weights follow New API's effective
-model rules (for example GPT-5.6 output uses 8 even if the stored completion
-map says 1). The input baseline is $2 per million tokens, not a verified
-upstream price list. The admin account initially had $200 of local credit. Administrators can add credit under
-User Management; it does not fund the upstream API account. Earlier zero-priced
-requests keep their original token records and zero cost. Configure actual
-model prices before using these reports as an upstream billing estimate.
-Existing Hub statistics are retained in the old PostgreSQL volume,
-not merged into New API history.
+For a New API backup, stop that service, copy its entire data directory and
+privately preserve the service configuration including SESSION_SECRET, then
+start it again. Service JSON exports alone are not database backups.
 
-PostgreSQL and Dragonfly remain independent development targets. Disabling
-them preserves their data volumes. The old Hub target and CLI login commands have been retired.
-CLIProxyAPI is available again as the independent `cliproxy` target, using web management. Their local state
-and database volumes remain available for archival or manual rollback.
-
-## Helper CLI Specs
-
-Repository-owned helper CLIs use `usage.kdl` as their machine-readable command
-spec. The Nix packages lint these specs during build and install generated zsh
-and bash completion scripts. Current covered commands:
+## Helper CLI Completion
 
 ```bash
 nixup --usage
-dev-runtime --usage
+dev-runtime completion bash --code
+dev-runtime completion zsh --code
+dev-runtime completion fish --code
 ```
 
-`dev-runtime` completions include command, target, service, and
-managed PostgreSQL database names. The managed database completion reads
-`~/.local/state/dev-runtime/postgres-databases/` directly and does not start
-containers.
-
-## Gateway State
-
-`dev-runtime.service` is the sole lifecycle owner for New API and enabled CLIProxyAPI. Machine-local
-enablement is stored in `~/.local/state/dev-runtime/enabled`; `enable` and
-`disable` persist it across login and Home Manager switches. Old gateway
-credentials remain archived under `~/.local/state/proxy-llm/` and should be
-protected like the New API SQLite database.
-
-Check or repair only the Arch-side runtime base:
-
-```bash
-~/.config/nix/bootstrap/cachyos.sh deps
-~/.config/nix/bootstrap/cachyos.sh deps --apply
-~/.config/nix/bootstrap/cachyos.sh deps --apply --minimal
-```
-
-Check or repair the LocalSend UFW application profile and TCP/UDP 53317 rules:
-
-```bash
-~/.config/nix/bootstrap/cachyos.sh firewall
-~/.config/nix/bootstrap/cachyos.sh firewall --apply
-```
+The packaged Go CLI supplies its own completions; there is no external
+`dev-runtime.usage.kdl`. Commands, flags and service names come from Kong;
+node IDs are queried read-only from the workspace.
 
 ## Performance Incident Recording
 
@@ -672,36 +577,23 @@ can also remove app-private data.
 
 ## CLIProxyAPI with optional sing-box
 
+Manage nodes and service settings from http://127.0.0.1:8318, or use the same
+application core through the CLI:
+
 ```bash
-dev-runtime enable cliproxy
-dev-runtime ui cliproxy
-dev-runtime check cliproxy
-dev-runtime logs cliproxy
-dev-runtime restart cliproxy
-dev-runtime disable cliproxy
+dev-runtime services enable cliproxy
+dev-runtime nodes add --name office --stdin
+dev-runtime nodes list
+dev-runtime nodes apply NODE_ID
+dev-runtime diagnose cliproxy
+dev-runtime nodes apply direct
 ```
 
-The target delegates to the upstream runtime package with state under
-`~/.local/state/dev-runtime/cliproxy/`. It does not enable a second systemd unit.
-The default local image is built from the official CLIProxyAPI Git source when
-missing; accounts and configuration are managed at `http://127.0.0.1:8317/management.html`.
-The `ui` command explicitly displays the separate management key.
+The original CLIProxyAPI authorization page remains available from the dashboard.
+A node switch validates the generated configuration before replacing the current
+node. The actual outbound probe checks CLIProxyAPI's global proxy setting; it does
+not verify account-specific overrides, model inference or upstream credit.
 
-Direct upstream access is the default. To use sing-box, set `SINGBOX_NODE_URL`
-in the target's private `.env` and restart it. `check cliproxy` tests a real HTTP
-request through sing-box from the CLIProxyAPI container. A failed probe prints
-WARNING and leaves the service running. It does not silently change proxy
-settings or retry model calls directly. Clear the link and restart, or choose
-another proxy/direct access in the page. Per-account overrides remain under web
-management. `SINGBOX_CHECK_URL` selects the probe destination.
-
-Cloudflared is not enabled for this machine. New API and CLIProxyAPI join a
-shared `<DEV_RUNTIME_PROJECT_NAME>-llm` network. New API can use
-`http://cli-proxy-api:8317` as a channel origin, with a CLIProxyAPI API key and
-model list. The management password is not a channel API key. Channel creation
-is still explicit in New API; the two applications keep independent data and
-can be enabled or stopped separately. The shared network is retained on down.
-
-The `proxy-llm` flake input uses the published GitHub repository, pinned in
-`flake.lock`. Use `nix flake update proxy-llm` to select a newer runtime helper;
-the local development checkout is not required for deployment.
+The single `dev-runtime.service` owns the management daemon. Container restart
+policies own application recovery. The daemon and CLI serialize workspace mutations
+through a shared file lock, and stale configuration writes are rejected by revision.

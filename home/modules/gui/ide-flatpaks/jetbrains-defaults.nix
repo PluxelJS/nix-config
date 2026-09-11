@@ -297,7 +297,7 @@ PY
       inputhelp_dir="$app_dir/config/JetBrains/inputhelp"
       rm -rf "$inputhelp_dir"
       mkdir -p "$inputhelp_dir"
-      unzip -qo '${ideLib.inputhelp}' -d "$inputhelp_dir"
+      ${pkgs.unzip}/bin/unzip -qo '${ideLib.inputhelp}' -d "$inputhelp_dir"
 
       while IFS= read -r vmopts; do
         [[ -n "$vmopts" ]] || continue

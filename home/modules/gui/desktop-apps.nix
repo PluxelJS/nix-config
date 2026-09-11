@@ -233,7 +233,7 @@ lib.mkIf config.ahdg.features.gui {
     # A running server receives policy through IPC below. Only the legacy
     # style migration needs an offline edit; ordinary switches must preserve
     # the clipboard monitor and its Wayland window.
-    if ! ${pkgs.systemd}/bin/systemctl --user --quiet is-active copyq.service || awk '
+    if ! ${pkgs.systemd}/bin/systemctl --user --quiet is-active copyq.service || ${pkgs.gawk}/bin/awk '
       /^\[Options\]$/ { in_options = 1; next }
       /^\[/ { in_options = 0 }
       in_options && /^style=/ { found = 1 }
@@ -254,7 +254,7 @@ lib.mkIf config.ahdg.features.gui {
         local tmp
 
         tmp="$(mktemp)"
-        awk -v key="$key" -v value="$value" '
+        ${pkgs.gawk}/bin/awk -v key="$key" -v value="$value" '
           /^\[Options\]$/ {
             seen_options = 1
             in_options = 1
@@ -297,7 +297,7 @@ lib.mkIf config.ahdg.features.gui {
         local tmp
 
         tmp="$(mktemp)"
-        awk -v key="$key" '
+        ${pkgs.gawk}/bin/awk -v key="$key" '
           /^\[Options\]$/ { in_options = 1; print; next }
           /^\[/ { in_options = 0 }
           in_options && index($0, key "=") == 1 { next }

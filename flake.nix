@@ -12,8 +12,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
-    proxy-llm = {
-      url = "github:PluxelJS/Proxy-LLM-API";
+    dev-runtime = {
+      url = "github:PluxelJS/dev-runtime";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixgl = {
@@ -28,7 +28,7 @@
       home-manager,
       agenix,
       nixgl,
-      proxy-llm,
+      dev-runtime,
       ...
     }:
     let
@@ -38,7 +38,7 @@
         config.allowUnfree = true;
         overlays = [
           (final: prev: {
-            cliproxy-runtime = proxy-llm.packages.${system}.cliproxy-runtime;
+            dev-runtime = dev-runtime.packages.${system}.dev-runtime;
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             chatgpt = final.callPackage ./pkgs/chatgpt.nix { };
             meatshell = final.callPackage ./pkgs/meatshell.nix { };
@@ -90,6 +90,7 @@
           };
           modules = [
             agenix.homeManagerModules.default
+            dev-runtime.homeManagerModules.default
             ./home/default.nix
             ./home/profiles/${profile}.nix
             {
@@ -119,7 +120,7 @@
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
         chatgpt = pkgs.chatgpt;
-        dev-runtime = pkgs.callPackage ./pkgs/dev-runtime.nix { };
+        dev-runtime = pkgs.dev-runtime;
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
       };
 

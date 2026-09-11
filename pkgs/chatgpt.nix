@@ -130,7 +130,8 @@ stdenvNoCC.mkDerivation {
     # Electron can load either Qt shim; each needs the matching platform
     # plugins as well as the libraries found by autoPatchelf.
     makeWrapper "$out/usr/lib/chatgpt/ChatGPT" "$out/bin/chatgpt" \
-      --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ qt6.qtbase qt6.qtwayland ]}:${lib.makeSearchPath "lib/qt-5/plugins" [ qt5.qtbase qt5.qtwayland ]}"
+      --set QT_PLUGIN_PATH "${lib.makeSearchPath "lib/qt-6/plugins" [ qt6.qtbase qt6.qtwayland ]}:${lib.makeSearchPath "lib/qt-5/plugins" [ qt5.qtbase qt5.qtwayland ]}" \
+      --set QT_QPA_PLATFORM_PLUGIN_PATH "${qt6.qtbase}/lib/qt-6/plugins/platforms"
 
     # Home Manager and XDG launchers discover desktop entries and icons under
     # share/, not the Debian payload's usr/share/.

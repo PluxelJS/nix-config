@@ -1,7 +1,7 @@
 {
   lib,
   stdenv,
-  fetchFromGitHub,
+  desktopSources,
   cmake,
   ninja,
   pkg-config,
@@ -26,16 +26,9 @@ let
     ];
   };
 in
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation {
   pname = "mark-shot";
-  version = "0.1.49";
-
-  src = fetchFromGitHub {
-    owner = "jswysnemc";
-    repo = "mark-shot";
-    rev = "v${finalAttrs.version}";
-    hash = "sha256-r1LX4BUMKbEPbC9uDTMfhFxSQgYIxyCtubo5Sp4KrRw=";
-  };
+  inherit (desktopSources.mark-shot) version src;
 
   nativeBuildInputs = [
     cmake
@@ -99,4 +92,4 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "mark-shot";
     platforms = lib.platforms.linux;
   };
-})
+}

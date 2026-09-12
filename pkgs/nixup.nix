@@ -5,6 +5,8 @@
   coreutils,
   git,
   nix,
+  python3,
+  curl,
   usage,
 }:
 let
@@ -12,6 +14,8 @@ let
     coreutils
     git
     nix
+    python3
+    curl
   ];
 in
 stdenvNoCC.mkDerivation {

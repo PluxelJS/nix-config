@@ -96,8 +96,8 @@ home-manager switch --flake ~/.config/nix#current-container --impure
 dirty or diverged checkouts, fast-forwards the repository, preserves the active
 profile, and applies the repository's committed `flake.lock`. Use
 `nixup --check` to preview published changes or `nixup --home` to update and
-switch only Home Manager. `nixup --latest` updates every flake input and then
-switches Home Manager without running the non-Nix host setup, paru, or Flatpak.
+switch only Home Manager. `nixup --latest` updates flake inputs and the desktop
+asset versions/hashes in `sources.json`, then switches Home Manager without running the non-Nix host setup, paru, or Flatpak.
 The default command deliberately does not run `nix flake update`.
 Before the command is present in the active Home Manager generation, run it as
 `nix run --impure ~/.config/nix#nixup -- --check`.

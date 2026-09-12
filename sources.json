@@ -1,0 +1,104 @@
+{
+  "chatgpt": {
+    "hash": "sha256-2je457zvquoBnEeMrL5sc+4d3RXg4euzx+8KQt2BisI=",
+    "kind": "file",
+    "name": "chatgpt_amd64.deb",
+    "update": {
+      "type": "url"
+    },
+    "url": "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb",
+    "version": "rolling-da37b8e7bcef"
+  },
+  "copyq": {
+    "assetId": 433600575,
+    "hash": "sha256-2dizKZhhiu156Xzy0VLReEUMzR3+xgs/ys0Hs1ME+og=",
+    "kind": "file",
+    "name": "CopyQ-16.0.0.tar.gz",
+    "owner": "hluk",
+    "repo": "CopyQ",
+    "update": {
+      "asset": "CopyQ-{version}.tar.gz",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/hluk/CopyQ/releases/assets/433600575?download=1",
+    "version": "16.0.0"
+  },
+  "dms": {
+    "hash": "sha256-Uvp+jbeSoi95wzxeimwsVIIQ17Cf2yY6Lct05Ng3SN0=",
+    "kind": "github",
+    "owner": "AvengeMedia",
+    "repo": "DankMaterialShell",
+    "rev": "aa4b99def48637d86a69620c0a8f3cc6aa0c4092",
+    "update": {
+      "type": "release"
+    },
+    "vendorHash": "sha256-Ls6Dquwt0fzDCEjZ6FfTsZTXDI8408mFdByv/OWHVgI=",
+    "version": "1.6.1"
+  },
+  "mark-shot": {
+    "hash": "sha256-6IZMF5MiltUQK3BY/2U/A4fSA08aRsxAuLQ+Fj5duik=",
+    "kind": "github",
+    "owner": "jswysnemc",
+    "repo": "mark-shot",
+    "rev": "c234deb2d990c9c912f72e39e2659ba130de72f4",
+    "update": {
+      "type": "release"
+    },
+    "version": "0.1.51"
+  },
+  "meatshell": {
+    "assetId": 548109214,
+    "hash": "sha256-Oh9Cqqd0JLD8zCJxBMownxhXWK0afKLqkiGPqsqGpew=",
+    "kind": "file",
+    "name": "meatshell-v0.7.3-linux-x86_64.tar.gz",
+    "owner": "jeff141",
+    "repo": "meatshell",
+    "update": {
+      "asset": "meatshell-{tag}-linux-x86_64.tar.gz",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/jeff141/meatshell/releases/assets/548109214?download=1",
+    "version": "0.7.3"
+  },
+  "wanxiang-base": {
+    "assetId": 558855102,
+    "hash": "sha256-VvyMU/lk/G2nfKO6h+nwGwYC7hCemp5OUK9TTbQXQrw=",
+    "kind": "file",
+    "name": "rime-wanxiang-base.zip",
+    "owner": "amzxyz",
+    "repo": "rime-wanxiang",
+    "update": {
+      "asset": "rime-wanxiang-base.zip",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/558855102?download=1",
+    "version": "17.10.0"
+  },
+  "wanxiang-grammar": {
+    "assetId": 558301149,
+    "hash": "sha256-n4BTD0cAM8+21LRLuGG1QPZBAEJvkt0PhxQIg2MqPZM=",
+    "kind": "file",
+    "name": "wanxiang-lts-zh-hans.gram",
+    "owner": "amzxyz",
+    "repo": "RIME-LMDG",
+    "update": {
+      "asset": "wanxiang-lts-zh-hans.gram",
+      "tag": "LTS",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/558301149?download=1",
+    "version": "LTS"
+  },
+  "yazi-flavors": {
+    "hash": "sha256-NGnfrQdsnQITKCZ0oh6DCxeCR2ozJoPAZetsi3ghHAI=",
+    "kind": "github",
+    "owner": "yazi-rs",
+    "repo": "flavors",
+    "rev": "20b47bfd78880c2674899597fd26bc01b21ff48c",
+    "update": {
+      "branch": "main",
+      "type": "branch"
+    },
+    "version": "unstable-20b47bfd7888"
+  }
+}

@@ -33,27 +33,9 @@ let
   inputMethodExports = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") inputMethodEnvironment
   );
-  # Wanxiang base is pinned to a concrete release. This keeps the scheme,
-  # dictionaries and Lua payload reproducible until we explicitly upgrade.
-  wanxiangBaseVersion = "17.5.8";
-
-  wanxiangBase = pkgs.fetchurl {
-    url = "https://github.com/amzxyz/rime-wanxiang/releases/download/v${wanxiangBaseVersion}/rime-wanxiang-base.zip";
-    name = "rime-wanxiang-base-${wanxiangBaseVersion}.zip";
-
-    hash = "sha256-zM+pNQq8T3idHBwRZNxXIIrjsfpe221Vs2N4JIyh7Oc=";
-  };
-
-  # RIME-LMDG intentionally publishes the supported grammar through the LTS
-  # release. The URL is stable, while the fixed-output hash makes an upstream
-  # model update explicit: Home Manager will fail with a hash mismatch until
-  # this hash is deliberately refreshed.
-  wanxiangGrammar = pkgs.fetchurl {
-    url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram";
-    name = "wanxiang-lts-zh-hans.gram";
-
-    hash = "sha256-n4BTD0cAM8+21LRLuGG1QPZBAEJvkt0PhxQIg2MqPZM=";
-  };
+  # Versions, immutable release asset IDs and hashes are refreshed together.
+  wanxiangBase = pkgs.desktopSources.wanxiang-base.src;
+  wanxiangGrammar = pkgs.desktopSources.wanxiang-grammar.src;
 
   rimeStaticPayload =
     pkgs.runCommandLocal "ahdg-rime-static-payload"

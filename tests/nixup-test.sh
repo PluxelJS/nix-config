@@ -34,7 +34,18 @@ printf '%s\n' "$*" >"$HOME/setup-args"
 EOF
 chmod +x "$seed/setup"
 echo initial >"$seed/flake.lock"
-git -C "$seed" add setup flake.lock
+mkdir -p "$seed/tools"
+cat >"$seed/tools/update-sources.py" <<'EOF'
+import os, subprocess, sys
+from pathlib import Path
+assert sys.argv[1:] == ['--flake']
+if os.environ.get('FAIL_SOURCE_UPDATE'):
+    raise SystemExit('simulated asset failure')
+subprocess.run(['nix', 'flake', 'update'], check=True)
+Path('sources.json').write_text('updated assets\n')
+EOF
+echo initial >"$seed/sources.json"
+git -C "$seed" add setup flake.lock sources.json tools
 git -C "$seed" commit -m initial >/dev/null
 git clone --bare "$seed" "$remote" >/dev/null 2>&1
 git clone "$remote" "$work" >/dev/null 2>&1
@@ -70,8 +81,13 @@ printf '%s\n' "$*" >"$HOME/nix-args"
 EOF
 chmod +x "$fake_bin/nix"
 rm -f "$home/setup-args"
+if FAIL_SOURCE_UPDATE=1 PATH="$fake_bin:$PATH" HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" --latest >/dev/null 2>&1; then
+  fail "--latest ignored an asset update failure"
+fi
+[[ ! -e "$home/nix-args" ]] || fail "--latest switched after an asset update failure"
 PATH="$fake_bin:$PATH" HOME="$home" XDG_CONFIG_HOME="$home/.config" AHDG_NIX_REPO="$work" "$nixup" --latest >/dev/null
 [[ "$(<"$work/flake.lock")" == latest ]] || fail "--latest did not update flake inputs"
+[[ "$(<"$work/sources.json")" == 'updated assets' ]] || fail "--latest did not update desktop assets"
 [[ ! -e "$home/setup-args" ]] || fail "--latest unexpectedly ran setup"
 [[ "$(<"$home/nix-args")" == *"#current-shell"* ]] || fail "--latest did not switch the active profile"
 

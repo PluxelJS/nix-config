@@ -10,8 +10,12 @@ The Home Manager layer is the strongest boundary:
 
 - `flake.lock` pins nixpkgs, Home Manager, nixGL, agenix, and their transitive
   inputs by revision and NAR hash.
-- Custom Nix packages and downloaded desktop resources use immutable versions
-  or commits plus content hashes.
+- `sources.json` locks custom desktop packages and resources by content hash,
+  Git commit or GitHub release asset ID. `tools/update-sources.py` owns their
+  update policies and refreshes the lock without hand-editing Nix expressions.
+- ChatGPT has only a mutable upstream `latest` download URL. Its bytes are also
+  hashed in `sources.json`, but reproducing an old version after upstream
+  replacement requires a retained Nix store path or binary cache.
 - Fonts from nixpkgs are part of the Home Manager profile. The custom
   TsangerJinKai font is committed directly under `home/assets/fonts/custom/`.
 - GTK/KDE themes, icons, cursors, fontconfig policy, input-method policy, and
@@ -36,12 +40,11 @@ nix build --impure \
 
 The Wanxiang input-method payload has an explicit end-to-end chain:
 
-1. The Wanxiang v17.5.8 base archive is fetched through immutable GitHub
-   release asset ID `526392386` and checked against SHA-256
-   `cccfa9350abc4f789d1c1c1164dc57208ae3b1fa5edb6d55b36378248ca1ece7`.
-2. The 420250668-byte zh-Hans grammar is fetched through GitHub release asset
-   ID `526165714`, not the mutable `LTS` alias, and is checked against
-   SHA-256 `01ffe37f22607bf8a5cd5d82a3349f6df97744369464aee4577585112d85469d`.
+1. The base scheme archive is resolved from the latest stable Wanxiang release
+   to a concrete GitHub asset ID and SHA-256 in `sources.json`.
+2. The zh-Hans grammar is discovered through `LTS`, but the locked download uses
+   its concrete asset ID. Replacing the upstream LTS asset does not silently
+   change the file requested by an existing lock.
 3. Repo-owned `default.yaml`, custom phrases, and schema patches are added in a
    Nix derivation.
 4. That derivation generates `.nix-resource-manifest.sha256` over every static

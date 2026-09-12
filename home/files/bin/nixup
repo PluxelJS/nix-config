@@ -23,15 +23,15 @@ Safely fast-forward the Nix config checkout to its published version and apply i
 
   --check  Fetch and show available changes without updating or switching
   --home   Update the checkout and switch Home Manager only
-  --latest Update every flake input and switch Home Manager only
+  --latest Update flake inputs and desktop assets, then switch Home Manager only
   --local  Switch the current workspace, including uncommitted files, without updating
   --usage  Output usage.kdl for completions and tooling
   -h       Show this help
 
 The default command updates the checkout and runs the repository setup flow for
 the currently active profile. It follows the committed flake.lock; it does not
-run `nix flake update`. --latest advances flake.lock locally and deliberately
-skips the non-Nix host reconciliation performed by setup.
+update upstream sources. --latest advances flake.lock and sources.json locally
+and deliberately skips the non-Nix host reconciliation performed by setup.
 EOF
 }
 
@@ -162,10 +162,10 @@ echo
 echo "Applying profile '$profile' from Nix config ${applied:0:12}..."
 if [[ "$mode" == latest ]]; then
   export NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true'
-  echo "Updating all flake inputs to their latest available revisions..."
+  echo "Updating flake inputs and desktop assets (keeping Code Studio compatibility pins)..."
   (
     cd "$repo"
-    nix flake update
+    python3 tools/update-sources.py --flake
   )
   nix run --impure "$repo#home-manager" -- \
     switch --flake "$repo#$flake" -b pre-nix --impure
@@ -179,7 +179,7 @@ fi
 
 echo
 if [[ "$mode" == latest ]]; then
-  echo "Flake inputs are current and profile '$profile' was applied. Review flake.lock before committing."
+  echo "Inputs and assets are current and profile '$profile' was applied. Review flake.lock and sources.json before committing."
 else
   echo "Nix config is current and profile '$profile' was applied (${applied:0:12})."
 fi

@@ -41,15 +41,15 @@ reconciliation:
 nixup --home
 ```
 
-To advance all flake inputs to their latest available revisions and switch
+To advance flake inputs and desktop assets to their latest available versions and switch
 Home Manager without running pacman/paru, Flatpak, or other host reconciliation:
 
 ```bash
 nixup --latest
 ```
 
-This leaves the resulting `flake.lock` change in the checkout for review and
-commit. It requires a clean checkout before starting, like the other updating
+This leaves `flake.lock` and `sources.json` changes in the checkout for review
+and commit. It requires a clean checkout before starting, like the other updating
 `nixup` modes.
 
 To test local edits without committing, fetching, or updating inputs:
@@ -63,10 +63,45 @@ so untracked files are included too. It also works on a local branch without
 an upstream remote. The default `nixup` keeps its clean-checkout requirement.
 
 For plain `nixup`, “latest” means the latest published repository revision
-together with its reviewed, committed `flake.lock`. Advancing nixpkgs, Home
-Manager, and other flake inputs remains an explicit maintainer workflow using
-`nixup --latest` (or `nix flake update` directly), followed by review and
-testing before committing the new lock file.
+together with its reviewed, committed locks. Advancing dependencies remains an
+explicit maintainer workflow using `nixup --latest`, followed by review and
+testing before committing both locks. `nix flake update` alone updates only
+flake inputs; it does not refresh desktop asset hashes.
+
+### Desktop asset updates
+
+`sources.json` is the shared source catalog and lock for CopyQ, DMS, Mark Shot,
+MeatShell, ChatGPT, Yazi flavors, and Wanxiang's base and grammar payloads.
+Nix packages consume it through `pkgs/sources.nix`. New sources declare their
+release/branch/URL discovery policy in `sources.json` instead of embedding hashes
+in modules.
+
+To update assets without switching the running desktop:
+
+```bash
+python3 tools/update-sources.py
+# Update one asset, or also refresh flake inputs:
+python3 tools/update-sources.py --only wanxiang-grammar
+python3 tools/update-sources.py --flake
+```
+
+Run from a checkout with Git, Nix, curl and Python 3.11+ available (`nixup`'s
+package supplies these tools). The updater downloads and hashes files, checks
+GitHub's SHA-256 digest when supplied, resolves releases to asset IDs and source
+tags to commits, and computes DMS's Go `vendorHash` when its source or flake
+inputs change. It evaluates the desktop configuration before publishing the
+locks. Download, vendor-build or evaluation failures leave the existing locks
+untouched; `nixup --latest` stops before switching. A later Home Manager build
+failure leaves the successfully updated locks available for diagnosis and review.
+The updater does not guarantee that every upstream release remains compatible
+with local patches; review changes and build before publishing an update.
+
+Code Studio's editor and Zsh archives remain outside routine updates because
+of the documented Wayland compatibility baseline. Their hashes change only
+when deliberately updating that baseline. ChatGPT's upstream URL remains
+mutable; a fresh download of an old lock can fail after upstream replaces it.
+Use `--only chatgpt` to refresh it, or retain the old output in a binary cache.
+The standalone asset script does not commit, push or switch the desktop.
 
 On an existing checkout whose active generation predates `nixup`, the packaged
 entrypoint can be invoked directly:

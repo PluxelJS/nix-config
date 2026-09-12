@@ -1,5 +1,6 @@
 {
   lib,
+  desktopSources,
   stdenvNoCC,
   dpkg,
   autoPatchelfHook,
@@ -43,22 +44,7 @@
 stdenvNoCC.mkDerivation {
   pname = "chatgpt";
 
-  # ChatGPT for Linux is a rolling desktop application. Upstream publishes the
-  # current build through a mutable `latest` URL, so deliberately keep this
-  # package impure instead of pinning a hash that would break Home Manager on
-  # every upstream update.
-  version = "latest";
-
-  # Intentionally uses builtins.fetchurl without a hash.
-  #
-  # This requires impure evaluation (`--impure`), which is already how this
-  # Home Manager configuration is invoked. When upstream replaces the latest
-  # .deb, Nix can fetch the new object instead of failing with a fixed-output
-  # hash mismatch.
-  src = builtins.fetchurl {
-    url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb";
-    name = "chatgpt_amd64.deb";
-  };
+  inherit (desktopSources.chatgpt) version src;
 
   nativeBuildInputs = [
     dpkg

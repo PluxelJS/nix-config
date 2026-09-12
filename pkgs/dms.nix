@@ -1,24 +1,16 @@
 {
   lib,
   buildGoModule,
-  fetchFromGitHub,
+  desktopSources,
 }:
 
 buildGoModule rec {
   pname = "dms";
-  version = "1.5.3";
-
-  src = fetchFromGitHub {
-    owner = "AvengeMedia";
-    repo = "DankMaterialShell";
-    rev = "v${version}";
-    hash = "sha256-aTNuC9NDBnYAeEtFsleeUwmGX3AZlKOutbl+LQRPkmQ=";
-  };
+  inherit (desktopSources.dms) version src vendorHash;
 
   modRoot = "core";
   subPackages = [ "cmd/dms" ];
   tags = [ "distro_binary" ];
-  vendorHash = "sha256-nvxFHQhOfBGl3h51fgYDb39K0NCj+H8mAEyKr1qOwJQ=";
 
   ldflags = [
     "-s"

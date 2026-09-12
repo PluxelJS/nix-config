@@ -38,6 +38,7 @@
         config.allowUnfree = true;
         overlays = [
           (final: prev: {
+            desktopSources = final.callPackage ./pkgs/sources.nix { };
             dev-runtime = dev-runtime.packages.${system}.dev-runtime;
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             chatgpt = final.callPackage ./pkgs/chatgpt.nix { };
@@ -47,11 +48,7 @@
               # CopyQ 15 fixed a leak in the long-running Wayland clipboard
               # monitor/provider processes. Keep the Nix-managed desktop on
               # the current release until the pinned nixpkgs catches up.
-              version = "16.0.0";
-              src = final.fetchurl {
-                url = "https://github.com/hluk/CopyQ/releases/download/v16.0.0/CopyQ-16.0.0.tar.gz";
-                hash = "sha256-2dizKZhhiu156Xzy0VLReEUMzR3+xgs/ys0Hs1ME+og=";
-              };
+              inherit (final.desktopSources.copyq) version src;
               buildInputs = old.buildInputs ++ [
                 # CopyQ is a Qt application, so let it use the same KDE
                 # platform theme and widget styles as the rest of the desktop.
@@ -121,6 +118,8 @@
         home-manager = home-manager.packages.${system}.home-manager;
         chatgpt = pkgs.chatgpt;
         dev-runtime = pkgs.dev-runtime;
+        # Expose the dependency derivation for the source updater's vendor hash.
+        dms = pkgs.dms;
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
       };
 

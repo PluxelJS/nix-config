@@ -1,7 +1,7 @@
 {
   lib,
   stdenv,
-  fetchurl,
+  desktopSources,
   autoPatchelfHook,
   fontconfig,
   freetype,
@@ -27,14 +27,9 @@ let
     wayland
   ];
 in
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation {
   pname = "meatshell";
-  version = "0.6.14";
-
-  src = fetchurl {
-    url = "https://github.com/jeff141/meatshell/releases/download/v${finalAttrs.version}/meatshell-v${finalAttrs.version}-linux-x86_64.tar.gz";
-    hash = "sha256-Ftw8t/EqTK2Q5MNkUmRalVEBqjp+37m0291qc0hGpEk=";
-  };
+  inherit (desktopSources.meatshell) version src;
 
   nativeBuildInputs = [ autoPatchelfHook ];
   buildInputs = runtimeLibraries;
@@ -62,4 +57,4 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "meatshell";
     platforms = [ "x86_64-linux" ];
   };
-})
+}

@@ -16,7 +16,7 @@ Home Manager owns:
   helpers, KWallet, PolicyKit agent, themes, and portal services
 - fonts, GTK/Plasma theme assets, icon/cursor policy, and Flatpak-visible copies
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
-- the user-scoped Proxy LLM Podman compose stack
+- development services managed by the upstream `dev-runtime` daemon and dashboard
 - LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
 
 The host package manager owns:

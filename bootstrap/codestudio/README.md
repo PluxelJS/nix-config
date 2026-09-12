@@ -28,6 +28,10 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
   owns its settings, workspace recovery data, locks, and extension caches.
 - Preserve the Home Manager-provided tool `PATH`, then prepend app-private
   package manager and mise paths used by the integrated terminal.
+- Seed a silent `~/.zshenv` in the private home so extension login-shell probes
+  that pass only `HOME` can still find mise shims and the managed `.zshrc`.
+  Existing custom `.zshenv` files are preserved; tool versions remain owned by
+  mise and the project rather than editor settings.
 
 The launcher creates:
 
@@ -121,3 +125,17 @@ Check the host-backed container client:
 flatpak run --command=code-studio-shell \
   io.github.trumank.CodeStudio -lc 'docker version'
 ```
+
+If a language server reports `node: not found` while the terminal works, check
+its extension output log. Some extensions, including Oxc, rebuild and cache an
+environment using a login shell with only `HOME`. The private `~/.zshenv`
+restores tool discovery for that case. After repairing an existing environment,
+reload the affected window when its agent tasks are finished so the extension
+can discard its cached environment.
+
+For memory investigations, include extension children (language servers, agent
+backends, tests and builds), not just the editor main process. Use PSS when
+summing Linux processes to avoid counting shared pages repeatedly. Extensions
+share a host process, so its memory cannot be attributed to individual
+extensions using process totals or extension activation times alone. Check the
+kernel OOM log for the actual killed process before changing editor settings.

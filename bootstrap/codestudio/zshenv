@@ -1,0 +1,15 @@
+# Extensions may probe a login shell with only HOME, dropping the launcher's
+# PATH and ZDOTDIR. Restore tool discovery before the interactive config runs.
+# Keep this file silent: language-server environment probes parse stdout.
+export ZDOTDIR="${ZDOTDIR:-$HOME/.config/zsh}"
+typeset -U path
+path=(
+  "$HOME/.local/bin"
+  "$HOME/.bun/bin"
+  "$HOME/.local/share/pnpm"
+  "$HOME/.local/share/mise/shims"
+  "${HOME%%/.var/app/*}/.local/state/nix/profiles/profile/bin"
+  /app/bin
+  $path
+)
+export PATH

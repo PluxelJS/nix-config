@@ -154,6 +154,12 @@ if [[ ! -f "$config_root/starship/starship.toml" ]]; then
   cp /app/share/code-studio/starship.toml "$config_root/starship/starship.toml"
 fi
 
+# Seed the default zsh entry point without replacing a user's custom one.
+# This is needed when an extension starts zsh with HOME but no ZDOTDIR.
+if [[ ! -e "$HOME/.zshenv" && ! -L "$HOME/.zshenv" ]]; then
+  cp /app/share/code-studio/zshenv "$HOME/.zshenv"
+fi
+
 if ! cmp -s /app/share/code-studio/zshrc "$ZDOTDIR/.zshrc"; then
   zshrc_tmp="$(mktemp "$ZDOTDIR/.zshrc.tmp.XXXXXX")"
   cp /app/share/code-studio/zshrc "$zshrc_tmp"

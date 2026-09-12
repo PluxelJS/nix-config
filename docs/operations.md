@@ -124,8 +124,10 @@ Saving configuration and applying it are separate operations; revision conflicts
 require reloading the current configuration. Exports containing secrets must be
 stored privately (`umask 077`).
 
-PostgreSQL and Dragonfly are enabled on a fresh workspace. This machine retains
-its explicitly selected services. New API uses SQLite independently of PostgreSQL.
+The upstream CLI enables PostgreSQL and Dragonfly on a fresh workspace. This
+Home Manager profile seeds New API and CLIProxy instead, before starting the
+daemon. Later switches preserve the workspace's service selection. New API uses
+SQLite independently of PostgreSQL.
 
 ```bash
 dev-runtime services start postgres
@@ -135,12 +137,17 @@ dev-runtime pg user grant reader --database my_service --permission readonly
 dev-runtime pg backup my_service --name before-change
 ```
 
-The 2026-09-10 New API migration preserves the existing image, session secret,
-accounts, channels, tokens, quota/pricing options and usage records. It changes
-only lifecycle ownership. A stopped, consistent copy of the previous workspace,
-container metadata and database verification report is kept under
-`~/.local/state/dev-runtime-archive-*/`. Historical PostgreSQL/Dragonfly volumes
-are retained; they are not attached to fresh databases or deleted by cleanup.
+On this workstation, the 2026-09-12 migration replaced the old Compose CLI and
+Claude Code Hub with the upstream daemon. CLIProxy retains its existing image,
+provider configuration, client keys, plugins and login files; dashboard management
+uses the new workspace key. New API starts with an independent SQLite database;
+Claude Code Hub accounts and usage are not imported.
+
+The stopped deployment's configuration, container metadata and exported container
+filesystems are archived privately under `~/.local/state/dev-runtime-archive-*/`.
+Historical PostgreSQL/Dragonfly volumes are retained; they are not attached to
+fresh databases or deleted by cleanup. Old Compose containers and their network
+are removed after export. These archives contain secrets and are not Git inputs.
 
 For a New API backup, stop that service, copy its entire data directory and
 privately preserve the service configuration including SESSION_SECRET, then

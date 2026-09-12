@@ -41,6 +41,7 @@ modules:
       - install -Dm644 settings.json /app/share/code-studio/settings.json
       - install -Dm644 argv.json /app/share/code-studio/argv.json
       - install -Dm644 locale.json /app/share/code-studio/locale.json
+      - install -Dm644 zshenv /app/share/code-studio/zshenv
       - install -Dm644 zshrc /app/share/code-studio/zshrc
       - install -Dm644 interactive.zsh /app/share/code-studio/zsh/interactive.zsh
       - install -Dm644 startup.zsh /app/share/code-studio/zsh/startup.zsh
@@ -62,6 +63,8 @@ modules:
         path: argv.json
       - type: file
         path: locale.json
+      - type: file
+        path: zshenv
       - type: file
         path: zshrc
       - type: file

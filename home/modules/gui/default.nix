@@ -5,6 +5,7 @@
     ./theme-runtime.nix
     ./theme-switching.nix
     ./assets.nix
+    ./autostart.nix
     ./desktop-apps.nix
     ./kde-runtime.nix
     ./kde-config.nix

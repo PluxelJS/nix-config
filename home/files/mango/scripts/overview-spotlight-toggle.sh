@@ -7,5 +7,5 @@ set -eu
 #
 # 注意：这是 best-effort；如果两者状态不同步，用 Esc 退出或分别触发即可。
 
-mmsg -d toggleoverview
+mmsg dispatch toggleoverview
 dms ipc call spotlight toggle

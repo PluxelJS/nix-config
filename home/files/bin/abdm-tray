@@ -26,20 +26,24 @@ settings="$HOME/.abdm/config/appSettings.json"
 mkdir -p "$HOME/.abdm/system/log"
 
 ensure_tray_enabled() {
-  [ -f "$settings" ] || return 0
   python3 - "$settings" <<'PY'
 import json
 import sys
+from pathlib import Path
 
 path = sys.argv[1]
 try:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-except Exception:
-    sys.exit(0)
+except FileNotFoundError:
+    data = {}
 
-if data.get("useSystemTray") is not True:
+if data.get("useSystemTray") is not True or data.get("autoStartOnBoot") is not False:
     data["useSystemTray"] = True
+    # XDG autostart is owned by Home Manager. ABDM otherwise tries to
+    # overwrite its read-only desktop entry during every startup.
+    data["autoStartOnBoot"] = False
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
         f.write("\n")
@@ -50,11 +54,12 @@ if ! pgrep -x xembedsniproxy >/dev/null 2>&1; then
   nohup xembedsniproxy >/dev/null 2>&1 &
 fi
 
-if pgrep -f "$exe" >/dev/null 2>&1; then
+if pgrep -f "^$exe([[:space:]]|$)" >/dev/null 2>&1; then
   exit 0
 fi
 
 ensure_tray_enabled
 
-nohup env SKIKO_RENDER_API=SOFTWARE_FAST "$exe" --background >/dev/null 2>&1 &
+nohup env SKIKO_RENDER_API=SOFTWARE_FAST "$exe" --background \
+  >>"$HOME/.abdm/system/log/autostart.log" 2>&1 &
 exit 0

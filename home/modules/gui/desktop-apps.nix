@@ -5,7 +5,6 @@
   ...
 }:
 let
-  homeDir = config.home.homeDirectory;
   copyqKdeRuntime = pkgs.symlinkJoin {
     name = "copyq-kde-theme-runtime";
     paths = [
@@ -34,29 +33,6 @@ let
     ) copyqPolicy
   );
 
-  mkAutostart =
-    {
-      name,
-      exec,
-      tryExec ? null,
-      onlyShowIn ? [ ],
-      comment ? null,
-      hidden ? false,
-    }:
-    ''
-      [Desktop Entry]
-      Type=Application
-      Name=${name}
-      ${lib.optionalString (comment != null) "Comment=${comment}"}
-      Exec=${exec}
-      ${lib.optionalString (tryExec != null) "TryExec=${tryExec}"}
-      ${lib.optionalString (onlyShowIn != [ ]) "OnlyShowIn=${lib.concatStringsSep ";" onlyShowIn};"}
-      ${lib.optionalString hidden "Hidden=true"}
-      Terminal=false
-      StartupNotify=false
-      X-GNOME-Autostart-enabled=true
-    '';
-
   disableDmsClipboard = pkgs.writeShellScript "ahdg-disable-dms-clipboard" ''
     # The backend socket can appear shortly after the shell starts. Repeat the
     # command because DMS persists clipboard tracking state in its own database.
@@ -69,6 +45,9 @@ let
   '';
 
   dmsAutostart = pkgs.writeShellScript "ahdg-mango-dms-autostart" ''
+    export PATH="${config.home.homeDirectory}/.local/bin:${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+    # Applications must outlive shell reloads and get their own journal/scope.
+    export DMS_DEFAULT_LAUNCH_PREFIX="${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet --"
     exec ${lib.getExe pkgs.dms} run
   '';
 in
@@ -78,8 +57,6 @@ lib.mkIf config.ahdg.features.gui {
   # sharing the same declarative files. CopyQ and DMS are session services
   # instead: they must survive Home Manager switches and be restartable.
   home.packages = [
-    pkgs.dex
-
     # Both applications use GPU-backed native rendering. On CachyOS they need
     # the same host GL bridge as Ghostty and LocalSend.
     (config.lib.nixGL.wrap pkgs.chatgpt)
@@ -89,61 +66,6 @@ lib.mkIf config.ahdg.features.gui {
   programs.zed-editor = {
     enable = true;
     package = config.lib.nixGL.wrap pkgs.zed-editor;
-  };
-
-  xdg.configFile = {
-    "autostart/ahdg-copyq.desktop".text = mkAutostart {
-      name = "CopyQ (systemd managed)";
-      comment = "Started by copyq.service; this entry prevents ad hoc autostart";
-      exec = lib.getExe pkgs.copyq;
-      tryExec = lib.getExe pkgs.copyq;
-      hidden = true;
-    };
-
-    "autostart/ahdg-abdm-tray.desktop".text = mkAutostart {
-      name = "AB Download Manager Tray";
-      exec = "${homeDir}/.local/bin/abdm-tray";
-      tryExec = "${homeDir}/.local/bin/abdm-tray";
-    };
-
-    # Shadow AB Download Manager's own basename so desktop autostart readers
-    # launch only the wrapper above. Two simultaneous JVM launches otherwise
-    # race for the same single-instance socket and leave a failed user unit.
-    "autostart/com.abdownloadmanager.desktop" = {
-      force = true;
-      text = ''
-        [Desktop Entry]
-        Type=Application
-        Name=AB Download Manager (vendor autostart disabled)
-        Hidden=true
-      '';
-    };
-
-    # Cachy-Update is the single update notifier. Shelly 3 can still discover
-    # and launch its 2.x notification helper from stale per-user state, which
-    # then reports missing legacy settings such as TitleBarDirection at login.
-    "autostart/com.shellyorg.shelly-notifications.desktop" = {
-      force = true;
-      text = ''
-        [Desktop Entry]
-        Type=Application
-        Name=Shelly Notifications (disabled; Cachy-Update is active)
-        Hidden=true
-      '';
-    };
-
-    "autostart/ahdg-mihomo-party.desktop".text = mkAutostart {
-      name = "Mihomo Party";
-      exec = "mihomo-party";
-      tryExec = "mihomo-party";
-    };
-
-    "autostart/ahdg-zen-browser-warmup.desktop".text = mkAutostart {
-      name = "Zen Browser Warmup";
-      exec = "zen-browser --silent";
-      tryExec = "zen-browser";
-    };
-
   };
 
   systemd.user.services.ahdg-mango-dms = {

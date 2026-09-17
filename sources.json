@@ -75,8 +75,8 @@
     "version": "17.10.0"
   },
   "wanxiang-grammar": {
-    "assetId": 558301149,
-    "hash": "sha256-n4BTD0cAM8+21LRLuGG1QPZBAEJvkt0PhxQIg2MqPZM=",
+    "assetId": 561293082,
+    "hash": "sha256-1iPMNInyFujAEGKHlYmDEd82hUruRg8vJAjCxWIiYE8=",
     "kind": "file",
     "name": "wanxiang-lts-zh-hans.gram",
     "owner": "amzxyz",
@@ -86,7 +86,7 @@
       "tag": "LTS",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/558301149?download=1",
+    "url": "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/561293082?download=1",
     "version": "LTS"
   },
   "yazi-flavors": {

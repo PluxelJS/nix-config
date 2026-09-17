@@ -54,11 +54,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789099232,
-        "narHash": "sha256-A0YViWcmE9UOzgCvqWB9yYVIXeZte40C+XWY8fGC5IE=",
+        "lastModified": 1789120523,
+        "narHash": "sha256-+7l+BWJ/dm6Goezwo502Ywb9jd4+eTU67yqwWkJC3p4=",
         "owner": "PluxelJS",
         "repo": "dev-runtime",
-        "rev": "7169d2d397830a01143292fff10158aa3ad07e50",
+        "rev": "74bd13d945f8decb9b7398c25a41bc4a9276af0a",
         "type": "github"
       },
       "original": {
@@ -92,11 +92,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787487906,
-        "narHash": "sha256-zIdM+8teujHm5hc5MIPDnV7k2UeOOT/pFyFtWjOCwsY=",
+        "lastModified": 1789339793,
+        "narHash": "sha256-1TGxgma8jQGhw0yfjyndwPhgcoXAYtlSm4ezENVzrPA=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "cfba7ad5886b342b8dd63ba74354b3853ea4cfc9",
+        "rev": "dd0b74e2b53eb6aa03fe120fcc00a4d37cc288f8",
         "type": "github"
       },
       "original": {
@@ -128,11 +128,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1787360063,
-        "narHash": "sha256-dt4WdcvsA8/RCe+VZZwqU0X+XMM3wBbGCWA0/sFWzGo=",
+        "lastModified": 1789149629,
+        "narHash": "sha256-H6GwaZzZf+4npqv0tph94w9tZddSjFjmQrVsW0z78uk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2c423e03bbafcff28bfadc6781a4a8257f205cb5",
+        "rev": "eaad089433ca2bb662274377d33df3d0e51ef28b",
         "type": "github"
       },
       "original": {

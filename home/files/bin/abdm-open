@@ -22,7 +22,7 @@ exe="$(find_abdm)" || {
   exit 127
 }
 
-if ! pgrep -f "$exe" >/dev/null 2>&1; then
+if ! pgrep -f "^$exe([[:space:]]|$)" >/dev/null 2>&1; then
   "$HOME/.local/bin/abdm-tray"
   sleep 1
 fi

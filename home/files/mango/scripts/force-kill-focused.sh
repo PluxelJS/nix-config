@@ -10,17 +10,13 @@ ts="$(date -Iseconds)"
 tmp_file="$(mktemp "${TMPDIR:-/tmp}/mango-force-kill.XXXXXX")"
 trap 'rm -f "$tmp_file"' EXIT
 
-if ! mmsg -g >"$tmp_file" 2>/dev/null; then
+if ! mmsg get focusing-client >"$tmp_file" 2>/dev/null; then
   printf '%s | error=mmsg_unavailable\n' "$ts" >>"$log_file"
   exit 1
 fi
 
-appid="$(
-  awk '$2=="appid" {print $3; exit}' "$tmp_file"
-)"
-title="$(
-  awk '$2=="title" {sub(/^[^ ]+ title /,""); print; exit}' "$tmp_file"
-)"
+appid="$(jq -er '.appid // empty' "$tmp_file")"
+title="$(jq -r '.title // ""' "$tmp_file")"
 
 normalize() {
   printf '%s' "$1" \

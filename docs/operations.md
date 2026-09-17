@@ -259,6 +259,34 @@ Backups are written under `~/.local/state/ahdg/kde-config-backups/`. Ordinary
 files and migrates old Nix-store links to writable files, but never edits an
 existing regular KDE config.
 
+## Login autostart
+
+`home/modules/gui/autostart.nix` owns the shared XDG application entries in
+`~/.config/autostart/`. Plasma reads these natively. Mango runs
+`~/.local/bin/ahdg-mango-session-start`, which imports its display environment,
+starts the session services, and then runs `dex --autostart --environment X-Mango`.
+Keep ordinary application startup in this module rather than adding another
+Mango `exec-once` line. `OnlyShowIn` and `NotShowIn` still select the appropriate
+desktop; Mango uses `X-Mango`, while Plasma uses `KDE`.
+
+The Clash Party entry uses `/usr/bin/clash-party`; vendor entries under both
+`mihomo-party.desktop` and `clash-party.desktop` are disabled to avoid duplicate
+launches or a bare Electron welcome window. AB Download Manager's wrapper sets
+`autoStartOnBoot=false` and `useSystemTray=true` before startup, so the app does
+not overwrite the Nix-owned entry. Its startup log is
+`~/.abdm/system/log/autostart.log`.
+
+DMS, CopyQ, and portals remain systemd session services. Dev-runtime is a
+separate user service and does not depend on the chosen desktop session.
+
+Preview application startup without launching anything:
+
+```bash
+dex --autostart --dry-run --environment X-Mango
+dex --autostart --dry-run --environment KDE
+journalctl --user -b -t mango-autostart
+```
+
 ## Canonical Edit Paths
 
 Canonical source files live here:
@@ -575,6 +603,26 @@ The managed Plasma menu is XDG/KService infrastructure, not a KDE interface
 preference. Appearance, layout, toolbar, mouse, Dolphin, and Ark settings remain
 writable regular files and are not rewritten by `home-manager switch`.
 
+## Runtime entry points across switches
+
+Use stable entry points (`~/.local/bin` or `~/.nix-profile/bin`) for commands
+cached by long-lived desktop consumers. CopyQ's Mango binding uses
+`~/.local/bin/copyq-toggle`; Dolphin, Ark, and Kate desktop entries use profile
+launchers. Do not resolve these entry points with `readlink -f` before saving
+them into mutable application settings. Mango bindings are reloaded after
+the complete configuration has been installed and substituted.
+
+Keep store references inside Nix-generated wrappers, dependency/plugin paths,
+and systemd units. They keep dependencies consistent and let Home Manager
+detect service changes. Replacing every `ExecStart` with a stable path would
+hide package upgrades from unit comparison unless explicit restart triggers
+were also added. Stable entry points select the new generation on the next
+invocation; they do not upgrade an already running application's libraries.
+
+Host tools are a separate compatibility boundary: Mango's `mmsg` comes from
+the host and currently uses JSON `get` queries and `dispatch` actions. Stable
+paths do not protect scripts against command-line API changes.
+
 ## Package Cleanup
 
 Use the cleanup helper in dry-run mode first:
@@ -639,3 +687,21 @@ not verify account-specific overrides, model inference or upstream credit.
 The single `dev-runtime.service` owns the management daemon. Container restart
 policies own application recovery. The daemon and CLI serialize workspace mutations
 through a shared file lock, and stale configuration writes are rejected by revision.
+
+Dev-runtime waits for NetworkManager connectivity and an IPv4 default route
+before initializing or starting containers. Its user unit cannot wait on the
+system manager's `network-online.target`. This prevents rootless Podman's pasta
+from copying an early virtual interface before Wi-Fi finishes connecting. The
+check is bounded; the service retries after failure through `Restart=on-failure`.
+It does not pin an interface or require an external HTTP/DNS probe.
+
+After applying this configuration, verify the next boot with:
+
+```bash
+journalctl --user -b -u dev-runtime.service
+podman unshare --rootless-netns ip -4 route
+```
+
+An already running pasta network is not rebuilt by changing the unit. If it was
+created before connectivity, stop all containers sharing that rootless network
+and start them again once the host is connected.

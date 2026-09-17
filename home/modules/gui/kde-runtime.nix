@@ -62,7 +62,14 @@ let
   plasmaWorkspace = wrap pkgs.kdePackages.plasma-workspace;
   kwallet = wrap pkgs.kdePackages.kwallet;
   kwalletmanager = wrap pkgs.kdePackages.kwalletmanager;
-  dolphinLauncher = mkKdeLauncher "dolphin" (lib.getExe' dolphin "dolphin");
+  dolphinLauncher = pkgs.writeShellScriptBin "dolphin" ''
+    ${kdeEnvironment}
+    # Ark's Compress/Extract actions are KFileItemAction Qt plugins, not
+    # desktop service menus. They must be visible to Dolphin explicitly.
+    export QT_PLUGIN_PATH=${lib.escapeShellArg "${pkgs.kdePackages.ark}/lib/qt-6/plugins"}:"$QT_PLUGIN_PATH"
+    export PATH=${lib.escapeShellArg (lib.makeBinPath [ arkLauncher ])}:''${PATH:-/usr/local/bin:/usr/bin}
+    exec ${lib.getExe' dolphin "dolphin"} "$@"
+  '';
   arkLauncher = pkgs.writeShellScriptBin "ark" ''
     ${kdeEnvironment}
     export PATH=${lib.escapeShellArg (lib.makeBinPath archiveBackends)}:''${PATH:-/usr/local/bin:/usr/bin}
@@ -81,15 +88,15 @@ let
     mkPinnedDesktopEntry "org.kde.dolphin.desktop"
       "${dolphin}/share/applications/org.kde.dolphin.desktop"
       "Exec=dolphin %u"
-      "Exec=${lib.getExe dolphinLauncher} %u";
+      "Exec=${config.home.profileDirectory}/bin/dolphin %u";
   arkDesktopEntry =
     mkPinnedDesktopEntry "org.kde.ark.desktop" "${ark}/share/applications/org.kde.ark.desktop"
       "Exec=ark %U"
-      "Exec=${lib.getExe arkLauncher} %U";
+      "Exec=${config.home.profileDirectory}/bin/ark %U";
   kateDesktopEntry =
     mkPinnedDesktopEntry "org.kde.kate.desktop" "${kate}/share/applications/org.kde.kate.desktop"
       "Exec=kate"
-      "Exec=${lib.getExe kateLauncher}";
+      "Exec=${config.home.profileDirectory}/bin/kate";
   kdedDbusService =
     mkPinnedDesktopEntry "org.kde.kded6.service"
       "${pkgs.kdePackages.kded}/share/dbus-1/services/org.kde.kded6.service"

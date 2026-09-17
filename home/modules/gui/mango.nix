@@ -123,14 +123,20 @@ lib.mkIf config.ahdg.features.gui {
       "${mangoTarget}/env.conf"
 
     sed -i \
-      -e 's|@DEX@|${lib.getExe pkgs.dex}|g' \
-      "${mangoTarget}/dms.conf"
-
-    sed -i \
-      -e 's|@COPYQ_TOGGLE@|${copyqToggle}|g' \
-      -e 's|@DMS@|${lib.getExe pkgs.dms}|g' \
+      -e 's|@COPYQ_TOGGLE@|${config.home.homeDirectory}/.local/bin/copyq-toggle|g' \
       "${mangoTarget}/config.conf"
+
+    # Mango keeps bindings in memory. Reload only after all substitutions
+    # are complete, so a switch never leaves it using the previous closure.
+    if [[ -n "''${MANGO_INSTANCE_SIGNATURE:-}" ]] && command -v mmsg >/dev/null 2>&1; then
+      mmsg dispatch reload_config
+    fi
   '';
+
+  home.file.".local/bin/copyq-toggle" = {
+    source = copyqToggle;
+    executable = true;
+  };
 
   home.activation.ensureOpenRazerRuntime = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     if command -v systemctl >/dev/null 2>&1 && command -v openrazer-daemon >/dev/null 2>&1; then

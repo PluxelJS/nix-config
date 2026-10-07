@@ -3,6 +3,34 @@
 This document is the operator-facing reference for switching, cleanup,
 validation, and runtime-state expectations.
 
+## DMS recovery on MangoWC
+
+`dms.service` is the only DMS service. Home Manager supplies its unit while
+`/usr/bin/dms run --session` uses the host CLI and matching host Quickshell UI.
+It is wanted by `mango-session.target`, not by the generic graphical target.
+Mango calls `~/.local/bin/ahdg-mango-session-start`, which runs
+`~/.config/mango/scripts/session-start.sh` before shared XDG autostart. The
+session script imports the
+compositor environment and only then starts the session target and DMS.
+Separate `exec-once` commands do not provide this completion ordering.
+
+The unit restarts after unexpected exits (including exit status 0), with a
+five-second delay and no permanent start-rate lockout. Explicitly stopping the
+service still leaves it stopped. Home Manager uses `X-SwitchMethod=keep-old`
+so configuration switches do not terminate a working shell. Changed launch
+settings take effect on the next restart or login.
+
+```bash
+systemctl --user status dms
+systemctl --user restart dms
+journalctl --user -u dms -n 50
+```
+
+Use systemd for manual recovery; do not start a separate `dms run` or kill all
+Quickshell processes. A frozen UI without a process exit may still require
+the explicit restart command. The former `ahdg-mango-dms.service` is removed
+by Home Manager when applying this configuration.
+
 ## Normal Workflow
 
 For both the first install and later idempotent reconciliation, use the root
@@ -705,3 +733,80 @@ podman unshare --rootless-netns ip -4 route
 An already running pasta network is not rebuilt by changing the unit. If it was
 created before connectivity, stop all containers sharing that rootless network
 and start them again once the host is connected.
+
+## Optional n2n / EasyN2N LAN console
+
+Import `home/modules/n2n.nix` in the machine-local Home Manager module and set
+`services.n2n-web.enable = true`. This module is not part of the shared profiles.
+Run `n2n-install-host` once after activation; its desktop Polkit prompt installs
+the root-owned helper and `n2n-lan.service`. Re-run it after changing the helper
+or the n2n package. The installer pins the client closure at
+`/nix/var/nix/gcroots/ahdg-n2n` so host operation survives Nix garbage collection.
+
+Open **n2n 联机** in the application launcher, or `http://127.0.0.1:11212`.
+The local console requires no account. Connect/apply and disconnect request
+administrator authentication via Polkit. The client restarts after crashes,
+but is deliberately not enabled at boot. The user Web service starts at login.
+Configuration is saved with mode 0600 in `~/.local/state/n2n-web/config.json`
+and `/var/lib/n2n-lan/config.json`; an optional encryption key is private data.
+The console binds only to loopback and checks Host, Origin, and a per-process
+request token. The privileged helper validates structured input and permits only
+validated hostname/IPv4-and-port endpoints, n2n configuration, and operations on `n2n-lan.service`.
+
+Select the same server and community as the EasyN2N participants. Do not assume
+that separate public supernodes federate communities. An empty key explicitly
+selects no payload encryption; a nonempty key selects AES and must match on all
+participants. Multicast is enabled for game discovery. An empty address requests
+an address from the supernode; a manual address must be unique in the group's
+subnet. Automatically assigned IPs may change after reconnecting.
+
+The panel distinguishes an active process from a recent supernode registration.
+Its member list only shows peers currently known to the local client, not an
+authoritative group membership list. Server registration alone does not prove
+friend-to-friend connectivity. Test with a friend's virtual IP and the game's
+actual listening port. The console does not change firewall rules or bridge the
+physical LAN; allow only the required game ports on `n2n0` when hosting.
+
+Diagnostics: `systemctl status n2n-lan`, `journalctl -u n2n-lan`,
+`systemctl --user status n2n-web`, and `ip -4 addr show n2n0`.
+Implementation boundary tests: `python3 tests/n2n-web-test.py`.
+
+The **服务器** tab accepts custom `hostname:port` or IPv4 endpoints
+and HTTPS JSON subscriptions with `[{"server":"hostname","port":"7777"}]`.
+Subscription updates replace only subscription entries, preserve manually added
+servers, and deduplicate the combined selector. Failed or malformed downloads
+leave the saved list intact. Updating or deleting an entry never restarts the VPN;
+select a server and apply the connection configuration to switch.
+Subscription URLs and lists are saved with mode 0600 in
+`~/.local/state/n2n-web/servers.json`, outside the Nix repository and store.
+Fetching runs as the desktop user, caps responses at 1 MiB / 256 endpoints,
+and permits only HTTPS (including redirects). No scheduled refresh is configured;
+use **更新订阅** to refresh. Deletion applies to manual entries; subscription
+entries follow the provider's list on each successful refresh.
+
+The desktop console keeps the connection controls and clickable-to-copy IP in a
+fixed left card. Members, logs, and server management share a keyboard-accessible
+tab area on the right. Advanced IP/encryption settings are collapsed by default.
+Logs support level filtering and pausing refresh; only the long content area
+scrolls. Narrow screens retain normal vertical scrolling.
+
+While the console is open, server latency refreshes approximately every 30 seconds.
+It uses n2n v3's native UDP QUERY_PEER / PEER_INFO PING/PONG exchange (null target
+MAC), not ICMP. Each server receives two probes; the UI displays the median RTT,
+partial replies, timeout, DNS failure, or unreachable status. The probe uses the
+currently entered community name without registering an edge or creating a TAP.
+At most eight probes run concurrently, with results cached and overlapping batches
+suppressed. The selector sorts responding servers by latency while preserving the
+selected value. It never reconnects automatically. Measurements include the actual
+routing/proxy path and do not establish friend-to-friend game latency; a timeout
+can also mean that a server restricts the community or does not answer this probe.
+Protocol references: ntop/n2n tag 3.0 `src/wire.c`, `src/edge_utils.c`, and
+`src/sn_utils.c`. Tests cover packet validation, timeouts, and overlapping batches.
+
+Mindustry hosting needs TCP and UDP 6567 allowed from the intended VPN subnet on
+`n2n0`. These are host firewall settings, not automatically managed by this module.
+Recent game versions also use multicast discovery at `227.2.7.7:20151/UDP`.
+If direct connections work but LAN discovery does not, check broadcast filtering,
+`ip route get 227.2.7.7`, and the interface that joined the group (`ip maddr`). A
+proxy TUN can capture the multicast route even when unicast VPN traffic works.
+The console does not currently fix game-specific multicast routing.

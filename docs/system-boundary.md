@@ -121,6 +121,10 @@ Mango session startup is user-layer and Home Manager-owned:
   autostart entry is disabled because `copyq.service` owns the clipboard
   manager process. DMS's clipboard widget is hidden, and its backend tracking is
   disabled by an ordered one-shot service after the DMS backend becomes ready.
+- `dms.service` uses the host DMS CLI and matching host UI. Mango exports its
+  environment before starting the session target, in one sequential script.
+  DMS recovers unexpected exits automatically and is kept running during
+  Home Manager switches; there is no separate `ahdg-mango-dms` instance.
 - Cachy-Update is the sole graphical update notifier. A hidden per-user desktop
   entry suppresses Shelly's legacy notification helper, avoiding duplicate
   checks and stale-settings errors during login.

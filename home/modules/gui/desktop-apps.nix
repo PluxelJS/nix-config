@@ -37,19 +37,13 @@ let
     # The backend socket can appear shortly after the shell starts. Repeat the
     # command because DMS persists clipboard tracking state in its own database.
     for _ in $(${pkgs.coreutils}/bin/seq 1 50); do
-      if ${lib.getExe pkgs.dms} clipboard config set --disable >/dev/null 2>&1; then
+      if /usr/bin/dms clipboard config set --disable >/dev/null 2>&1; then
         exit 0
       fi
       ${pkgs.coreutils}/bin/sleep 0.2
     done
   '';
 
-  dmsAutostart = pkgs.writeShellScript "ahdg-mango-dms-autostart" ''
-    export PATH="${config.home.homeDirectory}/.local/bin:${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
-    # Applications must outlive shell reloads and get their own journal/scope.
-    export DMS_DEFAULT_LAUNCH_PREFIX="${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet --"
-    exec ${lib.getExe pkgs.dms} run
-  '';
 in
 lib.mkIf config.ahdg.features.gui {
   # Plasma consumes XDG autostart entries itself. Minimal compositors such as
@@ -68,17 +62,36 @@ lib.mkIf config.ahdg.features.gui {
     package = config.lib.nixGL.wrap pkgs.zed-editor;
   };
 
-  systemd.user.services.ahdg-mango-dms = {
+  # Use the same service name and host CLI as the packaged Quickshell UI.
+  # A second, Nix-specific unit can otherwise race a manually recovered DMS.
+  systemd.user.services.dms = {
     Unit = {
       Description = "Dank Material Shell";
       After = [ "graphical-session.target" ];
+      Requisite = [ "graphical-session.target" ];
       PartOf = [ "mango-session.target" ];
+      ConditionEnvironment = [
+        "WAYLAND_DISPLAY"
+        "XDG_CURRENT_DESKTOP=mangowc"
+      ];
+      StartLimitIntervalSec = 0;
+      # Updating unrelated packages must never tear down the live shell.
+      X-SwitchMethod = "keep-old";
     };
     Service = {
-      ExecStart = dmsAutostart;
-      Restart = "on-failure";
-      RestartSec = 2;
-      Slice = "session.slice";
+      Type = "dbus";
+      BusName = "org.freedesktop.Notifications";
+      ExecStart = "/usr/bin/dms run --session";
+      ExecReload = "/usr/bin/kill -USR1 $MAINPID";
+      Restart = "always";
+      RestartSec = 5;
+      TimeoutStartSec = 90;
+      TimeoutStopSec = 10;
+      Environment = [
+        "DMS_DISABLE_POLKIT=1"
+        "DMS_DEFAULT_LAUNCH_PREFIX=${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet --"
+        "PATH=${config.home.homeDirectory}/.local/bin:${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin"
+      ];
     };
     Install.WantedBy = [ "mango-session.target" ];
   };
@@ -86,8 +99,8 @@ lib.mkIf config.ahdg.features.gui {
   systemd.user.services.ahdg-disable-dms-clipboard = {
     Unit = {
       Description = "Disable DMS clipboard tracking";
-      Requires = [ "ahdg-mango-dms.service" ];
-      After = [ "ahdg-mango-dms.service" ];
+      Requires = [ "dms.service" ];
+      After = [ "dms.service" ];
       PartOf = [ "mango-session.target" ];
     };
     Service = {
@@ -121,7 +134,7 @@ lib.mkIf config.ahdg.features.gui {
 
   home.activation.ensureDmsService = lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
     if ${pkgs.systemd}/bin/systemctl --user --quiet is-active mango-session.target; then
-      ${pkgs.systemd}/bin/systemctl --user start ahdg-mango-dms.service 2>/dev/null || true
+      ${pkgs.systemd}/bin/systemctl --user start dms.service
     fi
   '';
 

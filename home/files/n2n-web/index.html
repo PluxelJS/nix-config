@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>n2n · 联机工作台</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --line: #29364a;
+        --muted: #91a4bd;
+        --text: #e8eff8;
+        --accent: #77dfc0;
+        font-family: Inter, "Noto Sans CJK SC", system-ui, sans-serif;
+        color: var(--text);
+        background: #0c121d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        padding: 18px 24px;
+        background: radial-gradient(ellipse at 0 0, #19323755, transparent 50%);
+      }
+      main {
+        max-width: 1520px;
+        margin: auto;
+        height: calc(100dvh - 36px);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      header,
+      .brand,
+      .section-head,
+      .actions,
+      .row,
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      header,
+      .section-head {
+        justify-content: space-between;
+      }
+      .brand {
+        gap: 10px;
+      }
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border: 1px solid #43685d;
+        background: #173d35;
+        border-radius: 10px;
+        font-weight: 800;
+        color: var(--accent);
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+      h2 {
+        font-size: 14px;
+        margin: 0;
+      }
+      p,
+      small,
+      .count,
+      .updated {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      p {
+        margin: 0;
+      }
+      small {
+        display: block;
+        margin-top: 7px;
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(320px, 0.72fr) minmax(470px, 1.4fr);
+        gap: 16px;
+        min-height: 0;
+        flex: 1;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: linear-gradient(145deg, #192433, #121b29);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .connection {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 17px;
+        overflow: auto;
+      }
+      .section-head {
+        margin-bottom: 0;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #53607866;
+        background: #253044;
+        color: #bdc9d9;
+        border-radius: 30px;
+        padding: 5px 9px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .badge:before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        background: currentColor;
+        border-radius: 50%;
+      }
+      .badge.good {
+        background: #173e35;
+        border-color: #306555;
+        color: #7fe7c5;
+      }
+      .badge.pending {
+        background: #463922;
+        border-color: #695437;
+        color: #f2cb82;
+      }
+      .badge.error {
+        background: #432934;
+        border-color: #784252;
+        color: #ff9db0;
+      }
+      label {
+        font-size: 12px;
+        color: #b8c7db;
+        display: block;
+      }
+      input,
+      select {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        margin-top: 7px;
+        padding: 10px 11px;
+        color: var(--text);
+        background: #0c1522;
+        border: 1px solid #34445c;
+        border-radius: 7px;
+        font: inherit;
+        font-size: 12px;
+        outline: none;
+      }
+      input:focus,
+      select:focus {
+        border-color: var(--accent);
+      }
+      button {
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        padding: 10px 14px;
+        background: var(--accent);
+        color: #112f28;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      button:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      button.secondary {
+        background: #233147;
+        border-color: #35465e;
+        color: #dce6f4;
+      }
+      button.ghost {
+        padding: 6px 9px;
+        background: transparent;
+        color: #afc0d7;
+        border-color: var(--line);
+        font-size: 11px;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .actions {
+        gap: 8px;
+      }
+      .actions button:first-child {
+        flex: 1;
+      }
+      .message {
+        font-size: 12px;
+        line-height: 1.6;
+        color: #e6c28b;
+        overflow-wrap: anywhere;
+      }
+      .message:empty {
+        display: none;
+      }
+      .advanced {
+        border-top: 1px solid var(--line);
+        padding-top: 13px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      summary:hover {
+        color: var(--text);
+      }
+      .advanced-fields {
+        display: grid;
+        gap: 12px;
+        padding-top: 13px;
+      }
+      .notice {
+        color: #c9b17e;
+        font-size: 11px;
+        line-height: 1.5;
+        margin-top: 9px;
+      }
+      .ip-area {
+        padding: 12px 14px;
+        background: #173c342e;
+        border: 1px solid #34594f;
+        border-radius: 9px;
+      }
+      .ip-heading {
+        font-size: 11px;
+        color: #92bdae;
+        margin-bottom: 6px;
+      }
+      .ip {
+        background: transparent;
+        padding: 4px 0;
+        color: var(--accent);
+        font:
+          650 clamp(23px, 2.5vw, 32px) ui-monospace,
+          monospace;
+        letter-spacing: -1px;
+        max-width: 100%;
+        text-align: left;
+        overflow-wrap: anywhere;
+      }
+      .ip:hover:not(:disabled) {
+        color: #bbffe7;
+      }
+      .ip:disabled {
+        opacity: 1;
+        color: var(--muted);
+      }
+      .ip-area small {
+        font-size: 10px;
+      }
+      .hint {
+        color: #6f839d;
+        font-size: 10px;
+      }
+      .monitor {
+        display: flex;
+        flex-direction: column;
+      }
+      .overview {
+        padding: 17px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 12px 0;
+      }
+      .metric {
+        border-right: 1px solid var(--line);
+        padding-right: 8px;
+      }
+      .metric:last-child {
+        border: 0;
+      }
+      .metric-label {
+        font-size: 10px;
+        color: var(--muted);
+        margin-bottom: 5px;
+      }
+      .metric-value {
+        font-size: 16px;
+        font-weight: 650;
+      }
+      .metric-sub {
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 3px;
+      }
+      .connection-meta {
+        display: flex;
+        flex-wrap: wrap;
+        column-gap: 16px;
+        row-gap: 4px;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .connection-meta b {
+        font:
+          400 10px ui-monospace,
+          monospace;
+        color: #b4c5dc;
+      }
+      .tabbar {
+        display: flex;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+        gap: 7px;
+        flex-shrink: 0;
+      }
+      .tab {
+        background: transparent;
+        color: var(--muted);
+        border-radius: 0;
+        border-bottom: 2px solid transparent;
+        padding: 13px 10px;
+        font-size: 12px;
+      }
+      .tab[aria-selected="true"] {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab .count {
+        font-size: 10px;
+        margin-left: 4px;
+      }
+      .panel {
+        padding: 16px 20px;
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: auto;
+      }
+      .peer-scroll {
+        overflow: auto;
+        min-height: 0;
+        flex: 1;
+      }
+      .empty {
+        display: grid;
+        place-content: center;
+        min-height: 140px;
+        height: 100%;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+        line-height: 1.8;
+      }
+      .empty:before {
+        content: "◎";
+        font-size: 30px;
+        color: #3f5c70;
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 9px 6px;
+        border-bottom: 1px solid var(--line);
+        overflow-wrap: anywhere;
+      }
+      th {
+        font-weight: 500;
+        color: var(--muted);
+        position: sticky;
+        top: 0;
+        background: #162131;
+      }
+      .mode {
+        color: #83d7bf;
+      }
+      .toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .toolbar select {
+        width: auto;
+        margin: 0;
+        padding: 6px;
+        font-size: 11px;
+      }
+      .toolbar .spacer {
+        flex: 1;
+      }
+      .logs {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        background: #090f19;
+        border: 1px solid #27364a;
+        border-radius: 8px;
+        padding: 10px;
+        font:
+          11px/1.8 ui-monospace,
+          monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .log-line {
+        padding: 1px 4px;
+        border-left: 2px solid transparent;
+        color: #a4b4cb;
+      }
+      .log-line.warn {
+        color: #e9c581;
+        background: #cba04609;
+        border-left-color: #ab8548;
+      }
+      .log-line.error {
+        color: #f69cac;
+        background: #d5516c0d;
+        border-left-color: #cd6580;
+      }
+      .log-line.success {
+        color: #82d8bd;
+      }
+      .log-time {
+        color: #698099;
+      }
+      .log-source {
+        color: #829ccb;
+      }
+      .row {
+        align-items: end;
+        gap: 8px;
+      }
+      .row label {
+        flex: 1;
+        min-width: 0;
+      }
+      .row button {
+        flex-shrink: 0;
+      }
+      .server-list {
+        min-height: 0;
+        overflow: auto;
+        flex: 1;
+      }
+      .server-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+        padding: 5px 0;
+      }
+      .server-name {
+        background: transparent;
+        color: #c7d7ed;
+        text-align: left;
+        padding: 9px 0;
+        font:
+          11px ui-monospace,
+          monospace;
+        flex: 1;
+        overflow-wrap: anywhere;
+        min-width: 0;
+      }
+      .server-name:hover {
+        color: var(--accent);
+      }
+      #toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 18px;
+        border-radius: 9px;
+        background: #285247;
+        border: 1px solid #5e9c88;
+        color: #d5ffee;
+        font-size: 12px;
+        box-shadow: 0 8px 30px #0005;
+        z-index: 10;
+      }
+      .legend {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      @media (max-height: 720px) and (min-width: 881px) {
+        body {
+          padding: 12px 18px;
+        }
+        main {
+          height: calc(100dvh - 24px);
+          gap: 12px;
+        }
+        .connection {
+          padding: 16px;
+          gap: 12px;
+        }
+        .overview {
+          padding: 12px 16px;
+        }
+        .panel {
+          padding: 12px 16px;
+        }
+        .ip-area {
+          padding-top: 12px;
+        }
+        .status-grid {
+          margin: 9px 0;
+        }
+        .tab {
+          padding: 10px;
+        }
+      }
+      @media (max-width: 880px) {
+        body {
+          padding: 14px;
+        }
+        main {
+          height: auto;
+          min-height: calc(100dvh - 28px);
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+          flex: none;
+        }
+        .connection {
+          gap: 13px;
+        }
+        .ip-area {
+          margin-top: 0;
+        }
+        .monitor {
+          height: 540px;
+        }
+        .hint {
+          display: none;
+        }
+        .connection-meta {
+          font-size: 10px;
+        }
+      }
+      @media (max-width: 440px) {
+        .connection {
+          padding: 16px;
+        }
+        .overview,
+        .panel {
+          padding: 14px;
+        }
+        .row {
+          flex-wrap: wrap;
+        }
+        .row label {
+          flex-basis: 100%;
+        }
+        .row button {
+          padding: 8px 12px;
+        }
+        .metric-value {
+          font-size: 14px;
+        }
+        .metric-sub {
+          font-size: 9px;
+        }
+        .updated {
+          font-size: 10px;
+        }
+        .tabbar {
+          padding: 0 8px;
+        }
+        .tab {
+          padding: 12px 8px;
+        }
+        .toolbar {
+          gap: 5px;
+        }
+        .toolbar button {
+          font-size: 10px;
+          padding: 6px;
+        }
+        .ip {
+          font-size: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">
+          <div class="logo">n²</div>
+          <h1>联机工作台</h1>
+        </div>
+        <span class="hint">本机管理 · n2n / Linux</span>
+      </header>
+      <div class="workspace">
+        <article class="card connection">
+          <div class="section-head">
+            <h2>我的连接</h2>
+            <span id="badge" class="badge">读取状态</span>
+          </div>
+          <div class="ip-area">
+            <div class="ip-heading">
+              我的虚拟 IP <span class="hint">· 点击复制</span>
+            </div>
+            <button
+              id="ip"
+              class="ip"
+              disabled
+              title="点击复制虚拟 IP"
+              aria-label="复制我的虚拟 IP"
+            >
+              —</button
+            ><small
+              >朋友使用此 IP
+              加入游戏。同服务器、同小组；房主放行游戏端口。</small
+            >
+          </div>
+          <label
+            ><span style="display: flex; justify-content: space-between"
+              >服务器
+              <span id="latency-state" class="count">等待测速</span></span
+            ><select id="server"></select></label
+          ><label
+            >小组名<input id="community" maxlength="16" autocomplete="off"
+          /></label>
+          <details class="advanced">
+            <summary>高级设置 · 加密与固定 IP</summary>
+            <div class="advanced-fields">
+              <label
+                >加密密钥<input
+                  id="key"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="无加密时留空" /></label
+              ><label
+                >虚拟 IPv4<input
+                  id="address"
+                  placeholder="自动分配，或填写 10.42.0.20/24" /></label
+              ><small>密钥须与朋友一致；手动 IP 须同网段且不重复。</small>
+            </div>
+          </details>
+          <div>
+            <div class="actions">
+              <button id="connect">连接</button
+              ><button id="disconnect" class="secondary" disabled>断开</button>
+            </div>
+            <div class="notice" id="privacy"></div>
+          </div>
+          <div id="message" class="message" role="status"></div>
+        </article>
+        <article class="card monitor">
+          <div class="overview">
+            <div class="section-head">
+              <h2>网络状态</h2>
+              <span id="updated" class="updated">每 5 秒更新</span>
+            </div>
+            <div class="status-grid">
+              <div class="metric">
+                <div class="metric-label">客户端</div>
+                <div id="process" class="metric-value">—</div>
+                <div id="registration" class="metric-sub">等待读取</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">发送 / 接收 · 包</div>
+                <div id="traffic" class="metric-value">—</div>
+                <div class="metric-sub">本次进程累计</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">直连 / 中继候选</div>
+                <div id="routes" class="metric-value">—</div>
+                <div class="metric-sub">本机已发现的成员</div>
+              </div>
+            </div>
+            <div class="connection-meta">
+              <span>端点 <b id="active-server">—</b></span
+              ><span>版本 <b id="server-version">—</b></span
+              ><span>确认 <b id="last-seen">—</b></span>
+            </div>
+          </div>
+          <div class="tabbar" role="tablist" aria-label="网络管理">
+            <button
+              id="tab-peers"
+              class="tab"
+              role="tab"
+              aria-selected="true"
+              aria-controls="panel-peers"
+              tabindex="0"
+            >
+              成员 <span id="peer-count" class="count">0 位</span></button
+            ><button
+              id="tab-logs"
+              class="tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-logs"
+              tabindex="-1"
+            >
+              日志</button
+            ><button
+              id="tab-servers"
+              class="tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-servers"
+              tabindex="-1"
+            >
+              服务器 <span id="server-count" class="count"></span>
+            </button>
+          </div>
+          <section
+            id="panel-peers"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-peers"
+          >
+            <div id="peers" class="peer-scroll"></div>
+            <p>仅显示本机已发现的成员。访问朋友的虚拟 IP 可触发发现。</p>
+          </section>
+          <section
+            id="panel-logs"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-logs"
+            hidden
+          >
+            <div class="toolbar">
+              <select id="log-filter" aria-label="日志级别">
+                <option value="all">全部日志</option>
+                <option value="issues">警告与错误</option></select
+              ><span class="spacer"></span
+              ><button id="pause-logs" class="ghost" aria-pressed="false">
+                暂停刷新</button
+              ><button id="copy-logs" class="ghost">复制日志</button>
+            </div>
+            <div
+              id="logs"
+              class="logs"
+              tabindex="0"
+              aria-label="连接日志"
+            ></div>
+            <span class="legend"
+              >绿：成功 · 黄：警告 · 红：错误　|　最近 18 条 / 每 5 秒更新</span
+            >
+          </section>
+          <section
+            id="panel-servers"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-servers"
+            hidden
+          >
+            <div>
+              <div class="row">
+                <label
+                  >订阅地址<input
+                    id="subscription"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="https://…" /></label
+                ><button id="update-subscription" class="secondary">
+                  更新订阅
+                </button>
+              </div>
+              <small id="subscription-status"></small>
+            </div>
+            <div class="row">
+              <label
+                >手动添加<input
+                  id="new-server"
+                  placeholder="example.com:7777"
+                  autocomplete="off" /></label
+              ><button id="add-server" class="secondary">添加</button>
+            </div>
+            <div id="server-message" class="message" role="status"></div>
+            <div class="section-head">
+              <span class="count">n2n UDP 往返延迟 · 每 30 秒自动测量</span
+              ><button id="probe-now" class="ghost">重新测速</button>
+            </div>
+            <div id="manual-servers" class="server-list"></div>
+            <p>点击服务器地址即可选择，应用后切换连接。订阅仅存本机。</p>
+          </section>
+        </article>
+      </div>
+    </main>
+    <div id="toast" role="status" hidden></div>
+    <script>
+      const token = "__TOKEN__";
+      const $ = (id) => document.getElementById(id);
+      let pingBusy = false,
+        latencies = {},
+        busy = false,
+        refreshing = false,
+        currentIP = "",
+        currentLog = "",
+        savedConfig = null,
+        lastStatus = null,
+        logsPaused = false;
+      async function api(path, data) {
+        const r = await fetch("/api/" + path, {
+          method: data === undefined ? "GET" : "POST",
+          headers: {
+            "X-N2N-Token": token,
+            ...(data === undefined
+              ? {}
+              : { "Content-Type": "application/json" }),
+          },
+          body: data === undefined ? undefined : JSON.stringify(data),
+        });
+        const v = await r.json();
+        if (!r.ok) throw Error(v.error || r.status);
+        return v;
+      }
+      function privacy() {
+        $("privacy").textContent = $("key").value
+          ? "使用 AES 加密。朋友需配置相同密钥及算法。"
+          : "当前配置无加密。小组名不是密码，中继方可能读取转发内容。";
+      }
+      function renderLogs(text) {
+        if (logsPaused) return;
+        if (text === currentLog && $("logs").childNodes.length) return;
+        currentLog = text;
+        const box = $("logs"),
+          follow = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+        box.replaceChildren();
+        for (const line of (text || "暂无日志").trimEnd().split("\n")) {
+          const el = document.createElement("div");
+          el.className =
+            "log-line" +
+            (/error|failed|fatal|denied|错误|失败/i.test(line)
+              ? " error"
+              : /warn|警告/i.test(line)
+                ? " warn"
+                : /\[OK\]|successfully|received REGISTER_SUPER_ACK|edge started/i.test(
+                      line,
+                    )
+                  ? " success"
+                  : "");
+          const parts = line.match(
+            /^(\d{2}\/\w+\/\d{4} \d{2}:\d{2}:\d{2}) (\[[^\]]+\]) (.*)$/,
+          );
+          if (parts) {
+            for (const [text, cls] of [
+              [parts[1] + " ", "log-time"],
+              [parts[2] + " ", "log-source"],
+              [parts[3], ""],
+            ]) {
+              const span = document.createElement("span");
+              span.className = cls;
+              span.textContent = text;
+              el.append(span);
+            }
+          } else el.textContent = line;
+          box.append(el);
+        }
+        filterLogs();
+        if (follow) box.scrollTop = box.scrollHeight;
+      }
+      async function refresh() {
+        if (refreshing) return;
+        refreshing = true;
+        try {
+          const s = await api("status");
+          lastStatus = s;
+          const active = s.active === "active",
+            pending = active || s.active === "activating";
+          $("badge").textContent = s.registered
+            ? "服务器已连接"
+            : pending
+              ? "等待服务器确认"
+              : s.active === "failed"
+                ? "连接失败"
+                : "已断开";
+          $("badge").className =
+            "badge" +
+            (s.registered
+              ? " good"
+              : pending
+                ? " pending"
+                : s.active === "failed"
+                  ? " error"
+                  : "");
+          currentIP = s.addresses.length ? s.addresses[0].split("/")[0] : "";
+          $("ip").textContent = currentIP || "尚未分配";
+          $("ip").disabled = !currentIP;
+          updateActions();
+          $("process").textContent = active
+            ? "运行中"
+            : s.active === "activating"
+              ? "重试中"
+              : s.active === "failed"
+                ? "失败"
+                : "已停止";
+          $("registration").textContent = s.registered
+            ? "服务器已确认注册"
+            : pending
+              ? "尚未收到有效注册确认"
+              : "当前未连接";
+          const counts = s.stats.find((x) => x.type === "transop");
+          $("traffic").textContent = counts
+            ? `${Number(counts.tx_pkt).toLocaleString()} / ${Number(counts.rx_pkt).toLocaleString()}`
+            : "—";
+          $("routes").textContent =
+            `${s.peers.filter((p) => p.mode === "p2p").length} / ${s.peers.filter((p) => p.mode !== "p2p").length}`;
+          const sn =
+            s.servers.find((n) => n.current === 1) ||
+            s.servers.find((n) => n.current === 2);
+          $("active-server").textContent = sn?.sockaddr || "—";
+          $("server-version").textContent = sn?.version || "—";
+          $("last-seen").textContent = sn?.last_seen
+            ? `${Math.max(0, Math.floor(Date.now() / 1000 - sn.last_seen))} 秒前`
+            : "尚无确认";
+          $("updated").textContent =
+            "更新于 " +
+            new Date().toLocaleTimeString("zh-CN", { hour12: false });
+          $("peer-count").textContent = s.peers.length + " 位";
+          renderLogs(s.log);
+          const box = $("peers");
+          box.replaceChildren();
+          if (!s.peers.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "尚未发现成员 · 等待朋友加入或发起通信";
+            box.append(empty);
+          } else {
+            const table = document.createElement("table"),
+              head = table.insertRow();
+            for (const label of ["虚拟 IP", "设备", "连接方式"]) {
+              const th = document.createElement("th");
+              th.textContent = label;
+              head.append(th);
+            }
+            for (const p of s.peers) {
+              const row = table.insertRow();
+              for (const text of [
+                p.ip4addr,
+                p.desc || p.macaddr,
+                p.mode === "p2p" ? "P2P 直连" : "中继 / 等待直连",
+              ])
+                row.insertCell().textContent = text || "—";
+              row.lastChild.className = "mode";
+            }
+            box.append(table);
+          }
+        } catch (e) {
+          $("badge").textContent = "状态读取失败";
+          $("badge").className = "badge error";
+          $("updated").textContent = "数据可能已过期";
+          $("message").textContent = e.message;
+          lastStatus = null;
+          updateActions();
+        } finally {
+          refreshing = false;
+        }
+      }
+      async function action(name) {
+        if (busy) return;
+        busy = true;
+        $("connect").disabled = $("disconnect").disabled = true;
+        $("message").textContent = "请在桌面弹窗中完成管理员认证…";
+        try {
+          const data =
+            name === "connect"
+              ? Object.fromEntries(
+                  ["server", "community", "address", "key"].map((k) => [
+                    k,
+                    $(k).value.trim(),
+                  ]),
+                )
+              : {};
+          await api(name, data);
+          if (name === "connect") savedConfig = data;
+          $("message").textContent =
+            name === "connect"
+              ? "连接请求已提交，等待服务器确认。"
+              : "已断开。";
+          await refresh();
+        } catch (e) {
+          $("message").textContent = e.message;
+        } finally {
+          busy = false;
+          updateActions();
+        }
+      }
+      function renderServers(d, preferred = $("server").value) {
+        const values = [...d.servers];
+        if (preferred && !values.includes(preferred)) values.push(preferred);
+        $("server").replaceChildren();
+        for (const value of values) {
+          const o = document.createElement("option");
+          o.value = value;
+          o.textContent =
+            value +
+            (d.subscribed.includes(value)
+              ? " · 订阅"
+              : !d.servers.includes(value)
+                ? " · 上次配置"
+                : " · 手动");
+          o.dataset.label = o.textContent;
+          $("server").append(o);
+        }
+        if (preferred) $("server").value = preferred;
+        $("subscription").value = d.subscription;
+        $("subscription-status").textContent =
+          `订阅 ${d.subscribed.length} 台 · 手动 ${d.manual.length} 台`;
+        $("server-count").textContent = d.servers.length + " 台";
+        $("manual-servers").replaceChildren();
+        for (const value of d.servers) {
+          const line = document.createElement("div");
+          line.className = "server-row";
+          const label = document.createElement("button");
+          label.className = "server-name";
+          label.textContent = value;
+          label.title = "选择此服务器";
+          label.onclick = () => {
+            $("server").value = value;
+            updateActions();
+            notify("已选择服务器，应用后生效");
+          };
+          const source = document.createElement("span");
+          source.className = "count";
+          source.textContent = d.subscribed.includes(value) ? "订阅" : "手动";
+          const latency = document.createElement("span");
+          latency.className = "count latency";
+          latency.dataset.server = value;
+          latency.title = "n2n UDP PING/PONG 往返时间，两次采样中位数";
+          line.append(label, latency, source);
+          if (d.manual.includes(value)) {
+            const b = document.createElement("button");
+            b.className = "ghost";
+            b.textContent = "删除";
+            b.setAttribute("aria-label", "删除 " + value);
+            b.onclick = () => serverAction("server-remove", { server: value });
+            line.append(b);
+          }
+          $("manual-servers").append(line);
+        }
+        paintLatency();
+      }
+
+      async function serverAction(action, data) {
+        const buttons = [$("update-subscription"), $("add-server")];
+        buttons.forEach((b) => (b.disabled = true));
+        $("server-message").textContent =
+          action === "subscription" ? "正在下载订阅…" : "正在保存…";
+        try {
+          const d = await api(action, data);
+          renderServers(d);
+          $("server-message").textContent =
+            action === "subscription"
+              ? `已更新 ${d.subscribed.length} 台服务器，当前连接保持不变。`
+              : "列表已保存。";
+          if (action === "server-add") $("new-server").value = "";
+          pollLatency(true);
+        } catch (e) {
+          $("server-message").textContent = e.message;
+        } finally {
+          buttons.forEach((b) => (b.disabled = false));
+        }
+      }
+      function latencyText(server) {
+        const r = latencies[server];
+        return !r
+          ? "测速中"
+          : r.ms !== null
+            ? `${Math.round(r.ms)} ms${r.received < r.sent ? " · 丢包" : ""}`
+            : r.status === "dns_error"
+              ? "解析失败"
+              : r.status === "unreachable"
+                ? "不可达"
+                : "超时";
+      }
+      function paintLatency() {
+        for (const o of $("server").options)
+          o.textContent = o.dataset.label + " · " + latencyText(o.value);
+        for (const el of document.querySelectorAll(".latency")) {
+          el.textContent = latencyText(el.dataset.server);
+          const r = latencies[el.dataset.server];
+          el.style.color =
+            r?.ms != null
+              ? r.ms < 80
+                ? "#80d9bd"
+                : r.ms < 180
+                  ? "#dfcb94"
+                  : "#eca398"
+              : "#91a4bd";
+        }
+      }
+      async function pollLatency(force = false) {
+        if (pingBusy) return;
+        pingBusy = true;
+        try {
+          const d = await api("probe", {
+            community: $("community").value.trim(),
+            force,
+          });
+          if (d.community !== $("community").value.trim()) return;
+          latencies = d.results;
+          paintLatency();
+          $("latency-state").textContent = d.running ? "测速中…" : "延迟已更新";
+          $("probe-now").disabled = d.running;
+          if (!d.running) {
+            const selected = $("server").value;
+            const options = [...$("server").options].sort(
+              (a, b) =>
+                (latencies[a.value]?.ms ?? Infinity) -
+                (latencies[b.value]?.ms ?? Infinity),
+            );
+            $("server").replaceChildren(...options);
+            $("server").value = selected;
+          }
+        } catch (e) {
+          $("latency-state").textContent = "测速不可用";
+          $("latency-state").title = e.message;
+        } finally {
+          pingBusy = false;
+        }
+      }
+      $("probe-now").onclick = () => pollLatency(true);
+      $("community").addEventListener("change", () => pollLatency(true));
+      let toastTimer;
+      function notify(text) {
+        $("toast").textContent = text;
+        $("toast").hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => ($("toast").hidden = true), 2200);
+      }
+      async function copy(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          notify("已复制");
+        } catch {
+          notify("复制失败，请手动选择文本");
+        }
+      }
+      function updateActions() {
+        const data = Object.fromEntries(
+          ["server", "community", "address", "key"].map((k) => [
+            k,
+            $(k).value.trim(),
+          ]),
+        );
+        const dirty =
+          savedConfig &&
+          Object.keys(data).some((k) => data[k] !== savedConfig[k]);
+        const active =
+          lastStatus && ["active", "activating"].includes(lastStatus.active);
+        $("connect").textContent = busy
+          ? "等待认证…"
+          : active
+            ? dirty
+              ? "应用并重连"
+              : lastStatus.registered
+                ? "已连接"
+                : "重新连接"
+            : "连接";
+        $("connect").disabled =
+          busy || !!(active && lastStatus.registered && !dirty);
+        $("disconnect").disabled = busy || !active;
+      }
+      function filterLogs() {
+        const level = $("log-filter").value;
+        for (const line of $("logs").children)
+          line.hidden =
+            level === "issues" &&
+            !line.classList.contains("warn") &&
+            !line.classList.contains("error");
+      }
+      function selectTab(id, focus = false) {
+        for (const tab of document.querySelectorAll("[role=tab]")) {
+          const selected = tab.id === id;
+          tab.setAttribute("aria-selected", selected);
+          tab.tabIndex = selected ? 0 : -1;
+          $(tab.getAttribute("aria-controls")).hidden = !selected;
+          if (selected && focus) tab.focus();
+        }
+        if (id === "tab-logs") $("logs").scrollTop = $("logs").scrollHeight;
+      }
+      for (const tab of document.querySelectorAll("[role=tab]")) {
+        tab.onclick = () => selectTab(tab.id);
+        tab.onkeydown = (e) => {
+          const tabs = [...document.querySelectorAll("[role=tab]")];
+          let index = tabs.indexOf(tab);
+          if (e.key === "ArrowRight") index = (index + 1) % tabs.length;
+          else if (e.key === "ArrowLeft")
+            index = (index + tabs.length - 1) % tabs.length;
+          else if (e.key === "Home") index = 0;
+          else if (e.key === "End") index = tabs.length - 1;
+          else return;
+          e.preventDefault();
+          selectTab(tabs[index].id, true);
+        };
+      }
+      $("ip").onclick = () => copy(currentIP);
+      $("copy-logs").onclick = () => copy(currentLog);
+      $("log-filter").onchange = filterLogs;
+      $("pause-logs").onclick = () => {
+        logsPaused = !logsPaused;
+        $("pause-logs").textContent = logsPaused ? "继续刷新" : "暂停刷新";
+        $("pause-logs").setAttribute("aria-pressed", String(logsPaused));
+        if (!logsPaused) refresh();
+      };
+      $("update-subscription").onclick = () =>
+        serverAction("subscription", { url: $("subscription").value.trim() });
+      $("add-server").onclick = () =>
+        serverAction("server-add", { server: $("new-server").value.trim() });
+      $("new-server").onkeydown = (e) => {
+        if (e.key === "Enter") $("add-server").click();
+      };
+      $("connect").onclick = () => action("connect");
+      $("disconnect").onclick = () => action("disconnect");
+      for (const k of ["server", "community", "address", "key"])
+        $(k).addEventListener("input", () => {
+          privacy();
+          updateActions();
+        });
+      (async () => {
+        try {
+          const d = await api("config");
+          savedConfig = d.config;
+          renderServers(d, d.config.server);
+          for (const k of ["server", "community", "address", "key"])
+            $(k).value = d.config[k];
+          privacy();
+          await refresh();
+          pollLatency();
+          setInterval(() => {
+            refresh();
+            pollLatency();
+          }, 5000);
+        } catch (e) {
+          $("message").textContent = e.message;
+        }
+      })();
+    </script>
+  </body>
+</html>

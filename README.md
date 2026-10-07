@@ -124,6 +124,27 @@ See [docs/operations.md](docs/operations.md) for commands and backup locations.
 `dev-runtime` uses Kong and kong-completion; its command definitions generate
 Bash/Zsh/Fish completion. `nixup` continues to use the repository's `usage.kdl` spec.
 
+### Optional n2n LAN console
+
+Portable profiles load `~/.config/ahdg/home.nix` when present. Enable the optional
+console there without changing the shared profiles:
+
+```nix
+{ config, lib, ... }:
+{
+  imports = [ /home/YOUR_USER/.config/nix/home/modules/n2n.nix ];
+  services.n2n-web.enable = lib.mkDefault (config.ahdg.profile == "desktop");
+}
+```
+
+For Linux clients joining EasyN2N (小黄鸭) groups, import
+`home/modules/n2n.nix` in the local module and enable
+`services.n2n-web.enable`. After switching, run `n2n-install-host` and open
+**n2n 联机** (`http://127.0.0.1:11212`). The console provides server selection,
+community/encryption settings, connect/disconnect, virtual IP, peers, and logs.
+See [the operations guide](docs/operations.md#optional-n2n--easyn2n-lan-console)
+for installation, compatibility, and firewall details.
+
 ## Structure
 
 - `flake.nix`: top-level Home Manager entrypoints

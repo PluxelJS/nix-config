@@ -78,6 +78,7 @@
           profile,
           username,
           homeDirectory,
+          extraModules ? [ ],
         }:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -95,7 +96,8 @@
                 inherit username homeDirectory;
               };
             }
-          ];
+          ]
+          ++ extraModules;
         };
       requiredEnv =
         name:
@@ -105,10 +107,14 @@
         if value != "" then value else throw "portable outputs require --impure so ${name} is available";
       mkCurrentHome =
         profile:
+        let
+          localModule = requiredEnv "HOME" + "/.config/ahdg/home.nix";
+        in
         mkHome {
           inherit profile;
           username = requiredEnv "USER";
           homeDirectory = requiredEnv "HOME";
+          extraModules = nixpkgs.lib.optional (builtins.pathExists localModule) localModule;
         };
     in
     {
@@ -124,6 +130,7 @@
       };
 
       homeModules.default = ./home/default.nix;
+      homeModules.n2n = ./home/modules/n2n.nix;
 
       homeConfigurations = {
         # Resolve the invoking account with `--impure`.

@@ -249,7 +249,7 @@ func (v *verifier) checkGUIFiles() {
 		".config/autostart/com.abdownloadmanager.desktop",
 		".config/autostart/com.shellyorg.shelly-notifications.desktop",
 		".config/systemd/user/ahdg-disable-dms-clipboard.service",
-		".config/systemd/user/ahdg-mango-dms.service",
+		".config/systemd/user/dms.service",
 		".config/systemd/user/copyq.service",
 		".config/systemd/user/mango-session.target",
 		".config/menus/plasma-applications.menu",
@@ -667,9 +667,10 @@ func (v *verifier) checkDesktopRuntime() {
 		abdmVendorAutostart := readFile(v.path(".config/autostart/com.abdownloadmanager.desktop"))
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
 		mangoMainConfig := readFile(v.path(".config/mango/config.conf"))
+		mangoSessionStart := readFile(v.path(".local/bin/ahdg-mango-session-start"))
 		copyqService := commandOutput("systemctl", "--user", "cat", "copyq.service")
 		disableDmsClipboardService := commandOutput("systemctl", "--user", "cat", "ahdg-disable-dms-clipboard.service")
-		dmsService := commandOutput("systemctl", "--user", "cat", "ahdg-mango-dms.service")
+		dmsService := commandOutput("systemctl", "--user", "cat", "dms.service")
 		mangoTarget := commandOutput("systemctl", "--user", "cat", "mango-session.target")
 		if strings.Contains(copyqAutostart, "Exec=/nix/store/") &&
 			fileContainsRegex(copyqAutostart, `(?m)^Hidden=true$`) &&
@@ -677,9 +678,13 @@ func (v *verifier) checkDesktopRuntime() {
 			strings.Contains(copyqService, "WantedBy=mango-session.target") &&
 			strings.Contains(disableDmsClipboardService, "Disable DMS clipboard tracking") &&
 			strings.Contains(disableDmsClipboardService, "WantedBy=mango-session.target") &&
-			regexp.MustCompile(`(?m)^ExecStart=/nix/store/.*ahdg-mango-dms-autostart$`).MatchString(dmsService) &&
+			strings.Contains(dmsService, "ExecStart=/usr/bin/dms run --session") &&
+			strings.Contains(dmsService, "Restart=always") &&
+			strings.Contains(dmsService, "X-SwitchMethod=keep-old") &&
+			strings.Contains(mangoSessionStart, "/mango/scripts/session-start.sh") &&
 			strings.Contains(dmsService, "PartOf=mango-session.target") &&
-			regexp.MustCompile(`(?m)^exec-once=/nix/store/.*/bin/dex --autostart --environment X-Mango$`).MatchString(mangoConfig) &&
+			strings.Contains(mangoConfig, "ahdg-mango-session-start") &&
+			strings.Contains(mangoSessionStart, "--autostart --environment X-Mango") &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME=kde") &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME_QT6=kde") &&
 			strings.Contains(copyqService, "QT_PLUGIN_PATH=/nix/store/") &&

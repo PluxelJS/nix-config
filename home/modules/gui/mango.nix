@@ -48,6 +48,7 @@ let
     "scripts/lid-internal-output.sh"
     "scripts/overview-spotlight-toggle.sh"
     "scripts/screenshot.sh"
+    "scripts/session-start.sh"
     "scripts/spawn"
   ];
 in

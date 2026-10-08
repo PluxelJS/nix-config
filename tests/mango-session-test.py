@@ -12,7 +12,7 @@ SCRIPT = (
 
 
 class MangoSessionTest(unittest.TestCase):
-    def run_startup(self, *, fail_import=False, with_socket=True):
+    def run_startup(self, *, fail_import=False, with_socket=True, unloaded_dms=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             log = root / "calls"
@@ -24,6 +24,9 @@ class MangoSessionTest(unittest.TestCase):
                     'if [ "${FAIL_IMPORT:-}" = 1 ] && '
                     '[ "${0##*/}" = dbus-update-activation-environment ] && '
                     '[ "$1" = --systemd ]; then exit 1; fi\n'
+                    'if [ "${UNLOADED_DMS:-}" = 1 ] && '
+                    '[ "${0##*/}" = systemctl ] && '
+                    '[ "$2" = reset-failed ]; then exit 1; fi\n'
                 )
                 stub.chmod(0o755)
             env = dict(
@@ -33,6 +36,7 @@ class MangoSessionTest(unittest.TestCase):
                 WAYLAND_DISPLAY="wayland-test",
                 CALL_LOG=str(log),
                 FAIL_IMPORT="1" if fail_import else "0",
+                UNLOADED_DMS="1" if unloaded_dms else "0",
             )
             with socket.socket(socket.AF_UNIX) as wayland:
                 if with_socket:
@@ -57,6 +61,13 @@ class MangoSessionTest(unittest.TestCase):
         dms = calls.index("systemctl --user start dms.service")
         self.assertLess(imported, target)
         self.assertLess(target, dms)
+
+    def test_unloaded_dms_does_not_abort_fresh_login(self):
+        code, calls = self.run_startup(unloaded_dms=True)
+        self.assertEqual(code, 0)
+        self.assertIn("systemctl --user start mango-session.target", calls)
+        self.assertIn("systemctl --user start dms.service", calls)
+        self.assertIn("systemctl --user restart xdg-desktop-portal.service", calls)
 
     def test_failed_environment_import_never_starts_services(self):
         code, calls = self.run_startup(fail_import=True)

@@ -17,7 +17,10 @@ dbus-update-activation-environment --systemd \
   MOZ_ENABLE_WAYLAND NIXOS_OZONE_WL OZONE_PLATFORM QT_IM_MODULE QT_IM_MODULES \
   QT_QPA_PLATFORM SDL_IM_MODULE GLFW_IM_MODULE XMODIFIERS XCURSOR_THEME XCURSOR_SIZE
 
-systemctl --user reset-failed dms.service
+# On a fresh login systemd may not have loaded this unit yet. reset-failed
+# then returns nonzero even though start can load it normally. This cleanup
+# must not abort the entire session (including the Polkit agent and CopyQ).
+systemctl --user reset-failed dms.service || true
 systemctl --user start mango-session.target
 # Also recover a stopped shell if the target was already active.
 systemctl --user start dms.service

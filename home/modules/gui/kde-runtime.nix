@@ -254,7 +254,10 @@ in
     systemd.user.services.plasma-polkit-agent = {
       Unit = {
         Description = "KDE PolicyKit authentication agent (Nix runtime)";
-        After = [ "graphical-session.target" ];
+        # Plasma orders this shared unit before plasma-workspace.target, which
+        # itself precedes graphical-session.target. Ordering after the latter
+        # creates a cycle during both session startup and shutdown.
+        After = [ "graphical-session-pre.target" ];
         PartOf = [ "mango-session.target" ];
       };
       Service = {

@@ -25,21 +25,19 @@ let
     fi
   '';
   staticFiles = [
+    "colors.conf"
+    "cursor.conf"
     "appearance.conf"
     "config.conf"
     "dms.conf"
     "env.conf"
+    "layout.conf"
     "monitors.conf"
     "rules.conf"
     "rules/10-float-and-geometry.conf"
     "rules/20-tags.conf"
     "rules/90-games.conf"
     "startup.conf"
-  ];
-  runtimeFiles = [
-    "dms/colors.conf"
-    "dms/cursor.conf"
-    "dms/layout.conf"
   ];
   scriptFiles = [
     "scripts/browser-activate.sh"
@@ -79,29 +77,6 @@ lib.mkIf config.ahdg.features.gui {
       install -Dm755 "${mangoSource}/${path}" "${mangoTarget}/${path}"
     '') scriptFiles}
 
-    seed_runtime_file() {
-      local path=$1
-      local target="${mangoTarget}/$path"
-      local resolved=
-
-      if [[ -L "$target" ]]; then
-        resolved="$(readlink -f "$target" || true)"
-        rm -f "$target"
-        if [[ -n "$resolved" && -f "$resolved" ]]; then
-          install -Dm644 "$resolved" "$target"
-          return
-        fi
-      fi
-
-      if [[ ! -e "$target" ]]; then
-        install -Dm644 "${mangoSource}/$path" "$target"
-      fi
-    }
-
-    for path in ${lib.escapeShellArgs runtimeFiles}; do
-      seed_runtime_file "$path"
-    done
-
     upsert_runtime_kv() {
       local target=$1
       local key=$2
@@ -114,8 +89,8 @@ lib.mkIf config.ahdg.features.gui {
       fi
     }
 
-    upsert_runtime_kv "${mangoTarget}/dms/cursor.conf" cursor_theme "${runtime.cursor.name}"
-    upsert_runtime_kv "${mangoTarget}/dms/cursor.conf" cursor_size "${toString runtime.cursor.size}"
+    upsert_runtime_kv "${mangoTarget}/cursor.conf" cursor_theme "${runtime.cursor.name}"
+    upsert_runtime_kv "${mangoTarget}/cursor.conf" cursor_size "${toString runtime.cursor.size}"
 
     sed -i \
       -e 's/^env=GTK_THEME,.*/env=GTK_THEME,${runtime.gtk.themeSpec}/' \

@@ -18,7 +18,7 @@ Important:
   both `Latte + Lavender` and `Macchiato + Lavender` assets.
 - The default source of truth is the declarative dark baseline plus the shared
   `ahdg-theme` apply script. `darkman` is only the optional scheduler layer.
-- DMS remains limited to mutable compositor/session overlays.
+- DMS owns generated terminal colors; Mango visuals are managed by Nix.
 
 ## Nix-Owned Theme Assets
 
@@ -56,15 +56,14 @@ DMS remains the owner only for runtime-generated visual/session outputs that are
 expected to be mutable while the session is running:
 
 - `~/.config/ghostty/config-dankcolors`
-- `~/.config/mango/dms/colors.conf`
-- `~/.config/mango/dms/cursor.conf`
-- `~/.config/mango/dms/layout.conf`
 
 Those files may change live and should not become Home Manager symlinks.
 
-Mango monitor/output rules are intentionally excluded from DMS ownership. Keep
-them in `~/.config/mango/monitors.conf` so scale, mode, and position stay
-declarative and cannot be overwritten by DMS display profiles.
+Mango loads Nix-managed `colors.conf`, `cursor.conf`, and `layout.conf` directly
+from `~/.config/mango/`. Home Manager refreshes these regular files on activation.
+DMS may still generate files under `mango/dms/`, but Mango does not source them.
+Monitor/output rules remain in `~/.config/mango/monitors.conf` so scale, mode,
+and position cannot be overwritten by DMS display profiles.
 
 ## Authority Rule
 
@@ -74,14 +73,12 @@ The policy is:
   policy, and explicit theme-switch tooling such as `ahdg-theme`.
 - GUI-editable preference files should normally be seeded with defaults once and
   then remain user-owned unless there is a clear reason to keep enforcing them.
-- DMS is only the source of truth for live runtime color generation and mutable
-  non-display compositor/session overlays.
+- DMS is only the source of truth for runtime-generated terminal colors.
 
 This means:
 
 - GTK, KDE, portal, icons, cursors, and theme assets should prefer Nix.
-- MangoWC visual runtime overlay files should continue to prefer DMS, but
-  monitor/output rules should prefer Nix.
+- MangoWC visuals and monitor/output rules are managed by Nix.
 - Terminal/TUI app themes such as `yazi` do not conflict with DMS and should be
   Nix-managed if we want a pinned reproducible theme.
 

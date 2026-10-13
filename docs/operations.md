@@ -12,7 +12,7 @@ Mango calls `~/.local/bin/ahdg-mango-session-start`, which runs
 `~/.config/mango/scripts/session-start.sh` before shared XDG autostart. The
 session script imports the
 compositor environment and only then starts the session target and DMS.
-Separate `exec-once` commands do not provide this completion ordering.
+Separate `exec_once` commands do not provide this completion ordering.
 
 The unit restarts after unexpected exits (including exit status 0), with a
 five-second delay and no permanent start-rate lockout. Explicitly stopping the
@@ -294,7 +294,7 @@ existing regular KDE config.
 `~/.local/bin/ahdg-mango-session-start`, which imports its display environment,
 starts the session services, and then runs `dex --autostart --environment X-Mango`.
 Keep ordinary application startup in this module rather than adding another
-Mango `exec-once` line. `OnlyShowIn` and `NotShowIn` still select the appropriate
+Mango `exec_once` line. `OnlyShowIn` and `NotShowIn` still select the appropriate
 desktop; Mango uses `X-Mango`, while Plasma uses `KDE`.
 
 The Clash Party entry uses `/usr/bin/clash-party`; vendor entries under both
@@ -810,3 +810,30 @@ If direct connections work but LAN discovery does not, check broadcast filtering
 `ip route get 227.2.7.7`, and the interface that joined the group (`ip maddr`). A
 proxy TUN can capture the multicast route even when unicast VPN traffic works.
 The console does not currently fix game-specific multicast routing.
+
+
+## WinBoat RDP authentication stalls on Arch-family hosts
+
+If Windows boots and the Guest API is online but FreeRDP appears stuck, first
+check the current RDP mapping with `podman port WinBoat 3389/tcp`. WinBoat uses
+an allocated localhost port, which need not be 3389.
+
+A reachable RDP listener can still stall during authentication when the host's
+`/etc/krb5.conf` contains the example realm `ATHENA.MIT.EDU`. FreeRDP logs then
+report `Cannot contact any KDC`. For a local WinBoat Windows account, add this
+argument in WinBoat's advanced FreeRDP argument settings:
+
+```text
+/auth-pkg-list:!kerberos,!u2u
+```
+
+Disable both mechanisms; disabling only Kerberos can leave the U2U attempt
+waiting for the same KDC. This preserves NLA with NTLM and does not change the
+host's Kerberos configuration for other applications. See the
+[FreeRDP FAQ](https://github.com/FreeRDP/FreeRDP/wiki/FAQ).
+
+WinBoat stores added arguments in `~/.winboat/winboat.config.json` under
+`rdpArgs`. If editing that file directly, exit WinBoat first and reopen it
+afterward. Keep credentials and local WinBoat configuration out of this repo.
+Validate authentication with FreeRDP's `+auth-only` before testing the full
+desktop; successful authentication alone does not verify display or audio.

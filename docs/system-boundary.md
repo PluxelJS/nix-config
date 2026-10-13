@@ -113,7 +113,7 @@ KDE runtime and owns the text editor desktop/MIME defaults.
 Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
-  target started by Mango's `exec-once`
+  target started by Mango's `exec_once`
 - Home Manager writes shared XDG autostart entries for ABDM tray, Mihomo Party,
   and browser warmup; Plasma consumes shared entries natively and Mango consumes
   the same files through `dex`. DMS and CopyQ run as `mango-session.target`

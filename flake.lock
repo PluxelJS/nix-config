@@ -54,11 +54,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789120523,
-        "narHash": "sha256-+7l+BWJ/dm6Goezwo502Ywb9jd4+eTU67yqwWkJC3p4=",
+        "lastModified": 1794201882,
+        "narHash": "sha256-d2SRfHCeHNXfgUBkfkHGhkNC40UsUTiVOiAJ/RDjM6k=",
         "owner": "PluxelJS",
         "repo": "dev-runtime",
-        "rev": "74bd13d945f8decb9b7398c25a41bc4a9276af0a",
+        "rev": "370068349abb47bbb40fee9860c5ad0b7336af58",
         "type": "github"
       },
       "original": {

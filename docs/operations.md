@@ -192,6 +192,25 @@ Home Manager profile seeds New API and CLIProxy instead, before starting the
 daemon. Later switches preserve the workspace's service selection. New API uses
 SQLite independently of PostgreSQL.
 
+Fresh workspaces use the images built by the `PluxelJS/dev-runtime` workflows:
+`ghcr.io/pluxeljs/cliproxyapi:latest` and `ghcr.io/pluxeljs/new-api:latest`.
+Both currently target linux/amd64. New API follows the upstream Latest Release,
+which can include release candidates. Updating the pinned flake does not replace
+image references already saved in the workspace. Change those references in the
+dashboard, then pull and apply each service. For an update under the same tag,
+pull and restart instead:
+
+```bash
+dev-runtime services pull cliproxy
+dev-runtime services restart cliproxy
+dev-runtime services pull new-api
+dev-runtime services restart new-api
+```
+
+Back up the workspace and New API database before upgrading. Successful image
+publication does not automatically update running containers; use `diagnose`
+after applying the update.
+
 ```bash
 dev-runtime services start postgres
 dev-runtime pg database create my_service --generate-password

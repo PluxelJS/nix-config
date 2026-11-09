@@ -61,8 +61,8 @@
     "version": "0.7.3"
   },
   "wanxiang-base": {
-    "assetId": 558855102,
-    "hash": "sha256-VvyMU/lk/G2nfKO6h+nwGwYC7hCemp5OUK9TTbQXQrw=",
+    "assetId": 720692646,
+    "hash": "sha256-3evwNyoqPZ2PelAXcEsq/XOXqWHDK+SQqR5J7D7pCZk=",
     "kind": "file",
     "name": "rime-wanxiang-base.zip",
     "owner": "amzxyz",
@@ -71,22 +71,22 @@
       "asset": "rime-wanxiang-base.zip",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/558855102?download=1",
-    "version": "17.10.0"
+    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/720692646?download=1",
+    "version": "18.1.10"
   },
   "wanxiang-grammar": {
-    "assetId": 561293082,
-    "hash": "sha256-1iPMNInyFujAEGKHlYmDEd82hUruRg8vJAjCxWIiYE8=",
+    "assetId": 719554076,
+    "hash": "sha256-dphUyD9skUoFoeGrtnwxwA8a5iKkGHjgWVe83uPb2po=",
     "kind": "file",
     "name": "wanxiang-lts-zh-hans.gram",
     "owner": "amzxyz",
-    "repo": "RIME-LMDG",
+    "repo": "rime-wanxiang-data",
     "update": {
       "asset": "wanxiang-lts-zh-hans.gram",
       "tag": "LTS",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/amzxyz/RIME-LMDG/releases/assets/561293082?download=1",
+    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang-data/releases/assets/719554076?download=1",
     "version": "LTS"
   },
   "yazi-flavors": {

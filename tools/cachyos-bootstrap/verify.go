@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -242,11 +243,10 @@ func (v *verifier) checkGUIFiles() {
 		v.checkFile(rel)
 	}
 	for _, rel := range []string{
-		".config/autostart/ahdg-abdm-tray.desktop",
+		".config/autostart/misterdownloadmanager.desktop",
 		".config/autostart/ahdg-copyq.desktop",
 		".config/autostart/ahdg-mihomo-party.desktop",
 		".config/autostart/ahdg-zen-browser-warmup.desktop",
-		".config/autostart/com.abdownloadmanager.desktop",
 		".config/autostart/com.shellyorg.shelly-notifications.desktop",
 		".config/systemd/user/ahdg-disable-dms-clipboard.service",
 		".config/systemd/user/dms.service",
@@ -633,6 +633,38 @@ func (v *verifier) checkFlatpakPolicyDrift() {
 	}
 }
 
+func (v *verifier) checkDownloadManager() {
+	autostart := readFile(v.path(".config/autostart/misterdownloadmanager.desktop"))
+	if strings.Contains(autostart, "Exec="+v.path(".nix-profile/bin/misterdownloadmanager")+" /startup\n") &&
+		!fileContainsRegex(autostart, `(?m)^Hidden=true$`) &&
+		strings.Contains(readFile(v.path(".config/mango/config.conf")), "bind=SUPER,d,spawn,misterdownloadmanager") {
+		v.pass("Mister Download Manager uses its native tray startup and window activation")
+	} else {
+		v.fail("Mister Download Manager autostart or Mango binding is incomplete")
+	}
+
+	// Zen and Firefox share Mozilla's per-user host directory. The application
+	// owns this writable manifest; activation refreshes its store path on switch.
+	var manifest struct {
+		Name              string   `json:"name"`
+		Type              string   `json:"type"`
+		Path              string   `json:"path"`
+		AllowedExtensions []string `json:"allowed_extensions"`
+	}
+	data := readFile(v.path(".mozilla/native-messaging-hosts/com.misterdownloadmanager.host.json"))
+	err := json.Unmarshal([]byte(data), &manifest)
+	info, statErr := os.Stat(manifest.Path)
+	if err == nil && manifest.Name == "com.misterdownloadmanager.host" && manifest.Type == "stdio" &&
+		strings.HasPrefix(manifest.Path, "/nix/store/") &&
+		strings.Contains(filepath.Base(manifest.Path), "misterdownloadmanager-nmhost") &&
+		stringInSlice("integration@misterdownloadmanager.com", manifest.AllowedExtensions) &&
+		statErr == nil && info.Mode().IsRegular() && info.Mode().Perm()&0111 != 0 {
+		v.pass("Zen/Firefox native messaging points to an executable Nix-managed MDM host")
+	} else {
+		v.fail("Zen/Firefox MDM native messaging manifest is missing, invalid, or names an unavailable helper")
+	}
+}
+
 func (v *verifier) checkDesktopRuntime() {
 	if v.has("desktopXdg") {
 		if strings.TrimSpace(commandOutput("xdg-mime", "query", "default", "text/plain")) == "org.kde.kate.desktop" {
@@ -663,8 +695,6 @@ func (v *verifier) checkDesktopRuntime() {
 
 	if v.has("gui") {
 		copyqAutostart := readFile(v.path(".config/autostart/ahdg-copyq.desktop"))
-		abdmAutostart := readFile(v.path(".config/autostart/ahdg-abdm-tray.desktop"))
-		abdmVendorAutostart := readFile(v.path(".config/autostart/com.abdownloadmanager.desktop"))
 		mangoConfig := readFile(v.path(".config/mango/dms.conf"))
 		mangoMainConfig := readFile(v.path(".config/mango/config.conf"))
 		mangoSessionStart := readFile(v.path(".local/bin/ahdg-mango-session-start"))
@@ -694,13 +724,7 @@ func (v *verifier) checkDesktopRuntime() {
 		} else {
 			v.fail("managed CopyQ service, DMS shell service, or the Mango dex runner is incomplete")
 		}
-		if strings.Contains(abdmAutostart, "Exec="+v.path(".local/bin/abdm-tray")) &&
-			!fileContainsRegex(abdmAutostart, `(?m)^Hidden=true$`) &&
-			fileContainsRegex(abdmVendorAutostart, `(?m)^Hidden=true$`) {
-			v.pass("AB Download Manager has one active managed autostart entry")
-		} else {
-			v.fail("AB Download Manager vendor autostart is not suppressed by the managed tray entry")
-		}
+		v.checkDownloadManager()
 
 		userEnvironment := commandOutput("systemctl", "--user", "show-environment")
 		if regexp.MustCompile(`(?m)^XDG_MENU_PREFIX=plasma-$`).MatchString(userEnvironment) &&

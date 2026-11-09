@@ -75,10 +75,10 @@ What it does:
 - installs `paru` from the CachyOS repository when missing
 - installs required repository packages and explicit AUR exceptions for the
   selected profile
-- installs desktop helper packages, browser/download-manager packages,
-  OpenRazer runtime packages, and host desktop extras such as EasyEffects;
+- installs desktop helper packages, the host browser, OpenRazer runtime
+  packages, and host desktop extras such as EasyEffects;
   Dolphin, Ark, KDED, KDE utilities, KWallet, PolicyKit agent, and portals come
-  from Home Manager
+  from Home Manager, along with Mister Download Manager and its media helpers
 - adds the current user to profile-required groups such as `openrazer`
 - installs LocalSend's UFW profile and allows TCP/UDP port 53317
 - installs `atop`, records system and per-process state every 10 seconds,

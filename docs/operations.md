@@ -99,7 +99,8 @@ flake inputs; it does not refresh desktop asset hashes.
 ### Desktop asset updates
 
 `sources.json` is the shared source catalog and lock for CopyQ, DMS, Mark Shot,
-MeatShell, ChatGPT, Yazi flavors, and Wanxiang's base and grammar payloads.
+MeatShell, Mister Download Manager, ChatGPT, Yazi flavors, and Wanxiang's base
+and grammar payloads.
 Nix packages consume it through `pkgs/sources.nix`. New sources declare their
 release/branch/URL discovery policy in `sources.json` instead of embedding hashes
 in modules.
@@ -308,20 +309,45 @@ existing regular KDE config.
 
 ## Login autostart
 
-`home/modules/gui/autostart.nix` owns the shared XDG application entries in
-`~/.config/autostart/`. Plasma reads these natively. Mango runs
-`~/.local/bin/ahdg-mango-session-start`, which imports its display environment,
+`home/modules/gui/autostart.nix` owns the shared proxy/browser XDG entries in
+`~/.config/autostart/`; `download-manager.nix` contributes MDM's entry. Plasma
+reads these natively. Mango runs `~/.local/bin/ahdg-mango-session-start`, which
+imports its display environment,
 starts the session services, and then runs `dex --autostart --environment X-Mango`.
-Keep ordinary application startup in this module rather than adding another
+Keep ordinary application startup in Home Manager rather than adding another
 Mango `exec_once` line. `OnlyShowIn` and `NotShowIn` still select the appropriate
 desktop; Mango uses `X-Mango`, while Plasma uses `KDE`.
 
 The Clash Party entry uses `/usr/bin/clash-party`; vendor entries under both
 `mihomo-party.desktop` and `clash-party.desktop` are disabled to avoid duplicate
-launches or a bare Electron welcome window. AB Download Manager's wrapper sets
-`autoStartOnBoot=false` and `useSystemTray=true` before startup, so the app does
-not overwrite the Nix-owned entry. Its startup log is
-`~/.abdm/system/log/autostart.log`.
+launches or a bare Electron welcome window. Mister Download Manager uses its
+own `misterdownloadmanager.desktop` basename with `/startup` to enter the tray.
+`Super+D` invokes `misterdownloadmanager` directly; its IPC opens the existing
+window. There are no download-manager tray scripts or software-rendering flags.
+
+`home/modules/gui/download-manager.nix` owns this integration. Activation runs
+`misterdownloadmanager-nmhost --register` for installed native browsers; MDM
+refreshes these writable manifests at startup too. Zen and Firefox share
+`~/.mozilla/native-messaging-hosts/com.misterdownloadmanager.host.json`.
+Install the [MDM Firefox extension](https://addons.mozilla.org/firefox/addon/mister-download-manager/)
+in Zen, or the [Chrome extension](https://chromewebstore.google.com/detail/mister-download-manager/ejoleppdfgjdndddcjoehopknmlglojp)
+in Chromium browsers. Remove the retired download-manager extension from the
+browser. Flatpak browsers cannot use this native host; the desktop uses the
+host's `zen-browser-bin` package.
+
+MDM's writable state is in `~/.local/share/misterdownloadmanager/`, including
+`settings.json`, download history, logs and `tools/programs.json`. Home Manager
+seeds helper choices only when missing, selecting the Nix profile's yt-dlp,
+ffmpeg and gallery-dl. Later choices in **Video helpers** remain writable.
+Magnet links and torrent files have MDM as their declarative MIME fallback;
+existing user MIME overrides keep priority. Update MDM through
+`python3 tools/update-sources.py --only misterdownloadmanager` or `nixup --latest`.
+The app's **Update now** cannot replace the immutable Nix package.
+
+After switching from the retired manager, Home Manager removes its old managed
+launchers and autostart files. `bootstrap/cachyos.sh cleanup` lists the obsolete
+host package for removal; the bootstrap no longer installs it. Download files
+and old application data are preserved; partial transfers are not migrated.
 
 DMS, CopyQ, and portals remain systemd session services. Dev-runtime is a
 separate user service and does not depend on the chosen desktop session.
@@ -346,9 +372,8 @@ Canonical source files live here:
 - `~/.config/nix/home/files/starship/starship.toml`
 - `~/.config/nix/home/files/zsh/interactive.zsh`
 - `~/.config/nix/home/files/zsh/startup.zsh`
-- `~/.config/nix/home/files/bin/abdm-launch`
-- `~/.config/nix/home/files/bin/abdm-open`
-- `~/.config/nix/home/files/bin/abdm-tray`
+- `~/.config/nix/home/modules/gui/download-manager.nix`
+- `~/.config/nix/pkgs/misterdownloadmanager.nix`
 - `~/.config/nix/home/files/bin/protontricks-launch-mangohud`
 - `~/.config/nix/home/assets/fonts/custom/`
 - `~/.config/nix/home/files/fcitx5/config`
@@ -655,8 +680,8 @@ After a successful switch:
   KService cannot fall back to a stale Arch menu prefix
 - the complete fcitx environment is imported into both the systemd user
   manager and the DBus activation environment during Home Manager activation
-- the managed ABDM tray entry is the only active autostart entry; the vendor
-  basename is declaratively shadowed with `Hidden=true`
+- Mister Download Manager has one `/startup` autostart entry, a direct Mango
+  binding, and a Zen/Firefox native manifest naming an executable Nix store host
 
 The managed Plasma menu is XDG/KService infrastructure, not a KDE interface
 preference. Appearance, layout, toolbar, mouse, Dolphin, and Ark settings remain

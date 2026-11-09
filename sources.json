@@ -60,6 +60,20 @@
     "url": "https://api.github.com/repos/jeff141/meatshell/releases/assets/548109214?download=1",
     "version": "0.7.3"
   },
+  "misterdownloadmanager": {
+    "assetId": 723766972,
+    "hash": "sha256-6yPYwcV16nv2zpUZNJOtzMro/uT15BNfH1DHfgptePE=",
+    "kind": "file",
+    "name": "MisterDownloadManager-0.5.0-linux-x86_64.deb",
+    "owner": "anefzaoui",
+    "repo": "misterdownloadmanager",
+    "update": {
+      "asset": "MisterDownloadManager-{version}-linux-x86_64.deb",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/anefzaoui/misterdownloadmanager/releases/assets/723766972?download=1",
+    "version": "0.5.0"
+  },
   "wanxiang-base": {
     "assetId": 720692646,
     "hash": "sha256-3evwNyoqPZ2PelAXcEsq/XOXqWHDK+SQqR5J7D7pCZk=",

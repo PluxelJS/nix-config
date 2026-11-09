@@ -1,6 +1,5 @@
 { config, lib, pkgs, ... }:
 let
-  homeDir = config.home.homeDirectory;
   mkAutostart =
     {
       name,
@@ -61,25 +60,6 @@ lib.mkIf config.ahdg.features.gui {
       exec = lib.getExe pkgs.copyq;
       tryExec = lib.getExe pkgs.copyq;
       hidden = true;
-    };
-
-    "autostart/ahdg-abdm-tray.desktop".text = mkAutostart {
-      name = "AB Download Manager Tray";
-      exec = "${homeDir}/.local/bin/abdm-tray";
-      tryExec = "${homeDir}/.local/bin/abdm-tray";
-    };
-
-    # Shadow AB Download Manager's own basename so desktop autostart readers
-    # launch only the wrapper above. Two simultaneous JVM launches otherwise
-    # race for the same single-instance socket and leave a failed user unit.
-    "autostart/com.abdownloadmanager.desktop" = {
-      force = true;
-      text = ''
-        [Desktop Entry]
-        Type=Application
-        Name=AB Download Manager (vendor autostart disabled)
-        Hidden=true
-      '';
     };
 
     # Cachy-Update is the single update notifier for both sessions.

@@ -18,6 +18,7 @@ Home Manager owns:
 - `fcitx5` config/theme/Rime data, while the runtime stays on the host
 - development services managed by the upstream `dev-runtime` daemon and dashboard
 - LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
+- Mister Download Manager, its browser host, tray startup, and media helpers
 
 The host package manager owns:
 

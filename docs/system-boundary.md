@@ -83,7 +83,7 @@ Needed from Arch repositories:
 - integration: `flatpak`, `podman`, `dbus`, `ufw`
 - diagnostics: `atop`, with a root-owned recorder and daily log rotation
 - Mango/DMS helpers: `wlr-randr`, `gtk3`, `python`
-- desktop extras: `ab-download-manager`, `baloo`, `blueman`,
+- desktop extras: `baloo`, `blueman`,
   `dms-shell`, `easyeffects`, `flatseal`, `libappindicator`,
   `libayatana-appindicator`, `pavucontrol`, `zen-browser-bin`
 - workstation apps with trusted repo packages: `mangohud`, `podman-desktop`,
@@ -93,7 +93,7 @@ Needed from Arch repositories:
   `openrazer` group
 
 The two indicator libraries are intentionally separate host dependencies:
-`libappindicator` supports Clash Party, Polychromatic, and the ABDM tray, while
+`libappindicator` supports Clash Party and Polychromatic, while
 `libayatana-appindicator` keeps Lutris tray support available. Nix-managed
 LocalSend uses its own store closure and does not consume either host package.
 
@@ -114,8 +114,8 @@ Mango session startup is user-layer and Home Manager-owned:
 
 - `~/.config/systemd/user/mango-session.target` defines the compositor session
   target started by Mango's `exec_once`
-- Home Manager writes shared XDG autostart entries for ABDM tray, Mihomo Party,
-  and browser warmup; Plasma consumes shared entries natively and Mango consumes
+- Home Manager writes shared XDG autostart entries for Mister Download Manager,
+  Mihomo Party, and browser warmup; Plasma consumes shared entries natively and Mango consumes
   the same files through `dex`. DMS and CopyQ run as `mango-session.target`
   user services so their IPC survives Home Manager switches. The managed CopyQ
   autostart entry is disabled because `copyq.service` owns the clipboard
@@ -130,9 +130,9 @@ Mango session startup is user-layer and Home Manager-owned:
   checks and stale-settings errors during login.
 - Mango-only XDG entries use the extension desktop ID `OnlyShowIn=X-Mango;`, while the compositor's
   `startup.conf` is reserved for one-shot session hardware helpers
-- package-provided XDG autostart entries and unrelated user overrides remain
-  host/user state; this flake owns only its `ahdg-*.desktop` entries and does
-  not delete other files under `~/.config/autostart`
+- unrelated package-provided XDG autostart entries and user overrides remain
+  host/user state; this flake owns its explicitly declared entries, including
+  MDM's application basename, and does not scan or delete unmanaged autostarts
 
 Home Manager supplies the user tools and assets listed in `home/modules/`.
 The active KDE user stack is deliberately Nix-owned: Dolphin, Ark, KDED,
@@ -155,8 +155,9 @@ theme assets. Live `kdeglobals`, `kcminputrc`, `arkrc`, `dolphinrc`, and
 `dolphinui.rc` are writable regular files. A Home Manager switch never replaces
 or rewrites an existing live KDE preference file.
 
-CopyQ, meatshell, and Zed are desktop-profile Home Manager packages. CopyQ owns
-clipboard history with a 20,000-entry retention limit and no automatic expiry;
+CopyQ, meatshell, Zed, and Mister Download Manager are desktop-profile Home
+Manager packages. CopyQ owns clipboard history with a 20,000-entry retention
+limit and no automatic expiry;
 DMS clipboard tracking is explicitly disabled after the DMS backend starts.
 CopyQ is pinned to 16.0.0 until nixpkgs catches up because that release line
 fixes the long-running clipboard process leak. Ark and its 7z, RAR,
@@ -164,9 +165,16 @@ Unarchiver, and Info-ZIP backends belong to the coherent KDE runtime above;
 meatshell is pinned to the verified upstream 0.6.10 release artifact;
 GPU-backed meatshell and Zed launch through the CachyOS nixGL bridge.
 
-Small user glue scripts such as `abdm-launch` and
-`protontricks-launch-mangohud` are Home Manager-owned under `~/.local/bin`; the
-large applications they call stay in the host package layer.
+Mister Download Manager is pinned to an official Linux release asset in
+`sources.json`. Its package includes the GUI, CLI, MCP server, native messaging
+host, and browser extension files. The GUI entry point invokes the shared
+`nixGLMesa` bridge, including when started by the native host. Home Manager
+registers installed browsers on every switch; MDM refreshes the same writable
+manifests at startup. Its settings, history and downloads remain local state.
+Nix supplies yt-dlp, ffmpeg and gallery-dl, with writable first-run helper choices.
+
+Small user glue scripts such as `protontricks-launch-mangohud` are Home
+Manager-owned under `~/.local/bin`; the host supplies Protontricks itself.
 
 Persistent performance sampling is another deliberate split-boundary case.
 The bootstrap installs the trusted-repository `atop` package, owns

@@ -17,6 +17,7 @@ var cleanupGroups = []struct {
 	{
 		title: "Replaced by Nix/Home Manager",
 		packages: []string{
+			"ab-download-manager",
 			"bat",
 			"delta",
 			"eza",

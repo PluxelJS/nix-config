@@ -131,19 +131,4 @@ lib.mkIf config.ahdg.features.gui {
       Wants=graphical-session.target
     '';
   };
-
-  home.file.".local/bin/abdm-open" = {
-    source = ../../files/bin/abdm-open;
-    executable = true;
-  };
-
-  home.file.".local/bin/abdm-launch" = {
-    source = ../../files/bin/abdm-launch;
-    executable = true;
-  };
-
-  home.file.".local/bin/abdm-tray" = {
-    source = ../../files/bin/abdm-tray;
-    executable = true;
-  };
 }

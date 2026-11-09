@@ -7,6 +7,7 @@
     ./assets.nix
     ./autostart.nix
     ./desktop-apps.nix
+    ./download-manager.nix
     ./kde-runtime.nix
     ./kde-config.nix
     ./dolphin.nix

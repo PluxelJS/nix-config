@@ -63,6 +63,7 @@ This file is the source of truth for cross-app shortcut decisions.
 
 - `Ctrl+\``: show the CopyQ main window; dismiss it with `Esc`.
 - `Super+Shift+M`: launch `SongRec` in `gui-norecording` mode first.
+- `Super+D`: open Mister Download Manager through its native single-instance IPC.
 - `Super+Shift+R`: reload the MangoWC config.
 
 ## Intentional Mismatch

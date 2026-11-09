@@ -551,6 +551,18 @@ Keep app-private writable state in the sandbox, for example:
 Zed is the native Nix-managed IDE rather than a Flatpak. Its package and
 nixGL wrapper are declared in `home/modules/gui/desktop-apps.nix`; writable
 editor state remains under `~/.config/zed` and `~/.local/share/zed`.
+`pkgs/zed-editor.nix` repackages the official prebuilt Linux release pinned in
+`sources.json`, without compiling Zed locally. Both `zed` and `zeditor` launch
+this package. Update its release pin with
+`python3 tools/update-sources.py --only zed-editor`, then switch Home Manager.
+The in-app updater is disabled because Nix owns the application files.
+SSH connections and editor preferences remain user-managed; no hosts are seeded.
+
+Keep native Wayland enabled for Fcitx5 input. Zed can crash if keyboard events
+arrive before its Wayland keymap is initialized
+([upstream issue](https://github.com/zed-industries/zed/issues/64660)).
+`WAYLAND_DISPLAY= zeditor` can help diagnose that crash, but XWayland is not
+forced because it can break Chinese input through Zed's XIM backend.
 
 `mise` is intentionally treated as environment/toolchain state rather than as a
 pure shared config surface. Project-level `mise.toml` remains the canonical

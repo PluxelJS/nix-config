@@ -100,5 +100,19 @@
       "type": "branch"
     },
     "version": "unstable-20b47bfd7888"
+  },
+  "zed-editor": {
+    "assetId": 710065550,
+    "hash": "sha256-cZ9r9knqjYeWGtv3KOF4VhusP1mNcteUlVjRFQz8Q90=",
+    "kind": "file",
+    "name": "zed-linux-x86_64.tar.gz",
+    "owner": "zed-industries",
+    "repo": "zed",
+    "update": {
+      "asset": "zed-linux-x86_64.tar.gz",
+      "type": "release"
+    },
+    "url": "https://api.github.com/repos/zed-industries/zed/releases/assets/710065550?download=1",
+    "version": "1.27.0"
   }
 }

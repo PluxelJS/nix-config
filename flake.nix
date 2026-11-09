@@ -43,6 +43,7 @@
             mark-shot = final.callPackage ./pkgs/mark-shot.nix { };
             chatgpt = final.callPackage ./pkgs/chatgpt.nix { };
             meatshell = final.callPackage ./pkgs/meatshell.nix { };
+            zed-editor-bin = final.callPackage ./pkgs/zed-editor.nix { };
             dms = final.callPackage ./pkgs/dms.nix { };
             copyq = prev.copyq.overrideAttrs (old: {
               # CopyQ 15 fixed a leak in the long-running Wayland clipboard
@@ -123,6 +124,7 @@
       packages.${system} = {
         home-manager = home-manager.packages.${system}.home-manager;
         chatgpt = pkgs.chatgpt;
+        zed-editor = pkgs.zed-editor-bin;
         dev-runtime = pkgs.dev-runtime;
         # Expose the dependency derivation for the source updater's vendor hash.
         dms = pkgs.dms;

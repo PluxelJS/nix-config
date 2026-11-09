@@ -59,7 +59,7 @@ lib.mkIf config.ahdg.features.gui {
 
   programs.zed-editor = {
     enable = true;
-    package = config.lib.nixGL.wrap pkgs.zed-editor;
+    package = config.lib.nixGL.wrap pkgs.zed-editor-bin;
   };
 
   # Use the same service name and host CLI as the packaged Quickshell UI.

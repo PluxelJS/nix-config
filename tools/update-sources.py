@@ -18,8 +18,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-FAKE_HASH = 'sha256-' + base64.b64encode(bytes(32)).decode()
-
 
 @contextmanager
 def checkout_lock(root):
@@ -135,23 +133,6 @@ def copy_checkout(root, stage):
             shutil.copy2(source, destination, follow_symlinks=False)
 
 
-def update_vendor_hash(stage, sources):
-    sources['dms']['vendorHash'] = FAKE_HASH
-    (stage / 'sources.json').write_bytes(encode(sources))
-    target = f'path:{stage}#dms.goModules'
-    result = subprocess.run(['nix', 'build', '--impure', '--no-link', target],
-                            capture_output=True, text=True)
-    # Accept only the deliberate fixed-output mismatch, never an unrelated failure.
-    match = re.search(r'hash mismatch in fixed-output derivation[^\n]*-go-modules[^\n]*:\s*'
-                      r'specified:\s*' + re.escape(FAKE_HASH) + r'\s*got:\s*(sha256-[A-Za-z0-9+/=]+)',
-                      result.stderr)
-    if result.returncode == 0 or not match:
-        raise RuntimeError('Could not compute DMS vendorHash:\n' + result.stderr)
-    sources['dms']['vendorHash'] = match[1]
-    (stage / 'sources.json').write_bytes(encode(sources))
-    run(['nix', 'build', '--impure', '--no-link', target])
-
-
 def publish(root, originals, updates):
     for name, original in originals.items():
         if (root / name).read_bytes() != original:
@@ -198,10 +179,6 @@ def main():
         (stage / 'sources.json').write_bytes(encode(sources))
         if args.flake:
             run(['nix', 'flake', 'update'], cwd=stage)
-        old = json.loads(originals['sources.json'])['dms']
-        if args.flake or sources['dms']['hash'] != old['hash']:
-            print('Computing and verifying DMS Go dependency hash...', flush=True)
-            update_vendor_hash(stage, sources)
         # Evaluate the full desktop configuration before touching the real locks.
         run(['nix', 'eval', '--impure', '--raw',
              f'path:{stage}#homeConfigurations.current.activationPackage.drvPath'], stdout=subprocess.DEVNULL)

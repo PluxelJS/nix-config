@@ -76,11 +76,6 @@ mount. Rebuilding the package does not restart existing editor windows.
 
 ## Version Pin
 
-Local builds keep their output and reusable builder state under
-`$XDG_CACHE_HOME/ahdg-code-studio-flatpak-{build,state}` (defaulting to
-`~/.cache`). Keeping the cache outside the checkout avoids copying it into
-Home Manager's local `path:` flake evaluations.
-
 Code Studio deliberately pins VS Code `1.116.0`
 (`560a9dba96f961efea7b1612916f89e5d5d4d679`) with the Freedesktop `24.08`
 SDK as a tested rendering compatibility baseline. Newer tested VS Code
@@ -95,6 +90,11 @@ When bumping the editor, update `io.github.trumank.CodeStudio.yml`, keep the
 sha256 pinned, and compare font clarity against the host editor before shipping.
 
 ## Install
+
+Local builds keep their output and reusable builder state under
+`$XDG_CACHE_HOME/ahdg-code-studio-flatpak-{build,state}` (defaulting to
+`~/.cache`). Keeping the cache outside the checkout avoids copying it into
+Home Manager's local `path:` flake evaluations.
 
 Normally use the main bootstrap flow:
 

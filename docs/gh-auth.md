@@ -85,6 +85,11 @@ machine-local `~/.gitconfig`. Before changing that file it saves
 includes, custom helpers, and wallet contents are retained. Custom local helper
 entries can still change the effective chain; review them if behavior differs.
 
+If `git-credential-oauth` was installed separately with `nix profile add`, remove
+that duplicate profile entry before the first switch (`nix profile remove
+git-credential-oauth`). Home Manager now supplies the executable; removing the
+standalone package does not remove credentials from the wallet.
+
 Inspect helper configuration without printing tokens:
 
 ```bash

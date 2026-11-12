@@ -153,7 +153,7 @@ root. Restart IDEs and terminals to discard cached paths after migration.
 
 ### Desktop asset updates
 
-`sources.json` is the shared source catalog and lock for CopyQ, DMS, Mark Shot,
+`sources.json` is the shared source catalog and lock for Mark Shot,
 MeatShell, Mister Download Manager, ChatGPT, Yazi flavors, and Wanxiang's base
 and grammar payloads.
 Nix packages consume it through `pkgs/sources.nix`. New sources declare their
@@ -172,9 +172,8 @@ python3 tools/update-sources.py --flake
 Run from a checkout with Git, Nix, curl and Python 3.11+ available (`nixup`'s
 package supplies these tools). The updater downloads and hashes files, checks
 GitHub's SHA-256 digest when supplied, resolves releases to asset IDs and source
-tags to commits, and computes DMS's Go `vendorHash` when its source or flake
-inputs change. It evaluates the desktop configuration before publishing the
-locks. Download, vendor-build or evaluation failures leave the existing locks
+tags to commits. It evaluates the desktop configuration before publishing the
+locks. Download or evaluation failures leave the existing locks
 untouched; `nixup --latest` stops before switching. A later Home Manager build
 failure leaves the successfully updated locks available for diagnosis and review.
 The updater does not guarantee that every upstream release remains compatible
@@ -185,7 +184,27 @@ of the documented Wayland compatibility baseline. Their hashes change only
 when deliberately updating that baseline. ChatGPT's upstream URL remains
 mutable; a fresh download of an old lock can fail after upstream replaces it.
 Use `--only chatgpt` to refresh it, or retain the old output in a binary cache.
-The standalone asset script does not commit, push or switch the desktop.
+The standalone asset script does not compile applications, commit, push or switch
+the desktop. DMS is a host package; its unused Nix package and Go dependency
+refresh have been removed from this workflow.
+
+### Avoiding unnecessary compilation
+
+Prefer unmodified nixpkgs packages with binary-cache coverage. CopyQ's KDE theme
+paths and SongRec's plugin-enabled ALSA library are added by small runtime
+wrappers, preserving the cached application binaries. CopyQ versions therefore
+advance with `flake.lock`, not the separate asset updater.
+
+Mark Shot, ChatGPT, meatshell, Zed, and Mister Download Manager use official
+prebuilt artifacts, verified by `sources.json`. Nix extracts them, patches library
+paths, and adds runtime wrappers. A `building` log line can describe this packaging
+or generated configuration rather than compiling application source. The small
+patched Git wallet helper and upstream dev-runtime still require source builds.
+
+Old Home Manager generations retain their dependency closures as rollback roots.
+`nix-store --gc` only removes unreferenced store paths; pruning older generations
+is a separate decision that removes those rollback points. Inspect a build's
+downloads with `nix build --dry-run --impure .#homeConfigurations.current.activationPackage`.
 
 On an existing checkout whose active generation predates `nixup`, the packaged
 entrypoint can be invoked directly:

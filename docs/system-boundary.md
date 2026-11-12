@@ -176,10 +176,10 @@ CopyQ, meatshell, Zed, and Mister Download Manager are desktop-profile Home
 Manager packages. CopyQ owns clipboard history with a 20,000-entry retention
 limit and no automatic expiry;
 DMS clipboard tracking is explicitly disabled after the DMS backend starts.
-CopyQ is pinned to 16.0.0 until nixpkgs catches up because that release line
-fixes the long-running clipboard process leak. Ark and its 7z, RAR,
+CopyQ follows the locked nixpkgs package, with KDE theme search paths added by
+a runtime wrapper so the application retains binary-cache coverage. Ark and its 7z, RAR,
 Unarchiver, and Info-ZIP backends belong to the coherent KDE runtime above;
-meatshell is pinned to the verified upstream 0.6.10 release artifact;
+meatshell is pinned to a verified upstream release artifact in `sources.json`;
 GPU-backed meatshell and Zed launch through the CachyOS nixGL bridge.
 
 Mister Download Manager is pinned to an official Linux release asset in

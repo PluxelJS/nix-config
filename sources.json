@@ -1,82 +1,59 @@
 {
   "chatgpt": {
-    "hash": "sha256-2je457zvquoBnEeMrL5sc+4d3RXg4euzx+8KQt2BisI=",
+    "hash": "sha256-g1anghkwsTW3QTR/rMvEPhaStEJMPqtxCpr1bAvrsTU=",
     "kind": "file",
     "name": "chatgpt_amd64.deb",
     "update": {
       "type": "url"
     },
     "url": "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb",
-    "version": "rolling-da37b8e7bcef"
-  },
-  "copyq": {
-    "assetId": 433600575,
-    "hash": "sha256-2dizKZhhiu156Xzy0VLReEUMzR3+xgs/ys0Hs1ME+og=",
-    "kind": "file",
-    "name": "CopyQ-16.0.0.tar.gz",
-    "owner": "hluk",
-    "repo": "CopyQ",
-    "update": {
-      "asset": "CopyQ-{version}.tar.gz",
-      "type": "release"
-    },
-    "url": "https://api.github.com/repos/hluk/CopyQ/releases/assets/433600575?download=1",
-    "version": "16.0.0"
-  },
-  "dms": {
-    "hash": "sha256-Uvp+jbeSoi95wzxeimwsVIIQ17Cf2yY6Lct05Ng3SN0=",
-    "kind": "github",
-    "owner": "AvengeMedia",
-    "repo": "DankMaterialShell",
-    "rev": "aa4b99def48637d86a69620c0a8f3cc6aa0c4092",
-    "update": {
-      "type": "release"
-    },
-    "vendorHash": "sha256-Ls6Dquwt0fzDCEjZ6FfTsZTXDI8408mFdByv/OWHVgI=",
-    "version": "1.6.1"
+    "version": "rolling-8356a7821930"
   },
   "mark-shot": {
-    "hash": "sha256-6IZMF5MiltUQK3BY/2U/A4fSA08aRsxAuLQ+Fj5duik=",
-    "kind": "github",
+    "assetId": 696907539,
+    "hash": "sha256-POsX43OgIPAQJ2UjHjMUL/AJUT/G4V/yfugRHUA/ZQU=",
+    "kind": "file",
+    "name": "mark-shot-v0.1.62-linux-x86_64.tar.gz",
     "owner": "jswysnemc",
     "repo": "mark-shot",
-    "rev": "c234deb2d990c9c912f72e39e2659ba130de72f4",
     "update": {
+      "asset": "mark-shot-{tag}-linux-x86_64.tar.gz",
       "type": "release"
     },
-    "version": "0.1.51"
+    "url": "https://api.github.com/repos/jswysnemc/mark-shot/releases/assets/696907539?download=1",
+    "version": "0.1.62"
   },
   "meatshell": {
-    "assetId": 548109214,
-    "hash": "sha256-Oh9Cqqd0JLD8zCJxBMownxhXWK0afKLqkiGPqsqGpew=",
+    "assetId": 723355374,
+    "hash": "sha256-roDx/V9FUylcu1w2QouX6NKlYDbr2JAvR+Jvzve84eQ=",
     "kind": "file",
-    "name": "meatshell-v0.7.3-linux-x86_64.tar.gz",
+    "name": "meatshell-v0.8.2-linux-x86_64.tar.gz",
     "owner": "jeff141",
     "repo": "meatshell",
     "update": {
       "asset": "meatshell-{tag}-linux-x86_64.tar.gz",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/jeff141/meatshell/releases/assets/548109214?download=1",
-    "version": "0.7.3"
+    "url": "https://api.github.com/repos/jeff141/meatshell/releases/assets/723355374?download=1",
+    "version": "0.8.2"
   },
   "misterdownloadmanager": {
-    "assetId": 723766972,
-    "hash": "sha256-6yPYwcV16nv2zpUZNJOtzMro/uT15BNfH1DHfgptePE=",
+    "assetId": 729154124,
+    "hash": "sha256-nTMNloSggZzqmHyudgGxxQePx3Uglepuay8v7wNakuE=",
     "kind": "file",
-    "name": "MisterDownloadManager-0.5.0-linux-x86_64.deb",
+    "name": "MisterDownloadManager-0.5.2-linux-x86_64.deb",
     "owner": "anefzaoui",
     "repo": "misterdownloadmanager",
     "update": {
       "asset": "MisterDownloadManager-{version}-linux-x86_64.deb",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/anefzaoui/misterdownloadmanager/releases/assets/723766972?download=1",
-    "version": "0.5.0"
+    "url": "https://api.github.com/repos/anefzaoui/misterdownloadmanager/releases/assets/729154124?download=1",
+    "version": "0.5.2"
   },
   "wanxiang-base": {
-    "assetId": 720692646,
-    "hash": "sha256-3evwNyoqPZ2PelAXcEsq/XOXqWHDK+SQqR5J7D7pCZk=",
+    "assetId": 727917723,
+    "hash": "sha256-bztQo8v2Yie4+MSQrvxnFakiQ+7A0+q2uSB0HNLAfNY=",
     "kind": "file",
     "name": "rime-wanxiang-base.zip",
     "owner": "amzxyz",
@@ -85,12 +62,12 @@
       "asset": "rime-wanxiang-base.zip",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/720692646?download=1",
-    "version": "18.1.10"
+    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang/releases/assets/727917723?download=1",
+    "version": "18.1.11"
   },
   "wanxiang-grammar": {
-    "assetId": 719554076,
-    "hash": "sha256-dphUyD9skUoFoeGrtnwxwA8a5iKkGHjgWVe83uPb2po=",
+    "assetId": 729644630,
+    "hash": "sha256-NFe2n1/g/E9dIRyHi7+i4jYbkGOZUsmEXI4x6dBHzeY=",
     "kind": "file",
     "name": "wanxiang-lts-zh-hans.gram",
     "owner": "amzxyz",
@@ -100,24 +77,24 @@
       "tag": "LTS",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang-data/releases/assets/719554076?download=1",
+    "url": "https://api.github.com/repos/amzxyz/rime-wanxiang-data/releases/assets/729644630?download=1",
     "version": "LTS"
   },
   "yazi-flavors": {
-    "hash": "sha256-NGnfrQdsnQITKCZ0oh6DCxeCR2ozJoPAZetsi3ghHAI=",
+    "hash": "sha256-lITDt1QvL54u6gbJiGixPyP6lk72f3rkiNPDrUg6G8I=",
     "kind": "github",
     "owner": "yazi-rs",
     "repo": "flavors",
-    "rev": "20b47bfd78880c2674899597fd26bc01b21ff48c",
+    "rev": "38c08d8eb9ea0d28c8c911a249a08f27ba2151ac",
     "update": {
       "branch": "main",
       "type": "branch"
     },
-    "version": "unstable-20b47bfd7888"
+    "version": "unstable-38c08d8eb9ea"
   },
   "zed-editor": {
-    "assetId": 710065550,
-    "hash": "sha256-cZ9r9knqjYeWGtv3KOF4VhusP1mNcteUlVjRFQz8Q90=",
+    "assetId": 736604110,
+    "hash": "sha256-nD/Ey+Uz5yyNDoZKYr4riNacxEufUs0l1MIdBU3aN0I=",
     "kind": "file",
     "name": "zed-linux-x86_64.tar.gz",
     "owner": "zed-industries",
@@ -126,7 +103,7 @@
       "asset": "zed-linux-x86_64.tar.gz",
       "type": "release"
     },
-    "url": "https://api.github.com/repos/zed-industries/zed/releases/assets/710065550?download=1",
-    "version": "1.27.0"
+    "url": "https://api.github.com/repos/zed-industries/zed/releases/assets/736604110?download=1",
+    "version": "1.28.1"
   }
 }

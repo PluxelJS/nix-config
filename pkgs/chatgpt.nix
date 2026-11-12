@@ -35,6 +35,7 @@
   qt5,
   qt6,
   stdenv,
+  tpm2-tss,
   udev,
   vulkan-loader,
   wayland,
@@ -74,6 +75,8 @@ stdenvNoCC.mkDerivation {
     nss
     pango
     stdenv.cc.cc
+    # The bundled device-key addon links against the TPM2 ESAPI and transports.
+    tpm2-tss
     udev
     vulkan-loader
     wayland

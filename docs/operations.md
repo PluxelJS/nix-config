@@ -212,6 +212,25 @@ Back up the workspace and New API database before upgrading. Successful image
 publication does not automatically update running containers; use `diagnose`
 after applying the update.
 
+Browser services are managed by the same daemon and dashboard:
+
+```bash
+dev-runtime services enable playwright  # start now and on future daemon starts
+dev-runtime diagnose playwright
+# Optional lightweight CDP browser:
+dev-runtime services enable lightpanda
+```
+
+Playwright Server listens at `ws://127.0.0.1:3000/`; Lightpanda uses
+`ws://127.0.0.1:9222`. Use a Playwright 1.64 client for the default server.
+`services enable` persists the choice in the workspace; `services start` only
+starts the current instance. Home Manager enables `dev-runtime.service` with
+`serve --autostart` and `podman.socket`. With user lingering enabled
+(`loginctl show-user "$USER" -p Linger`), these user units start at boot without
+waiting for login; otherwise they start with the user session. No separate
+browser systemd unit is needed. `services disable SERVICE` stops the service
+and removes it from daemon autostart.
+
 ```bash
 dev-runtime services start postgres
 dev-runtime pg database create my_service --generate-password

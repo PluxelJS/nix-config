@@ -17,6 +17,16 @@ finish-args:
   - --filesystem=xdg-download:create
   - --filesystem=/nix/store:ro
   - --filesystem=~/.local/state/nix/profiles:ro
+  - --filesystem=~/.gitconfig:ro
+  - --filesystem=~/.config/git:ro
+  - --filesystem=~/.config/gh:create
+  - --filesystem=~/.local/bin:create
+  - --filesystem=~/.config/mise:create
+  - --filesystem=~/.local/share/mise:create
+  - --filesystem=~/.cache/mise:create
+  - --filesystem=~/.local/state/mise:create
+  - --filesystem=~/.cargo:create
+  - --filesystem=~/.rustup:create
   - --talk-name=org.freedesktop.Flatpak
 modules:
   - name: zsh

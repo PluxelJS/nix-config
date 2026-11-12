@@ -116,23 +116,33 @@ the desktop bridge.
 
 Keep these read-only. Do not add host home access or writable desktop config access to the global override.
 
-`CodeStudio` has two app-specific writable host paths declared in its Flatpak
-manifest: `~/code` for projects and `xdg-download` for explicit file exchange.
+`CodeStudio` has app-specific writable host paths declared in its Flatpak
+manifest: `~/code` for projects, `xdg-download` for explicit file exchange,
+and the shared mise binary/config/data/cache/state and Cargo/Rustup homes.
 Keep this access app-specific rather than putting writable host paths in the
 global override. `/home/$USER/code` is the canonical project spelling; the
 launcher normalizes paths received through the private-home `~/code` link to
 that host path before starting VS Code.
 
+Git and GitHub CLI use explicit host lookup paths: `GIT_CONFIG_GLOBAL` selects
+the host `~/.gitconfig` (which includes the Home Manager Git config), and
+`GH_CONFIG_DIR` selects the host `~/.config/gh`. The manifest exposes Git config
+read-only and the GitHub CLI config directory writable. Home Manager supplies
+the configured XDG path and also links `.gitconfig`, `.config/git`, and
+`.config/gh` into the private home for extensions that launch with only HOME.
+Previous private config is backed up as `.app-private.bak` during activation.
+
 ## App-Specific State
 
-Do not put `CodeStudio` runtime or developer-tool state in the global override. Keep it app-private:
+Do not put writable developer-tool state in the global override. Mise uses
+app-specific mounts of the host directories and explicit `MISE_*_DIR` variables,
+even after the launcher changes HOME. Keep the following state app-private:
 
 - VS Code user data
 - VS Code extensions
 - `.codex`
 - `.bun`
 - `pnpm`
-- `mise`
 - `.gnupg`
 - `.ssh`
 - zsh config/history

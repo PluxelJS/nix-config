@@ -66,10 +66,17 @@ The following are declaratively selected but not bit-for-bit version-locked:
 - CachyOS/pacman packages and explicit AUR packages
 - Flathub applications and runtimes
 - hardware drivers matched to the currently installed CachyOS kernel
+- standalone mise and global development tools selected by writable mise config
 
 These layers recreate the requested capabilities from their current repository
 state. Exact archival reproduction would require snapshot repositories and
 pinned Flatpak commits, which this setup does not currently provide.
+
+Home Manager versions the mise bootstrap and initial defaults, not subsequent
+tool installations. Mise self-updates independently; development-tool upgrades
+are explicit. Pin project requests and commit `mise.lock` when needed. A Home
+Manager rollback restores shell/config policy but does not restore mise binaries
+or tool versions.
 
 ## Deliberately Local State
 
@@ -83,3 +90,12 @@ The following must not be reproduced from a shared repository:
 Services that require secrets fail closed until their machine-local state is
 provided. This separation makes a fresh deployment safe to share without
 pretending that private mutable state is reproducible configuration.
+
+Git HTTPS authentication policy is reproducible: the desktop uses Nix-managed
+libsecret and OAuth helpers with the local system wallet. OAuth credentials and
+refresh tokens are runtime state; their validity is controlled by the provider,
+not a Nix generation or rollback. See [Git OAuth](gh-auth.md).
+The wallet adapter is compiled from the locked Git source with a local patch
+to keep Flatpak reads, writes, and erases on the shared Secret Service. The
+main nixpkgs input pins OAuth and its Go build toolchain alongside the rest
+of the desktop.

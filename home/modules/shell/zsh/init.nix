@@ -16,6 +16,12 @@ let
   '';
 
   interactiveInit = ''
+    # The standalone mise has no Nix-provided completion file. Load completions
+    # from the current binary after compinit so self-updates stay in sync.
+    if command -v mise >/dev/null 2>&1; then
+      eval "$(mise completion zsh)"
+    fi
+
     # Let Starship be the single prompt owner inside nix-shell / nix develop.
     export NIX_SHELL_PRESERVE_PROMPT=1
     unset GTK_IM_MODULE

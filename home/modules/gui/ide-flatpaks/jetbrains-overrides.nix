@@ -17,7 +17,9 @@ let
     "/usr/bin"
   ];
 
-  jetbrainsEnv = {
+  jetbrainsEnv = ideLib.miseEnv // ideLib.gitEnv // {
+    CARGO_HOME = "${ideLib.homeDir}/.cargo";
+    RUSTUP_HOME = "${ideLib.homeDir}/.rustup";
     CODEX_HOME = ideLib.flatpakCodexHome;
     FLATPAK_IDE_ENV = "1";
     GTK_IM_MODULE = "";
@@ -56,9 +58,8 @@ ${ideLib.renderShellArrayItems jetbrainsBaseOverrideArgs}
         local base_path_entries=(
 ${ideLib.renderShellArrayItems jetbrainsBasePathEntries}
         )
-        local has_rust_profile=0
         local path_entries=(
-          "$app_data_dir/mise/shims"
+${ideLib.renderShellArrayItems ideLib.misePathEntries}
 ${ideLib.renderShellArrayItems ideLib.hostToolHomePathEntries}
           "$app_data_dir/node_modules/bin"
           "$app_data_dir/pnpm"
@@ -82,84 +83,6 @@ ${ideLib.renderShellArrayItems ideLib.hostToolHomePathEntries}
           append_unique path_entries "$app_data_dir/uv/bin"
         }
 
-        add_rust_profile() {
-          has_rust_profile=1
-        }
-
-        repair_mise_rust_installs() {
-          local rust_installs_dir="$app_data_dir/mise/installs/rust"
-          local cargo_dir="${ideLib.homeDir}/.cargo"
-          local cargo_bin_dir="$cargo_dir/bin"
-          local data_cargo_dir="$app_data_dir/cargo"
-          local data_rustup_dir="$app_data_dir/rustup"
-          local rustup_dir="${ideLib.homeDir}/.rustup"
-          local install_link target toolchain_dir toolchain_name version major minor
-
-          [[ "$has_rust_profile" == "1" ]] || return 0
-          mkdir -p "$app_dir"
-
-          if [[ ! -e "$cargo_bin_dir/rustup" && -e "$data_cargo_dir/bin/rustup" ]]; then
-            mkdir -p "$cargo_dir"
-            cp -a "$data_cargo_dir/." "$cargo_dir/"
-          fi
-
-          if [[ -d "$data_rustup_dir" ]]; then
-            mkdir -p "$rustup_dir"
-            if [[ ! -d "$rustup_dir/toolchains" && -d "$data_rustup_dir/toolchains" ]]; then
-              cp -a "$data_rustup_dir/." "$rustup_dir/"
-            elif [[ -f "$data_rustup_dir/settings.toml" ]] && ! grep -Fq 'default_toolchain' "$rustup_dir/settings.toml" 2>/dev/null; then
-              cp -a "$data_rustup_dir/settings.toml" "$rustup_dir/settings.toml"
-            fi
-          fi
-
-          [[ -d "$cargo_bin_dir" ]] || return 0
-          [[ -e "$cargo_bin_dir/rustup" || -L "$cargo_bin_dir/rustup" ]] || return 0
-          mkdir -p "$rust_installs_dir"
-
-          while IFS= read -r install_link; do
-            target="$(readlink "$install_link")"
-            if [[ "$target" == "${ideLib.homeDir}/.cargo/bin" ]]; then
-              rm -f "$install_link"
-            fi
-          done < <(find "$rust_installs_dir" -maxdepth 1 -type l -print 2>/dev/null | sort)
-
-          ensure_rust_install_link() {
-            local name="$1"
-            local target_dir="$2"
-            local link_path="$rust_installs_dir/$name"
-
-            [[ -n "$name" ]] || return 0
-            [[ -d "$target_dir" ]] || return 0
-            if [[ -e "$link_path" && ! -L "$link_path" ]]; then
-              return 0
-            fi
-            ln -sfnT "$target_dir" "$link_path"
-          }
-
-          while IFS= read -r toolchain_dir; do
-            toolchain_name="''${toolchain_dir##*/}"
-            version="''${toolchain_name%-x86_64-unknown-linux-gnu}"
-
-            case "$version" in
-              [0-9]*.[0-9]*.[0-9]*)
-                major="''${version%%.*}"
-                minor="''${version#*.}"
-                minor="''${minor%%.*}"
-                ensure_rust_install_link "$toolchain_name" "$toolchain_dir"
-                ensure_rust_install_link "$version" "$toolchain_dir"
-                ensure_rust_install_link "$major" "$toolchain_dir"
-                ensure_rust_install_link "$major.$minor" "$toolchain_dir"
-                ensure_rust_install_link latest "$toolchain_dir"
-                ensure_rust_install_link stable "$toolchain_dir"
-                ;;
-              nightly)
-                ensure_rust_install_link nightly "$toolchain_dir"
-                ;;
-            esac
-          done < <(find "$rustup_dir/toolchains" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V)
-          return 0
-        }
-
         case "$app_id" in
           com.jetbrains.DataSpell*)
             add_python_profile
@@ -169,12 +92,6 @@ ${ideLib.renderShellArrayItems ideLib.hostToolHomePathEntries}
             ;;
           com.jetbrains.PyCharm*)
             add_python_profile
-            ;;
-        esac
-
-        case "$app_id" in
-          com.jetbrains.CLion* | com.jetbrains.RustRover*)
-            add_rust_profile
             ;;
         esac
 
@@ -188,7 +105,6 @@ ${ideLib.renderShellArrayItems ideLib.hostToolHomePathEntries}
 
         flatpak override --user --reset "$app_id"
         flatpak override --user "''${override_args[@]}" "$app_id"
-        repair_mise_rust_installs
       }
 
       while IFS= read -r app_id; do

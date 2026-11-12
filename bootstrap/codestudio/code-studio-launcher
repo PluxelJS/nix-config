@@ -25,7 +25,6 @@ cache_root="$private_root/cache"
 tmp_root="$private_root/tmp"
 gnupg_home="$virtual_home/.gnupg"
 ssh_home="$virtual_home/.ssh"
-host_git_config="$real_home/.gitconfig"
 user_data_dir="$share_root/code-studio/code-user-data"
 user_settings_dir="$user_data_dir/User"
 extensions_dir="$virtual_home/.vscode/extensions"
@@ -73,14 +72,20 @@ export XDG_CACHE_HOME="$cache_root"
 export TMPDIR="$tmp_root"
 export GNUPGHOME="$gnupg_home"
 export CODEX_HOME="$codex_home"
-export GIT_CONFIG_GLOBAL="$host_git_config"
+export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-$real_home/.gitconfig}"
+export GH_CONFIG_DIR="${GH_CONFIG_DIR:-$real_home/.config/gh}"
 export BUN_INSTALL="$virtual_home/.bun"
 export NPM_CONFIG_PREFIX="$virtual_home/.local"
 export PNPM_HOME="$virtual_home/.local/share/pnpm"
 export PNPM_STORE_DIR="$virtual_home/.local/share/pnpm/store"
-export MISE_DATA_DIR="$virtual_home/.local/share/mise"
-export MISE_CONFIG_DIR="$virtual_home/.config/mise"
-export MISE_CACHE_DIR="$virtual_home/.cache/mise"
+# Home Manager supplies the canonical host directories. HOME/XDG above remain
+# editor-private; mise must not derive a second toolchain from them.
+export MISE_DATA_DIR="${MISE_DATA_DIR:-$real_home/.local/share/mise}"
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$real_home/.config/mise}"
+export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$real_home/.cache/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$real_home/.local/state/mise}"
+export CARGO_HOME="${CARGO_HOME:-$real_home/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-$real_home/.rustup}"
 export ZDOTDIR="$zsh_config_dir"
 export SHELL="/app/bin/zsh"
 export GIT_SSH_COMMAND="ssh -F $ssh_home/config"
@@ -98,6 +103,7 @@ mkdir -p \
   "$MISE_DATA_DIR/shims" \
   "$MISE_CONFIG_DIR" \
   "$MISE_CACHE_DIR" \
+  "$MISE_STATE_DIR" \
   "$ZDOTDIR"
 
 # Keep the private HOME ergonomic without exposing the rest of the host home.
@@ -145,18 +151,19 @@ chmod 600 "$ssh_home/known_hosts" "$ssh_home/config" 2>/dev/null || true
 
 if [[ -d "$nix_profile/bin" ]]; then
   export CODE_STUDIO_NIX_PROFILE="$nix_profile"
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$nix_profile/bin:$inherited_path"
+  export PATH="$real_home/.local/bin:$MISE_DATA_DIR/shims:$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$nix_profile/bin:$inherited_path"
 else
-  export PATH="$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$MISE_DATA_DIR/shims:$inherited_path"
+  export PATH="$real_home/.local/bin:$MISE_DATA_DIR/shims:$HOME/.local/bin:$BUN_INSTALL/bin:$PNPM_HOME:$inherited_path"
 fi
 
 if [[ ! -f "$config_root/starship/starship.toml" ]]; then
   cp /app/share/code-studio/starship.toml "$config_root/starship/starship.toml"
 fi
 
-# Seed the default zsh entry point without replacing a user's custom one.
-# This is needed when an extension starts zsh with HOME but no ZDOTDIR.
-if [[ ! -e "$HOME/.zshenv" && ! -L "$HOME/.zshenv" ]]; then
+# Refresh the old managed seed, preserving arbitrary user-authored zshenv files.
+# Extensions sometimes start zsh with HOME alone, without the launcher's env.
+if [[ ! -e "$HOME/.zshenv" && ! -L "$HOME/.zshenv" ]] || \
+   grep -qF '# Extensions may probe a login shell with only HOME' "$HOME/.zshenv"; then
   cp /app/share/code-studio/zshenv "$HOME/.zshenv"
 fi
 
@@ -215,7 +222,7 @@ done
 set -- "${normalized_args[@]}"
 
 if [[ "${1:-}" == "--print-code-studio-env" ]]; then
-  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|GIT_CONFIG_GLOBAL|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
+  env | grep -E '^(HOME|XDG_CONFIG_HOME|XDG_DATA_HOME|XDG_STATE_HOME|XDG_CACHE_HOME|GNUPGHOME|CODEX_HOME|GIT_CONFIG_GLOBAL|GH_CONFIG_DIR|BUN_INSTALL|NPM_CONFIG_PREFIX|PNPM_HOME|PNPM_STORE_DIR|MISE_DATA_DIR|MISE_CONFIG_DIR|MISE_CACHE_DIR|ZDOTDIR|SHELL|LANG|LC_ALL|GIT_SSH_COMMAND|CODE_STUDIO_NIX_PROFILE|PATH)=' | sort
   for command_name in git gh gpg ssh gcc make python3 node npm pnpm bun mise starship fzf zoxide atuin eza bat fastfetch rg fd yazi codex opencode code-studio-shell; do
     command_path="$(command -v "$command_name" || true)"
     printf '%s=%s\n' "$command_name" "$command_path"

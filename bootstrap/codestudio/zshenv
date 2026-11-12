@@ -2,12 +2,20 @@
 # PATH and ZDOTDIR. Restore tool discovery before the interactive config runs.
 # Keep this file silent: language-server environment probes parse stdout.
 export ZDOTDIR="${ZDOTDIR:-$HOME/.config/zsh}"
+export CODE_STUDIO_HOST_HOME="${CODE_STUDIO_HOST_HOME:-${HOME%%/.var/app/*}}"
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$CODE_STUDIO_HOST_HOME/.config/mise}"
+export MISE_DATA_DIR="${MISE_DATA_DIR:-$CODE_STUDIO_HOST_HOME/.local/share/mise}"
+export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$CODE_STUDIO_HOST_HOME/.cache/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$CODE_STUDIO_HOST_HOME/.local/state/mise}"
+export CARGO_HOME="${CARGO_HOME:-$CODE_STUDIO_HOST_HOME/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-$CODE_STUDIO_HOST_HOME/.rustup}"
 typeset -U path
 path=(
+  "$CODE_STUDIO_HOST_HOME/.local/bin"
+  "$MISE_DATA_DIR/shims"
   "$HOME/.local/bin"
   "$HOME/.bun/bin"
   "$HOME/.local/share/pnpm"
-  "$HOME/.local/share/mise/shims"
   "${HOME%%/.var/app/*}/.local/state/nix/profiles/profile/bin"
   /app/bin
   $path

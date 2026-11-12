@@ -55,8 +55,7 @@ let
       "${codeStudioDocker}/bin"
       "${codeStudioGio}/bin"
       "${codeStudioWine}/bin"
-      "${ideLib.codeStudioHomeDir}/.local/share/mise/shims"
-    ] ++ ideLib.hostToolHomePathEntries ++ [
+    ] ++ ideLib.misePathEntries ++ ideLib.hostToolHomePathEntries ++ [
       ideLib.profileBinDir
       "${ideLib.homeDir}/.local/bin"
       "/app/bin"
@@ -86,16 +85,25 @@ let
       "xdg-run/podman"
     ];
     persists = codeStudioPersistDirs;
-    env = {
+    env = ideLib.miseEnv // ideLib.gitEnv // {
       CODEX_HOME = ideLib.flatpakCodexHome;
       CARGO_TARGET_DIR = "${ideLib.homeDir}/.var/app/${ideLib.codeStudioAppId}/cache/cargo-target";
       PATH = codeStudioPath;
+      CARGO_HOME = "${ideLib.homeDir}/.cargo";
+      RUSTUP_HOME = "${ideLib.homeDir}/.rustup";
     };
   });
 in
 lib.mkIf config.ahdg.features.flatpak {
   home.activation.prepareCodeStudioProjectHome = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     mkdir -p '${ideLib.homeDir}/code'
+  '';
+
+  home.activation.prepareCodeStudioGitBridge = lib.hm.dag.entryAfter [
+    "migrateGitOAuthHelpers"
+    "initializeGhConfig"
+  ] ''
+    ${ideLib.mkFakeHomeGitBridge ideLib.codeStudioHomeDir}
   '';
 
   home.activation.prepareCodeStudioDesktopBridge = lib.hm.dag.entryAfter [
@@ -113,6 +121,7 @@ lib.mkIf config.ahdg.features.flatpak {
 
   home.activation.manageFlatpakCodeStudioOverride = lib.hm.dag.entryAfter [
     "prepareCodeStudioDesktopBridge"
+    "prepareCodeStudioGitBridge"
     "prepareFlatpakIdeToolHomes"
   ] ''
     if command -v flatpak >/dev/null 2>&1; then

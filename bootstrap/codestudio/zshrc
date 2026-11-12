@@ -29,6 +29,9 @@ if [[ -o interactive ]]; then
   autoload -Uz compinit
   mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
   compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump-$ZSH_VERSION"
+  if command -v mise >/dev/null 2>&1; then
+    eval "$(mise completion zsh)"
+  fi
 fi
 
 if [[ -r /app/share/code-studio/zsh/interactive.zsh ]]; then

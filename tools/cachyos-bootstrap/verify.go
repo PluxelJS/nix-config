@@ -729,7 +729,7 @@ func (v *verifier) checkDesktopRuntime() {
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME=kde") &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME_QT6=kde") &&
 			strings.Contains(copyqService, "QT_PLUGIN_PATH=/nix/store/") &&
-			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,/nix/store/[^/]+-copyq-toggle$`).MatchString(mangoMainConfig) &&
+			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,`+regexp.QuoteMeta(v.path(".local/bin/copyq-toggle"))+`$`).MatchString(mangoMainConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
 			v.pass("CopyQ owns Mango clipboard history as a restartable session service while DMS clipboard tracking stays disabled")
 		} else {

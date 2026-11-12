@@ -10,7 +10,6 @@
     agenix = {
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
     };
     dev-runtime = {
       url = "github:PluxelJS/dev-runtime";
@@ -45,32 +44,29 @@
             meatshell = final.callPackage ./pkgs/meatshell.nix { };
             misterdownloadmanager = final.callPackage ./pkgs/misterdownloadmanager.nix { };
             zed-editor-bin = final.callPackage ./pkgs/zed-editor.nix { };
-            dms = final.callPackage ./pkgs/dms.nix { };
-            copyq = prev.copyq.overrideAttrs (old: {
-              # CopyQ 15 fixed a leak in the long-running Wayland clipboard
-              # monitor/provider processes. Keep the Nix-managed desktop on
-              # the current release until the pinned nixpkgs catches up.
-              inherit (final.desktopSources.copyq) version src;
-              buildInputs = old.buildInputs ++ [
-                # CopyQ is a Qt application, so let it use the same KDE
-                # platform theme and widget styles as the rest of the desktop.
-                final.darkly
-                final.kdePackages.breeze
-                final.kdePackages.plasma-integration
-                final.kdePackages.qca
-                final.kdePackages.qtkeychain
-              ];
-              cmakeFlags = old.cmakeFlags ++ [
-                "-DMINIAUDIO_INCLUDE_DIR=${final.miniaudio.dev}/include/miniaudio"
-              ];
-              patches = [ ];
-            });
-            songrec = prev.songrec.override {
-              # SongRec opens ALSA through libasound at runtime. The plain
-              # alsa-lib package in nixpkgs does not include the Pulse/PipeWire
-              # compatibility plugins, which causes "snd_pcm_open" failures on
-              # this desktop. Reuse the official merged package instead.
-              alsa-lib = final.alsa-lib-with-plugins;
+            copyq = final.symlinkJoin {
+              name = "copyq-kde-${prev.copyq.version}";
+              paths = [ prev.copyq ];
+              nativeBuildInputs = [ final.makeWrapper ];
+              # Theme plugins are runtime inputs; preserve the nixpkgs cache
+              # instead of rebuilding CopyQ just to add their search paths.
+              postBuild = ''
+                wrapProgram "$out/bin/copyq" \
+                  --prefix QT_PLUGIN_PATH : "${final.lib.makeSearchPath "lib/qt-6/plugins" [ final.darkly final.kdePackages.breeze final.kdePackages.plasma-integration ]}"
+              '';
+              inherit (prev.copyq) version meta;
+            };
+            songrec = final.symlinkJoin {
+              name = "songrec-${prev.songrec.version}";
+              paths = [ prev.songrec ];
+              nativeBuildInputs = [ final.makeWrapper ];
+              # Reuse the cached executable. Select the plugin-enabled ALSA
+              # library at runtime instead of recompiling the Rust application.
+              postBuild = ''
+                wrapProgram "$out/bin/songrec" \
+                  --prefix LD_LIBRARY_PATH : "${final.lib.makeLibraryPath [ final.alsa-lib-with-plugins ]}"
+              '';
+              inherit (prev.songrec) meta;
             };
           })
         ];
@@ -128,8 +124,6 @@
         zed-editor = pkgs.zed-editor-bin;
         misterdownloadmanager = pkgs.misterdownloadmanager;
         dev-runtime = pkgs.dev-runtime;
-        # Expose the dependency derivation for the source updater's vendor hash.
-        dms = pkgs.dms;
         nixup = pkgs.callPackage ./pkgs/nixup.nix { };
       };
 

@@ -30,7 +30,7 @@ class UpdateTests(unittest.TestCase):
     def asset(self):
         return {'kind': 'file', 'owner': 'owner', 'repo': 'repo', 'version': 'LTS',
                 'name': 'model.gram', 'url': 'https://example.invalid/LTS/model.gram',
-                'hash': u.FAKE_HASH, 'update': {'type': 'release', 'tag': 'LTS', 'asset': 'model.gram'}}
+                'hash': u.sri('0' * 64), 'update': {'type': 'release', 'tag': 'LTS', 'asset': 'model.gram'}}
 
     def test_mutable_release_is_resolved_to_asset_id(self):
         original = self.asset()
@@ -94,13 +94,6 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual((root / 'sources.json').read_bytes(), initial)
             self.assertEqual((root / 'flake.lock').read_bytes(), b'original flake')
 
-    def test_vendor_hash_is_validated_and_not_guessed_on_other_failures(self):
-        with tempfile.TemporaryDirectory() as temp:
-            sources = {'dms': {'vendorHash': 'old'}}
-            with patch.object(u.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'network failed')):
-                with self.assertRaisesRegex(RuntimeError, 'network failed'):
-                    u.update_vendor_hash(Path(temp), sources)
-
     def test_flake_failure_after_partial_staging_does_not_publish_locks(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -122,17 +115,46 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual((root / 'sources.json').read_bytes(), original)
             self.assertEqual((root / 'flake.lock').read_bytes(), b'old flake')
 
-    def test_vendor_hash_mismatch_is_followed_by_real_verification(self):
-        got = u.sri('1' * 64)
-        error = f"error: hash mismatch in fixed-output derivation '/nix/store/abc-dms-1.0-go-modules.drv':\n specified: {u.FAKE_HASH}\n got: {got}\n"
+    def test_refresh_without_dms_evaluates_without_compiling(self):
         with tempfile.TemporaryDirectory() as temp:
-            sources = {'dms': {'vendorHash': 'old'}}
-            with patch.object(u.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', error)), \
-                 patch.object(u, 'run') as verify:
-                u.update_vendor_hash(Path(temp), sources)
-            self.assertEqual(sources['dms']['vendorHash'], got)
-            self.assertEqual(verify.call_count, 1)
-            self.assertEqual(json.loads((Path(temp) / 'sources.json').read_text())['dms']['vendorHash'], got)
+            root = Path(temp)
+            (root / 'tools').mkdir()
+            (root / 'sources.json').write_bytes(u.encode({'asset': self.asset()}))
+            (root / 'flake.lock').write_bytes(b'old flake')
+            updated = self.asset() | {'hash': u.sri('1' * 64)}
+
+            def command(args, **kwargs):
+                if args[:3] == ['nix', 'flake', 'update']:
+                    (kwargs['cwd'] / 'flake.lock').write_bytes(b'new flake')
+
+            with patch.object(u, '__file__', str(root / 'tools/update-sources.py')), \
+                 patch.object(u, 'copy_checkout'), \
+                 patch.object(u, 'refresh', return_value=updated), \
+                 patch.object(u, 'run', side_effect=command) as commands, \
+                 patch.object(sys, 'argv', ['update-sources.py', '--flake']):
+                u.main()
+            self.assertEqual([call.args[0][1] for call in commands.call_args_list],
+                             ['flake', 'eval'])
+            self.assertEqual(json.loads((root / 'sources.json').read_text())['asset'], updated)
+            self.assertEqual((root / 'flake.lock').read_bytes(), b'new flake')
+
+    def test_evaluation_failure_preserves_existing_locks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'tools').mkdir()
+            original = u.encode({'asset': self.asset()})
+            (root / 'sources.json').write_bytes(original)
+            (root / 'flake.lock').write_bytes(b'old flake')
+            with patch.object(u, '__file__', str(root / 'tools/update-sources.py')), \
+                 patch.object(u, 'copy_checkout'), \
+                 patch.object(u, 'refresh', return_value=self.asset()), \
+                 patch.object(u, 'run', side_effect=subprocess.CalledProcessError(1, 'nix eval')), \
+                 patch.object(sys, 'argv', ['update-sources.py']):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    u.main()
+            self.assertEqual((root / 'sources.json').read_bytes(), original)
+            self.assertEqual((root / 'flake.lock').read_bytes(), b'old flake')
+
 
 
 if __name__ == '__main__':

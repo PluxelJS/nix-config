@@ -1,6 +1,7 @@
 { ... }:
 {
   imports = [
+    ./mise.nix
     ./opencode.nix
     ./packages.nix
     ./pay-respects.nix

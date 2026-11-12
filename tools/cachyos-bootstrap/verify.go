@@ -411,6 +411,7 @@ func (v *verifier) checkInteractiveShell() {
 	} else {
 		v.fail("interactive zsh cannot resolve one or more managed tools")
 	}
+	v.checkZsh(miseToolchainScript(v.home), "shell uses writable mise and its shared Node/pnpm/OpenCode tools", "shell mise installation or shared development tools are incomplete")
 
 	if v.has("ghostty") {
 		v.checkZsh("[[ \"$ELECTRON_OZONE_PLATFORM_HINT\" == \"auto\" && \"$TERMINAL\" == \"ghostty\" ]]", "interactive zsh exports the desktop helper environment", "interactive zsh is missing desktop helper environment variables")
@@ -497,6 +498,11 @@ func (v *verifier) checkCodeStudio() {
 		return
 	}
 	home := shellQuote(v.home)
+	if commandOK("flatpak", "run", "--command=code-studio-shell", appID, "-lc", miseToolchainScript(v.home)) {
+		v.pass("Code Studio launcher uses the shared writable mise environment")
+	} else {
+		v.fail("Code Studio launcher cannot execute the shared mise tools; rebuild the local Flatpak after launcher changes")
+	}
 	if flatpakShell(appID, "for cmd in zsh mise git gh opencode node npm npx; do command -v \"$cmd\" >/dev/null 2>&1 || exit 1; done") {
 		v.pass("Code Studio terminal resolves the shared host-managed toolchain")
 	} else {
@@ -539,6 +545,11 @@ func (v *verifier) checkJetbrains(appID, product string) {
 		return
 	}
 	home := shellQuote(v.home)
+	if flatpakShell(appID, miseToolchainScript(v.home)) {
+		v.pass("%s uses the shared writable mise environment", product)
+	} else {
+		v.fail("%s cannot execute the shared mise tools", product)
+	}
 	profileZsh := filepath.Join(v.home, ".local", "state", "nix", "profiles", "profile", "bin", "zsh")
 	if flatpakShell(appID, "for cmd in zsh git gh opencode node npm npx; do command -v \"$cmd\" >/dev/null 2>&1 || exit 1; done") {
 		v.pass("%s terminal resolves the shared host-managed toolchain", product)
@@ -718,7 +729,7 @@ func (v *verifier) checkDesktopRuntime() {
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME=kde") &&
 			strings.Contains(copyqService, "QT_QPA_PLATFORMTHEME_QT6=kde") &&
 			strings.Contains(copyqService, "QT_PLUGIN_PATH=/nix/store/") &&
-			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,/nix/store/[^/]+-copyq-toggle$`).MatchString(mangoMainConfig) &&
+			regexp.MustCompile(`(?m)^bind=Ctrl,grave,spawn,`+regexp.QuoteMeta(v.path(".local/bin/copyq-toggle"))+`$`).MatchString(mangoMainConfig) &&
 			!strings.Contains(mangoTarget, "xdg-desktop-autostart.target") {
 			v.pass("CopyQ owns Mango clipboard history as a restartable session service while DMS clipboard tracking stays disabled")
 		} else {
@@ -993,6 +1004,19 @@ func (v *verifier) fail(format string, args ...any) {
 func (v *verifier) warn(format string, args ...any) {
 	fmt.Printf("[warn] "+format+"\n", args...)
 	v.warnings++
+}
+
+func miseToolchainScript(home string) string {
+	return fmt.Sprintf(`
+test "$(sh -c 'command -v mise')" = %[1]s/.local/bin/mise &&
+test ! -L %[1]s/.local/bin/mise &&
+test -w %[1]s/.local/bin/mise &&
+test "$MISE_CONFIG_DIR" = %[1]s/.config/mise &&
+test "$MISE_DATA_DIR" = %[1]s/.local/share/mise &&
+node -e 'if (!process.execPath.startsWith(process.env.MISE_DATA_DIR + "/installs/node/")) process.exit(1)' &&
+npm --version >/dev/null && npx --version >/dev/null &&
+pnpm --version >/dev/null && opencode --version >/dev/null
+`, shellQuote(home))
 }
 
 func flatpakShell(appID, script string) bool {

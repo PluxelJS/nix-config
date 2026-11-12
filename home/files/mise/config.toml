@@ -1,0 +1,8 @@
+# Initial defaults only. Live choices belong to ~/.config/mise/config.toml.
+[tools]
+node = "24"
+pnpm = "latest"
+opencode = "latest"
+
+[settings.self_update]
+auto = true

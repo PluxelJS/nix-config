@@ -5,6 +5,7 @@ repo_root="${1:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
 script_dir="$repo_root/bootstrap/codestudio"
 manifest="$script_dir/io.github.trumank.CodeStudio.yml"
 build_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ahdg-code-studio-flatpak-build"
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ahdg-code-studio-flatpak-state"
 repo_dir="${XDG_DATA_HOME:-$HOME/.local/share}/ahdg/flatpak-repos/code-studio"
 remote_name="ahdg-code-studio"
 runtime_ref="org.freedesktop.Sdk//24.08"
@@ -29,7 +30,10 @@ if ! flatpak --user info "$runtime_ref" >/dev/null 2>&1; then
 fi
 
 mkdir -p "$(dirname "$repo_dir")"
-flatpak-builder --force-clean --repo="$repo_dir" "$build_dir" "$manifest"
+# Avoid rofiles-fuse mount failures on repeated local rebuilds. The normal
+# copy-based cache works without depending on the user's FUSE mount state.
+# Keep builder state outside the checkout so path: flakes do not copy its cache.
+flatpak-builder --state-dir="$state_dir" --disable-rofiles-fuse --force-clean --repo="$repo_dir" "$build_dir" "$manifest"
 flatpak --user remote-add --if-not-exists --no-gpg-verify --no-enumerate "$remote_name" "file://$repo_dir"
 
 app_id="io.github.trumank.CodeStudio"

@@ -4,13 +4,16 @@ Fresh-machine path for recreating this environment on CachyOS/Arch.
 
 ## Layers
 
-Bootstrap prepares three layers:
+Bootstrap prepares these layers:
 
 - **Host packages:** compositor/session runtimes, firewall policy, and system
   integration from CachyOS/Arch repositories, with explicit AUR exceptions only
   when no reliable repo package is available.
 - **Home Manager:** reproducible user config, Nix packages, themes, Flatpak
   policy, and user services.
+- **Mise:** standalone user-owned binary and development tools. Home Manager
+  activation provisions missing tools before switching packages, using the same
+  writable tool environment for host shells and managed IDEs.
 - **Desktop Flatpaks:** apps currently used on the workstation, including
   keybind targets, MIME defaults, IDE sandboxes, and validation canaries.
 

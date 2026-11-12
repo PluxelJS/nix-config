@@ -6,10 +6,16 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
 ## Design
 
 - Pin upstream VS Code to a known-good build.
-- Keep all editor, shell, Codex, extension, and tool state under the app-private
+- Keep editor, shell history, Codex session, and extension state under the app-private
   Flatpak home: `~/.var/app/io.github.trumank.CodeStudio/home`.
-- Expose only `~/code` as a writable host filesystem mount, plus the XDG
-  download directory for explicit imports, exports, and downloaded artifacts.
+- Expose `~/code` and XDG downloads, plus the explicit shared CLI configuration
+  and tool directories selected by Home Manager. Mise uses the host's writable
+  binary, config, installs, cache, and state; Cargo/Rustup homes are shared.
+- Read Git policy and local identity from the host's `~/.gitconfig` and
+  `~/.config/git`; use the host's writable `~/.config/gh` for GitHub CLI
+  settings and login selection. Home Manager links these paths into the
+  private home too, so extension processes that discard the launcher
+  environment still find the same configuration.
 - Expose the rootless Podman user socket and provide a sandbox-local `docker`
   compatibility command for Dev Containers; the container engine remains on
   the host.
@@ -26,8 +32,8 @@ It is installed by the CachyOS bootstrap desktop profile after Flathub apps.
 - Seed editor defaults only when the corresponding user files do not exist.
 - Keep startup free of settings migrations and user-state repair; Code Studio
   owns its settings, workspace recovery data, locks, and extension caches.
-- Preserve the Home Manager-provided tool `PATH`, then prepend app-private
-  package manager and mise paths used by the integrated terminal.
+- Preserve the Home Manager-provided tool `PATH`, with host mise and its shims
+  before legacy app-private package-manager paths.
 - Seed a silent `~/.zshenv` in the private home so extension login-shell probes
   that pass only `HOME` can still find mise shims and the managed `.zshrc`.
   Existing custom `.zshenv` files are preserved; tool versions remain owned by
@@ -53,8 +59,20 @@ machines get the same private-home layout.
 Home Manager also links the host-owned fontconfig, fonts, GTK/KDE settings,
 icons, themes, sounds, and Fcitx resources into their normal locations below
 the private home. Their targets are exposed by the global Flatpak override as
-read-only paths. Development-tool state remains private; the bridge contains
-only the shared desktop integration allowlist.
+read-only paths. Shared mise tool state uses separate app-specific writable
+mounts; the desktop bridge contains only the desktop integration allowlist.
+
+The separate Git/GitHub bridge is applied by Home Manager after preparing the
+host config. Existing private `.gitconfig`, `.config/git`, and `.config/gh`
+are preserved beside their links with an `.app-private.bak` suffix. If both a
+private path and its backup already exist, activation stops instead of
+overwriting either. Config contents and credentials remain machine-local;
+the repo declares only their lookup paths and mount permissions.
+
+Edit global Git settings on the host: the sandbox mounts them read-only.
+Reopen Code Studio after a Home Manager switch or an atomic replacement of
+host `.gitconfig`, since an already running Flatpak can retain the old file
+mount. Rebuilding the package does not restart existing editor windows.
 
 ## Version Pin
 
@@ -72,6 +90,11 @@ When bumping the editor, update `io.github.trumank.CodeStudio.yml`, keep the
 sha256 pinned, and compare font clarity against the host editor before shipping.
 
 ## Install
+
+Local builds keep their output and reusable builder state under
+`$XDG_CACHE_HOME/ahdg-code-studio-flatpak-{build,state}` (defaulting to
+`~/.cache`). Keeping the cache outside the checkout avoids copying it into
+Home Manager's local `path:` flake evaluations.
 
 Normally use the main bootstrap flow:
 
@@ -118,6 +141,17 @@ Open a shell inside the private home:
 ```bash
 flatpak run --command=code-studio-shell io.github.trumank.CodeStudio
 ```
+
+Inspect global Git config sources without printing credential values:
+
+```bash
+flatpak run --command=code-studio-shell \
+  io.github.trumank.CodeStudio -lc 'git config --global --includes --show-origin --name-only --list'
+```
+
+`GIT_CONFIG_GLOBAL` and `GH_CONFIG_DIR` in the launcher diagnostics should point
+to the host configuration. The private-home links cover processes that omit
+these variables; they do not share the private SSH/GnuPG homes.
 
 Check the host-backed container client:
 

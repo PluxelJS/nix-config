@@ -29,7 +29,6 @@ var cleanupGroups = []struct {
 			"ghostty-terminfo",
 			"git",
 			"localsend",
-			"mise",
 			"notepadnext-bin",
 			"peazip",
 			"peazip-qt-bin",
@@ -48,6 +47,10 @@ var cleanupGroups = []struct {
 			"ttf-inter",
 			"ttf-twemoji-color",
 		},
+	},
+	{
+		title:    "Replaced by standalone mise",
+		packages: []string{"mise"},
 	},
 	{
 		title:    "Retired Qt theme stack",

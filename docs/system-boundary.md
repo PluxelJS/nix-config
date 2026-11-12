@@ -65,7 +65,24 @@ Flatpak note:
 - if a specific app needs a runtime workaround, keep it as a small app-local
   exception rather than introducing another generic wrapper layer
 
+Code Studio's private HOME links back to the host `.gitconfig`, XDG Git config,
+and GitHub CLI config. Nix manages those links and mount permissions; Git
+identity, credentials, and local settings remain on the machine. Sharing a
+credential store alone does not align an IDE's Git configuration.
+
 ## Host Runtime Dependencies
+
+Development tools have a separate owner: standalone mise in `~/.local/bin`.
+Home Manager provisions it, seeds global tool defaults once, and wires host and
+Flatpak IDE paths. Mise owns installation and updates for Node, pnpm, OpenCode,
+and tools added with `mise use`. Nix keeps base shell utilities, desktop
+packages, and service dependencies such as explicitly referenced Python
+interpreters. A tool being available in mise is not a reason to move a pinned
+service dependency out of its Nix closure.
+
+Shared mise directories are writable app-specific mounts for managed IDEs;
+they are not granted through the global Flatpak override. Old app-private mise
+trees remain recovery data. See [operations](operations.md#development-tools-and-mise).
 
 The authoritative install/check path is:
 
@@ -159,10 +176,10 @@ CopyQ, meatshell, Zed, and Mister Download Manager are desktop-profile Home
 Manager packages. CopyQ owns clipboard history with a 20,000-entry retention
 limit and no automatic expiry;
 DMS clipboard tracking is explicitly disabled after the DMS backend starts.
-CopyQ is pinned to 16.0.0 until nixpkgs catches up because that release line
-fixes the long-running clipboard process leak. Ark and its 7z, RAR,
+CopyQ follows the locked nixpkgs package, with KDE theme search paths added by
+a runtime wrapper so the application retains binary-cache coverage. Ark and its 7z, RAR,
 Unarchiver, and Info-ZIP backends belong to the coherent KDE runtime above;
-meatshell is pinned to the verified upstream 0.6.10 release artifact;
+meatshell is pinned to a verified upstream release artifact in `sources.json`;
 GPU-backed meatshell and Zed launch through the CachyOS nixGL bridge.
 
 Mister Download Manager is pinned to an official Linux release asset in
@@ -197,6 +214,6 @@ without coupling firewall policy to the rest of the GUI stack.
 ## Package-Repair Rule
 
 - `f` / `fix` uses Arch-native package lookup on this machine
-- long-lived tools that belong in the reproducible environment should still be
-  added to this flake instead of installed ad hoc
+- base utilities and service dependencies belong in this flake; development
+  tools belong in global/project mise declarations
 - `paru` remains a manual AUR workflow tool, not the default package backend

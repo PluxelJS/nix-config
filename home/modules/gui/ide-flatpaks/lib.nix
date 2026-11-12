@@ -7,6 +7,13 @@ let
   profileZsh = "${profileBinDir}/zsh";
   flatpakCodexHome = "${homeDir}/.local/share/codex";
   shellQuote = lib.escapeShellArg;
+  miseEnv = lib.getAttrs [
+    "MISE_CONFIG_DIR" "MISE_DATA_DIR" "MISE_CACHE_DIR" "MISE_STATE_DIR"
+  ] config.home.sessionVariables;
+  gitEnv = {
+    GIT_CONFIG_GLOBAL = "${homeDir}/.gitconfig";
+    GH_CONFIG_DIR = "${xdgConfigHome}/gh";
+  };
 
   codeStudioAppId = "io.github.trumank.CodeStudio";
   codeStudioHomeDir = "${homeDir}/.var/app/${codeStudioAppId}/home";
@@ -60,7 +67,7 @@ let
 
   sharedReadOnlyFilesystems = [
     "${homeDir}/.config/atuin:ro"
-    "${homeDir}/.config/git:ro"
+    "${xdgConfigHome}/git:ro"
     "${homeDir}/.config/starship:ro"
     "${homeDir}/.config/zsh:ro"
     "${homeDir}/.gitconfig:ro"
@@ -69,9 +76,11 @@ let
   ];
 
   sharedWritableFilesystems = [
+    # Mount directories: mise self-update and config writes use atomic rename.
+    "${homeDir}/.local/bin:create"
     "${homeDir}/.claude:create"
     "${homeDir}/.codex:create"
-    "${homeDir}/.config/gh:create"
+    "${xdgConfigHome}/gh:create"
     "${homeDir}/.config/opencode:create"
     "${homeDir}/.continue:create"
     "${homeDir}/.gemini:create"
@@ -79,7 +88,7 @@ let
     "${homeDir}/.opencode:create"
     "${homeDir}/code:create"
     "xdg-data/Trash:create"
-  ];
+  ] ++ map (path: "${path}:create") (builtins.attrValues miseEnv);
 
   sharedFilesystems = sharedReadOnlyFilesystems ++ sharedWritableFilesystems ++ hostToolHomeFilesystems;
 
@@ -105,8 +114,10 @@ rec {
     codeStudioAppId
     codeStudioHomeDir
     flatpakCodexHome
+    gitEnv
     hostToolHomeDirs
     homeDir
+    miseEnv
     profileBinDir
     profileZsh
     renderFlatpakArgs
@@ -114,6 +125,8 @@ rec {
     sharedFilesystems
     shellQuote
     ;
+
+  misePathEntries = [ "${homeDir}/.local/bin" "${miseEnv.MISE_DATA_DIR}/shims" ];
 
   jetbrainsFilesDir = ../../../files/jetbrains;
   inputhelp = ../../../files/jetbrains/inputhelp.zip;
@@ -141,20 +154,31 @@ rec {
   ];
 
   mkFakeHomeDesktopBridge = fakeHomeDir:
+    mkFakeHomeBridge (desktopBridgeEntries fakeHomeDir);
+
+  # Mounting config is insufficient after the launcher changes HOME/XDG.
+  # Keep default lookup paths working even when extensions drop the env.
+  mkFakeHomeGitBridge = fakeHomeDir:
+    mkFakeHomeBridge [
+      { source = gitEnv.GIT_CONFIG_GLOBAL; target = "${fakeHomeDir}/.gitconfig"; }
+      { source = "${xdgConfigHome}/git"; target = "${fakeHomeDir}/.config/git"; }
+      { source = gitEnv.GH_CONFIG_DIR; target = "${fakeHomeDir}/.config/gh"; }
+    ];
+
+  mkFakeHomeBridge = entries:
     let
-      entries = desktopBridgeEntries fakeHomeDir;
       sources = map (entry: entry.source) entries;
       targets = map (entry: entry.target) entries;
     in
     ''
-      desktop_bridge_sources=(
+      home_bridge_sources=(
 ${renderShellArrayItems sources}
       )
-      desktop_bridge_targets=(
+      home_bridge_targets=(
 ${renderShellArrayItems targets}
       )
 
-      link_desktop_resource() {
+      link_home_resource() {
         local source_path="$1"
         local target_path="$2"
         local backup_path="$target_path.app-private.bak"
@@ -177,10 +201,10 @@ ${renderShellArrayItems targets}
         ln -sT "$source_path" "$target_path"
       }
 
-      for index in "''${!desktop_bridge_sources[@]}"; do
-        link_desktop_resource \
-          "''${desktop_bridge_sources[$index]}" \
-          "''${desktop_bridge_targets[$index]}"
+      for index in "''${!home_bridge_sources[@]}"; do
+        link_home_resource \
+          "''${home_bridge_sources[$index]}" \
+          "''${home_bridge_targets[$index]}"
       done
     '';
 

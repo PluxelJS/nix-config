@@ -10,7 +10,8 @@ services reproducible. It intentionally does not manage the whole host.
 
 Home Manager owns:
 
-- shell tools and interactive behavior
+- base shell tools and interactive behavior
+- mise bootstrap defaults and shared host/IDE tool-path integration
 - GUI config under `$HOME`, including Ghostty, Mango, XDG defaults, and portals
 - a coherent Nix-owned KDE user runtime: Dolphin, Ark, KDED, KIO/KService
   helpers, KWallet, PolicyKit agent, themes, and portal services
@@ -19,6 +20,12 @@ Home Manager owns:
 - development services managed by the upstream `dev-runtime` daemon and dashboard
 - LocalSend from Nixpkgs, wrapped for the CachyOS graphics stack
 - Mister Download Manager, its browser host, tray startup, and media helpers
+
+Mise owns development tools (initially Node, pnpm, and OpenCode) and their
+versions. Its standalone `~/.local/bin/mise` updates with `mise self-update`;
+`mise upgrade --global` updates tools without a Nix switch. Host terminals and
+managed IDE Flatpaks use the same writable mise environment. Home Manager seeds
+defaults once and installs missing tools, preserving later user choices.
 
 The host package manager owns:
 

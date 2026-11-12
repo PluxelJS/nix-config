@@ -30,8 +30,6 @@ in {
       bat
       eza
       fd
-      mise
-      nodejs
       pandoc
       ripgrep
       usage

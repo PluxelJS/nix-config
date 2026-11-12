@@ -96,9 +96,64 @@ explicit maintainer workflow using `nixup --latest`, followed by review and
 testing before committing both locks. `nix flake update` alone updates only
 flake inputs; it does not refresh desktop asset hashes.
 
+### Development tools and mise
+
+Home Manager owns shell integration and the initial tool defaults in
+`home/files/mise/config.toml`. A switch provisions the official standalone mise
+binary at `~/.local/bin/mise` before replacing the Nix profile, then runs
+`mise install` and `mise reshim` outside any project. This installs missing
+global tools without upgrading already installed matching versions. The first
+installation needs network access; building the Nix generation does not download
+mise or its tools. Failed provisioning stops before the old profile is replaced.
+
+Mise, Node, pnpm, and OpenCode are not Nix profile packages. Fresh accounts start
+with Node 24, pnpm latest, and OpenCode latest. Mise uses the official musl binary
+so the same executable works on the host and in the Flatpak SDK. Its executable,
+config, installs, cache, and state remain writable:
+
+```text
+~/.local/bin/mise
+~/.config/mise/config.toml
+~/.local/share/mise/
+~/.cache/mise/
+~/.local/state/mise/
+```
+
+The first migration preserves host tool selections, imports missing tool
+declarations from managed IDEs, and supplies missing defaults. The previous host
+config is saved as `config.toml.pre-shared-mise`; private IDE config/install trees
+remain untouched for recovery. Private install trees are not moved because
+venvs and scripts can contain absolute paths. The marker
+`~/.local/state/mise/nix-bootstrap-v1` prevents later switches from reimporting
+old choices or restoring tools the user deliberately removed.
+
+Use mise directly for routine development-tool maintenance:
+
+```bash
+mise self-update               # mise itself; no Nix switch needed
+mise upgrade --global          # globally configured tools, within their ranges
+mise upgrade --global opencode # just OpenCode
+mise use --global node@24 pnpm@latest
+mise use node@24               # project-local version declaration
+mise doctor
+```
+
+Newly seeded settings enable `self_update.auto`; existing explicit preferences
+are preserved. Mise checks on eligible interactive commands, not via a background
+timer. Bootstrap does not enable automatic tool upgrades. `latest` selects the newest
+installed matching version until an upgrade is requested; an exact version stays
+pinned. Use `mise use` or `mise upgrade --bump` to change a version request.
+The live TOML is a regular file, so mise can edit it. A Nix generation rollback
+does not roll back mise or development-tool versions; pin project versions in
+`mise.toml` and use `mise.lock` where reproducibility is required.
+
+After changing the bundled Code Studio launcher, rebuild it with
+`bash bootstrap/codestudio/install-code-studio.sh "$PWD"` from the repository
+root. Restart IDEs and terminals to discard cached paths after migration.
+
 ### Desktop asset updates
 
-`sources.json` is the shared source catalog and lock for CopyQ, DMS, Mark Shot,
+`sources.json` is the shared source catalog and lock for Mark Shot,
 MeatShell, Mister Download Manager, ChatGPT, Yazi flavors, and Wanxiang's base
 and grammar payloads.
 Nix packages consume it through `pkgs/sources.nix`. New sources declare their
@@ -117,9 +172,8 @@ python3 tools/update-sources.py --flake
 Run from a checkout with Git, Nix, curl and Python 3.11+ available (`nixup`'s
 package supplies these tools). The updater downloads and hashes files, checks
 GitHub's SHA-256 digest when supplied, resolves releases to asset IDs and source
-tags to commits, and computes DMS's Go `vendorHash` when its source or flake
-inputs change. It evaluates the desktop configuration before publishing the
-locks. Download, vendor-build or evaluation failures leave the existing locks
+tags to commits. It evaluates the desktop configuration before publishing the
+locks. Download or evaluation failures leave the existing locks
 untouched; `nixup --latest` stops before switching. A later Home Manager build
 failure leaves the successfully updated locks available for diagnosis and review.
 The updater does not guarantee that every upstream release remains compatible
@@ -130,7 +184,27 @@ of the documented Wayland compatibility baseline. Their hashes change only
 when deliberately updating that baseline. ChatGPT's upstream URL remains
 mutable; a fresh download of an old lock can fail after upstream replaces it.
 Use `--only chatgpt` to refresh it, or retain the old output in a binary cache.
-The standalone asset script does not commit, push or switch the desktop.
+The standalone asset script does not compile applications, commit, push or switch
+the desktop. DMS is a host package; its unused Nix package and Go dependency
+refresh have been removed from this workflow.
+
+### Avoiding unnecessary compilation
+
+Prefer unmodified nixpkgs packages with binary-cache coverage. CopyQ's KDE theme
+paths and SongRec's plugin-enabled ALSA library are added by small runtime
+wrappers, preserving the cached application binaries. CopyQ versions therefore
+advance with `flake.lock`, not the separate asset updater.
+
+Mark Shot, ChatGPT, meatshell, Zed, and Mister Download Manager use official
+prebuilt artifacts, verified by `sources.json`. Nix extracts them, patches library
+paths, and adds runtime wrappers. A `building` log line can describe this packaging
+or generated configuration rather than compiling application source. The small
+patched Git wallet helper and upstream dev-runtime still require source builds.
+
+Old Home Manager generations retain their dependency closures as rollback roots.
+`nix-store --gc` only removes unreferenced store paths; pruning older generations
+is a separate decision that removes those rollback points. Inspect a build's
+downloads with `nix build --dry-run --impure .#homeConfigurations.current.activationPackage`.
 
 On an existing checkout whose active generation predates `nixup`, the packaged
 entrypoint can be invoked directly:
@@ -211,6 +285,25 @@ dev-runtime services restart new-api
 Back up the workspace and New API database before upgrading. Successful image
 publication does not automatically update running containers; use `diagnose`
 after applying the update.
+
+Browser services are managed by the same daemon and dashboard:
+
+```bash
+dev-runtime services enable playwright  # start now and on future daemon starts
+dev-runtime diagnose playwright
+# Optional lightweight CDP browser:
+dev-runtime services enable lightpanda
+```
+
+Playwright Server listens at `ws://127.0.0.1:3000/`; Lightpanda uses
+`ws://127.0.0.1:9222`. Use a Playwright 1.64 client for the default server.
+`services enable` persists the choice in the workspace; `services start` only
+starts the current instance. Home Manager enables `dev-runtime.service` with
+`serve --autostart` and `podman.socket`. With user lingering enabled
+(`loginctl show-user "$USER" -p Linger`), these user units start at boot without
+waiting for login; otherwise they start with the user session. No separate
+browser systemd unit is needed. `services disable SERVICE` stops the service
+and removes it from daemon autostart.
 
 ```bash
 dev-runtime services start postgres
@@ -484,9 +577,10 @@ from this flake:
 Some files remain outside strict Nix ownership on purpose:
 
 - `~/.gitconfig`
-  Git author name and email are machine-local. Activation only creates the
+  Git author name and email are machine-local. Activation creates the
   writable file when missing and adds an include for the Nix-managed generic
-  policy under `~/.config/git/config`.
+  policy under `~/.config/git/config`. It also removes the legacy OAuth/gh helper
+  entries after saving a `.pre-nix-oauth.bak` backup.
 
 - `~/.local/state/proxy-llm/` and its Podman volumes
   Proxy-LLM-API credentials, OAuth tokens, local configuration, logs, and
@@ -541,10 +635,22 @@ stable policy/config, for example:
 - `~/.gitconfig`
 - the Home Manager / Nix profile bin dir and `/nix/store`
 
-Shared IDE tool runtimes that are referenced by config must also be available
-from that Home Manager / Nix profile. For example, Codex MCP servers in
-`~/.codex/config.toml` use `npx`, so `node`, `npm`, and `npx` must resolve in
-every managed IDE sandbox instead of only in one editor's private shim tree.
+Managed IDE overrides set `GIT_CONFIG_GLOBAL` to the host `~/.gitconfig` and
+`GH_CONFIG_DIR` to the host GitHub CLI config directory. Code Studio also needs
+private-home links for `.gitconfig`, `.config/git`, and `.config/gh`: mounting
+the host paths alone does not change lookup paths after HOME/XDG are replaced.
+Home Manager creates these links after preparing the host config and preserves
+old private files/directories as `.app-private.bak`. This keeps terminal Git,
+editor Git, and extension processes that drop environment variables on the
+same config. Global Git changes belong on the host; GitHub CLI retains writable
+shared login/settings state. Restart Code Studio after changing the mounts or
+atomically replacing the host `.gitconfig` so it sees the current file.
+
+Development tools come from one shared host mise environment. Managed IDEs mount
+the host mise directories and `~/.local/bin`, export the same `MISE_*_DIR`
+variables, and put its shims on PATH even for non-interactive commands. Thus MCP
+servers using `npx` resolve the same Node installation across IDEs. Code Studio
+preserves this environment while changing HOME/XDG paths for editor state.
 
 Shared writable config/login state for IDE sandboxes should also come from the
 host when the tools are expected to edit it interactively, for example:
@@ -589,10 +695,11 @@ arrive before its Wayland keymap is initialized
 `WAYLAND_DISPLAY= zeditor` can help diagnose that crash, but XWayland is not
 forced because it can break Chinese input through Zed's XIM backend.
 
-`mise` is intentionally treated as environment/toolchain state rather than as a
-pure shared config surface. Project-level `mise.toml` remains the canonical
-tool-version declaration, while per-app `mise` runtime/cache/install state may
-remain private when stronger isolation is desired.
+Mise runtime/config/cache/install state is shared by the host, Code Studio, and
+managed JetBrains IDEs. Project-level `mise.toml` remains the canonical project
+version declaration. Cargo/Rustup homes are shared too; editor caches and
+`CARGO_TARGET_DIR` remain app-private. The old private mise directories are
+recovery data and are no longer selected by managed launchers.
 
 ## JetBrains Flatpak Rule
 
@@ -672,6 +779,8 @@ After a successful switch:
 - `~/.local/share/fcitx5/rime/` contains a Nix-refreshed Wanxiang baseline plus
   writable runtime subtrees such as `build/`, `sync`, and `*.userdb/`
 - `~/.gitconfig` is a writable machine-local identity and compatibility file
+- Git HTTPS authentication uses the Nix-managed libsecret wallet helper followed
+  by `git-credential-oauth` on the desktop. See [Git OAuth](gh-auth.md).
 - KDE UI preference files are writable regular files, never store symlinks
 - Dolphin, KDED, the KDE PolicyKit agent, KWallet, and every portal service
   resolve their `ExecStart` from `/nix/store`

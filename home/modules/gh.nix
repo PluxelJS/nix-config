@@ -2,7 +2,7 @@
 let
   ghEditor = "kate -b";
   ghConfigText = ''
-    git_protocol: ssh
+    git_protocol: https
     editor: ${ghEditor}
     prompt: enabled
   '';
@@ -32,14 +32,10 @@ in
         printf '\neditor: %s\n' ${lib.escapeShellArg ghEditor} >> "$gh_config"
       fi
     fi
-  '';
 
-  programs.git.settings.credential = {
-    "https://github.com" = {
-      helper = "!gh auth git-credential";
-    };
-    "https://gist.github.com" = {
-      helper = "!gh auth git-credential";
-    };
-  };
+    # gh owns its API login; Git HTTPS authentication uses git-credential-oauth.
+    # Set both the default and GitHub's per-host preference for new gh clones.
+    GH_CONFIG_DIR="$gh_config_dir" ${pkgs.gh}/bin/gh config set git_protocol https
+    GH_CONFIG_DIR="$gh_config_dir" ${pkgs.gh}/bin/gh config set git_protocol https --host github.com
+  '';
 }

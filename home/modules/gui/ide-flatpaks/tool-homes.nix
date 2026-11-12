@@ -4,7 +4,7 @@ let
 in
 lib.mkIf config.ahdg.features.flatpak {
   home.activation.prepareFlatpakIdeToolHomes =
-    lib.hm.dag.entryAfter [ "prepareFlatpakIdeHostCodexConfig" ]
+    lib.hm.dag.entryAfter [ "prepareFlatpakIdeHostCodexConfig" "prepareMise" ]
       ''
             tool_home_paths=(
         ${ideLib.renderShellArrayItems ideLib.hostToolHomeDirs}

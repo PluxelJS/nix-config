@@ -1,10 +1,9 @@
 {
   lib,
-  stdenv,
+  stdenvNoCC,
   desktopSources,
-  cmake,
-  ninja,
-  pkg-config,
+  autoPatchelfHook,
+  stdenv,
   qt6,
   kdePackages,
   pipewire,
@@ -15,6 +14,13 @@
   python3,
   tesseract5,
   libx11,
+  libxcb,
+  ffmpeg,
+  wayland,
+  libGL,
+  libpulseaudio,
+  onnxruntime,
+  zxing-cpp,
 }:
 let
   ocrPython = python3.withPackages (ps: [ ps.rapidocr ]);
@@ -26,42 +32,52 @@ let
     ];
   };
 in
-stdenv.mkDerivation {
+stdenvNoCC.mkDerivation {
   pname = "mark-shot";
   inherit (desktopSources.mark-shot) version src;
 
+  sourceRoot = ".";
+
   nativeBuildInputs = [
-    cmake
-    ninja
-    pkg-config
+    autoPatchelfHook
+    python3
     qt6.wrapQtAppsHook
   ];
 
   buildInputs = [
     qt6.qtbase
+    qt6.qtsvg
     qt6.qtwayland
     kdePackages.layer-shell-qt
     pipewire
     libportal
     libx11
-  ];
-
-  cmakeFlags = [
-    "-DBUILD_TESTING=OFF"
-    "-DMARK_SHOT_WITH_LAYER_SHELL=ON"
-    "-DMARK_SHOT_WITH_LIBPORTAL=ON"
+    libxcb
+    ffmpeg
+    wayland
+    libGL
+    libpulseaudio
+    onnxruntime
+    zxing-cpp
+    stdenv.cc.cc.lib
   ];
 
   postPatch = ''
-    # RapidOCR 3 uses model_root_dir. Point the upstream helper at the models
-    # bundled by nixpkgs instead of its mutable per-user download directory.
-    substituteInPlace scripts/mark-shot-ocr \
-      --replace-fail '#!/usr/bin/env python3' '#!${ocrPython}/bin/python3' \
-      --replace-fail '"Global.model_dir",' '"Global.model_root_dir",'
+    substituteInPlace libexec/mark-shot/mark-shot-ocr \
+      --replace-fail '#!/usr/bin/env python3' '#!${ocrPython}/bin/python3'
+  '';
+
+  installPhase = ''
+    runHook preInstall
+    mkdir -p "$out"
+    cp -r bin lib libexec share "$out/"
+    runHook postInstall
   '';
 
   preFixup = ''
     qtWrapperArgs+=(
+      --prefix QT_PLUGIN_PATH : "${kdePackages.layer-shell-qt}/${qt6.qtbase.qtPluginPrefix}"
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ kdePackages.layer-shell-qt ]}"
       --prefix PATH : "$out/bin:${
         lib.makeBinPath [
           grim
@@ -78,18 +94,21 @@ stdenv.mkDerivation {
   '';
 
   postFixup = ''
-    wrapProgram "$out/bin/mark-shot-ocr" \
+    wrapProgram "$out/libexec/mark-shot/mark-shot-ocr" \
       --prefix PATH : "${lib.makeBinPath [ ocrTesseract ]}" \
       --set MARK_SHOT_OCR_NO_VENV 1 \
       --set MARK_SHOT_OCR_VERSION PP-OCRv6 \
       --set MARK_SHOT_OCR_MODEL_DIR "${ocrModels}"
+    # Retain the public helper command after upstream moved helpers to libexec.
+    ln -s ../libexec/mark-shot/mark-shot-ocr "$out/bin/mark-shot-ocr"
   '';
 
   meta = {
-    description = "Qt 6 screenshot and annotation tool for Linux desktops";
+    description = "Official prebuilt Mark Shot screenshot and annotation tool";
     homepage = "https://github.com/jswysnemc/mark-shot";
     license = lib.licenses.mit;
     mainProgram = "mark-shot";
-    platforms = lib.platforms.linux;
+    platforms = [ "x86_64-linux" ];
+    sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
   };
 }
